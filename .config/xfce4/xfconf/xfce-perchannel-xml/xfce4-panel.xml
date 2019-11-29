@@ -57,6 +57,7 @@
       <property name="show-frame" type="bool" value="false"/>
       <property name="square-icons" type="bool" value="true"/>
       <property name="names-ordered" type="array">
+        <value type="string" value="megasync"/>
         <value type="string" value="anydesk"/>
         <value type="string" value="blueman"/>
         <value type="string" value="blueman-tray"/>
