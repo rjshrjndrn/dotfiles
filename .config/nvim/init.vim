@@ -36,7 +36,6 @@ let @r='ggIIssue #000 fix: '
 " Plugin to show git commit popup
 Plug 'rhysd/git-messenger.vim'
 
-Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
 Plug 'junegunn/fzf.vim'
 Plug 'tpope/vim-rhubarb'
 Plug 'scrooloose/nerdcommenter'

@@ -39,8 +39,8 @@
       <property name="override" type="bool" value="true"/>
       <property name="&lt;Super&gt;f" type="string" value="/bin/bash -c &apos;wmctrl -a firefox || firefox&apos;"/>
       <property name="&lt;Super&gt;c" type="string" value="/bin/bash -c &apos;wmctrl -a slack || slack&apos;"/>
-      <property name="&lt;Super&gt;space" type="string" value="/bin/bash -c &apos;wmctrl -a tmux || xfce4-terminal&apos;"/>
-      <property name="&lt;Primary&gt;&lt;Alt&gt;t" type="string" value="xfce4-terminal"/>
+      <property name="&lt;Primary&gt;&lt;Alt&gt;t" type="string" value="kitty"/>
+      <property name="&lt;Super&gt;space" type="string" value="/bin/bash -c &apos;wmctrl -a tmux new || kitty&apos;"/>
     </property>
   </property>
   <property name="xfwm4" type="empty">

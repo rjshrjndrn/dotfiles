@@ -1,0 +1,6 @@
+let g:netrw_dirhistmax  =10
+let g:netrw_dirhistcnt =4
+let g:netrw_dirhist_4='scp://ops@keycloak.centralindia.cloudapp.azure.com//home/ops/k3d/sunbird-devops/3node/helm/sunbird/'
+let g:netrw_dirhist_3='scp://ops@keycloak.centralindia.cloudapp.azure.com//home/ops/k3d/sunbird-devops/3node/helm/'
+let g:netrw_dirhist_2='scp://ops@keycloak.centralindia.cloudapp.azure.com//home/ops/k3d/sunbird-devops/3node/'
+let g:netrw_dirhist_1='scp://ops@keycloak.centralindia.cloudapp.azure.com//home/ops/k3d/sunbird-devops/'

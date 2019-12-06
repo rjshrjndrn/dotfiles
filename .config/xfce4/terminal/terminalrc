@@ -22,7 +22,7 @@ MiscCopyOnSelect=FALSE
 MiscShowRelaunchDialog=TRUE
 MiscRewrapOnResize=TRUE
 MiscUseShiftArrowsToScroll=FALSE
-MiscSlimTabs=FALSE
+MiscSlimTabs=TRUE
 MiscNewTabAdjacent=FALSE
 MiscSearchDialogOpacity=100
 MiscShowUnsafePasteDialog=TRUE
@@ -30,7 +30,8 @@ ColorCursor=#c5c5c8c8c6c6
 ColorForeground=#c5c5c8c8c6c6
 ColorBackground=#1d1d1f1f2121
 ColorPalette=#1d1d1f1f2121;#cccc34342b2b;#191988884444;#fbfba9a92222;#39397171eded;#a3a36a6ac7c7;#39397171eded;#c5c5c8c8c6c6;#969698989696;#cccc34342b2b;#191988884444;#fbfba9a92222;#39397171eded;#a3a36a6ac7c7;#39397171eded;#ffffffffffff
-FontName=Fira Code Italic 12
+FontName=Fira Code weight=450 12
 BackgroundMode=TERMINAL_BACKGROUND_TRANSPARENT
 BackgroundDarkness=1.000000
+ScrollingBar=TERMINAL_SCROLLBAR_NONE
 

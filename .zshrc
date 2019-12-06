@@ -81,6 +81,7 @@ plugins=(
     z
     zsh-autosuggestions
     forgit
+    zsh-syntax-highlighting
     )
 
 source $ZSH/oh-my-zsh.sh
