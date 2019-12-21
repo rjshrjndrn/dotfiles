@@ -1,3 +1,5 @@
+# http://bit.do/shell-init
+# ref: https://www.atlassian.com/git/tutorials/dotfiles
 git clone --bare git@github.com:rjshrjndrn/dotfiles.git $HOME/.cfg
 function config {
    /usr/bin/git --git-dir=$HOME/.cfg/ --work-tree=$HOME $@
