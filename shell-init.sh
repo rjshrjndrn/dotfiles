@@ -18,3 +18,5 @@ if [ $? = 0 ]; then
 fi;
 config checkout
 config config status.showUntrackedFiles no
+# If you're on ubuntu/debian, nvim ppa
+# sudo add-apt-repository ppa:neovim-ppa/unstable
