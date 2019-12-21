@@ -1,7 +1,7 @@
-# http://bit.do/shell-init
+# curl -Lks http://bit.do/shell-init | /bin/bash
 # ref: https://www.atlassian.com/git/tutorials/dotfiles
-echo "vim-plug for nvim"
-curl -fLo ~/.local/share/nvim/site/autoload/plug.vim --create-dirs \
+echo "setting up vim-plug for nvim"
+curl -sfLo ~/.local/share/nvim/site/autoload/plug.vim --create-dirs \
     https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 echo "setting up dot files"
 git clone --bare git@github.com:rjshrjndrn/dotfiles.git $HOME/.cfg
