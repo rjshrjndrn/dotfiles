@@ -17,6 +17,7 @@ if [ $? = 0 ]; then
     config checkout 2>&1 | egrep "\s+\." | awk {'print $1'} | xargs -I{} mv {} .config-backup/{}
 fi;
 config checkout
+git config --global rebase.autoStash true
 config config status.showUntrackedFiles no
 # If you're on ubuntu/debian, nvim ppa
 # sudo add-apt-repository ppa:neovim-ppa/unstable
