@@ -16,6 +16,7 @@ nnoremap <silent> <C-n> :NERDTreeToggle<CR>
 Plug 'morhetz/gruvbox'
 
 Plug 'tpope/vim-surround'
+Plug 'tpope/vim-repeat'
 Plug 'christoomey/vim-tmux-navigator'
 Plug 'tpope/vim-fugitive'
 "{{{
@@ -36,7 +37,7 @@ let @r='ggIIssue #000 fix: '
 Plug 'airblade/vim-gitgutter'
 
 " Plugin to show git commit popup
-Plug 'rhysd/git-messenger.vim'
+" Plug 'rhysd/git-messenger.vim'
 
 Plug 'junegunn/fzf'
 Plug 'junegunn/fzf.vim'
