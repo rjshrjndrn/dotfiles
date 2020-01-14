@@ -1,1 +1,27 @@
-/home/rajeshr/Documents/personal/terminal_setup/dotfiles/.config/starship.toml
+add_newline = false
+
+[kubernetes]
+symbol = "⛵ "
+style = "dim yellow"
+disabled = false
+
+[aws]
+disabled = true
+
+[git_branch]
+symbol = "🌱 "
+
+[git_status]
+conflicted = "🏳"
+ahead = "🏎💨"
+behind = "😰"
+diverged = "😵"
+untracked = "🤷"
+stashed = "📦"
+modified = "📝"
+staged.value = "++"
+staged.style = "green"
+staged_count.enabled = true
+staged_count.style = "green"
+renamed = "👅"
+deleted = "🗑"
