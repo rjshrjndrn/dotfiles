@@ -81,7 +81,7 @@ plugins=(
     z
     zsh-autosuggestions
     forgit
-    zsh-syntax-highlighting
+    # zsh-syntax-highlighting
     )
 
 source $ZSH/oh-my-zsh.sh
@@ -124,9 +124,9 @@ sk
 function pr() {
 
     branch=${1:-$(git rev-parse --abbrev-ref HEAD | cut -d ':' -f2 | cut -d '/' -f2)}
-    upstream=${2:-$(basename `git remote get-url origin` | cut -d '.' -f1)}
-    echo hub pull-request -b project-sunbird/$upstream:$branch -h $(git rev-parse --abbrev-ref HEAD | cut -d ':' -f2 | cut -d '/' -f2) -f
-    hub pull-request -b project-sunbird/$upstream:$branch -h $(git rev-parse --abbrev-ref HEAD | cut -d ':' -f2 | cut -d '/' -f2) -f
+    upstream=${2:-$(git config --get remote.origin.url | awk -F: '{print $NF}' |awk -F/ '{print $(NF-2)}'|cut -d '.' -f1)}
+    echo hub pull-request -b $upstream:$branch -h $(git rev-parse --abbrev-ref HEAD | cut -d ':' -f2 | cut -d '/' -f2) -f
+    hub pull-request -b $upstream:$branch -h $(git rev-parse --abbrev-ref HEAD | cut -d ':' -f2 | cut -d '/' -f2) -f
 }
 alias m='mkdir'
 alias clea='clear'
@@ -192,6 +192,11 @@ alias ssh='ssh -A'
 # skiping knownkeys saving
 alias nssh='ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"'
 alias nscp='scp -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"'
+
+nmosh(){
+    mosh --ssh='ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"' -p 60001 $1
+}
+
 jt(){
     nvim $1**
 }
@@ -225,7 +230,7 @@ alias kn='kubens'
 alias knc='kubens -c'
 alias kc='kubectl create'
 
-alias h3='helm3'
+alias h3='helm'
 
 # Window manager
 alias a='wmctrl -a'
@@ -255,7 +260,7 @@ if [ /home/rajeshr/apps/bin/kubectl ]; then source <(kubectl completion zsh); fi
 # xinput disable 9
 source <(stern --completion=zsh)
 source <(helm completion zsh)
-source <(helm3 completion zsh)
+source <(linkerd completion zsh)
 # [[ $(xmodmap -pk | grep Caps | awk '{ print $1 }') -ne 9 ]] && setxkbmap -option caps:escape
 
 ##### Tmux functions #####
