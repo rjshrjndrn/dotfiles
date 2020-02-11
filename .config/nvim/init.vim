@@ -12,6 +12,21 @@ nnoremap <silent> ff :NERDTreeFind <Enter>
 "NERDTree toggle
 nnoremap <silent> <C-n> :NERDTreeToggle<CR>
 "}}}
+Plug 'Xuyuanp/nerdtree-git-plugin'
+"{{{
+let g:NERDTreeIndicatorMapCustom = {
+    \ "Modified"  : "✹",
+    \ "Staged"    : "✚",
+    \ "Untracked" : "✭",
+    \ "Renamed"   : "➜",
+    \ "Unmerged"  : "═",
+    \ "Deleted"   : "✖",
+    \ "Dirty"     : "✗",
+    \ "Clean"     : "✔︎",
+    \ 'Ignored'   : '☒',
+    \ "Unknown"   : "?"
+    \ }
+"}}}
 
 Plug 'morhetz/gruvbox'
 
@@ -36,6 +51,8 @@ let @r='ggIIssue #000 fix: '
 "}}}
 Plug 'airblade/vim-gitgutter'
 
+Plug 'iamcco/markdown-preview.nvim', { 'do': { -> mkdp#util#install() } }
+
 " Plugin to show git commit popup
 " Plug 'rhysd/git-messenger.vim'
 
@@ -58,16 +75,18 @@ let g:NERDTrimTrailingWhitespace = 1
 "}}}
 
 Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries', 'for': 'go' }
+"{{{
+let g:go_fmt_command = "goimports"
+"}}}
 
 Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
 Plug 'tpope/vim-unimpaired'
 Plug 'tpope/vim-dispatch'
 Plug 'radenling/vim-dispatch-neovim'
-Plug 'vim-scripts/vim-auto-save'
-let g:auto_save_noupdatetime = 1
-let g:auto_save_in_insert_mode = 0
-
+Plug '907th/vim-auto-save'
+let g:auto_save_events = ["CursorHold"]
+set updatetime=600
 
 Plug 'vimwiki/vimwiki'
 "{{{
@@ -79,7 +98,7 @@ let g:vimwiki_ext2syntax = {'.md': 'markdown',
                   \ '.mkd': 'markdown',
                   \ '.wiki': 'media'}
 let g:vimwiki_folding='custom'
-map gc<Space> <Plug>VimwikiToggleListItem
+" map gc<Space> <Plug>VimwikiToggleListItem
 "}}}
 
 Plug 'wincent/ferret'
@@ -120,7 +139,7 @@ endif
 Plug 'SirVer/ultisnips'
 "{{{
 " Trigger configuration. Do not use <tab> if you use https://github.com/Valloric/YouCompleteMe.
-let g:UltiSnipsExpandTrigger="<c-l>"
+let g:UltiSnipsExpandTrigger="<c-j>"
 let g:UltiSnipsJumpForwardTrigger="<c-j>"
 let g:UltiSnipsJumpBackwardTrigger="<c-k>"
 "}}}
@@ -153,6 +172,8 @@ let g:gruvbox_italicize_comments = 1
 " Deoplete configuration
 " {{{
 " populate vim-go plugin suggestions
+" Enabling vim-go integreation with deopplete
+" https://github.com/fatih/vim-go/issues/2185#issuecomment-483064904
 call deoplete#custom#option('omni_patterns', {
     \ 'go': '[^. *\t]\.\w*',
     \})
@@ -160,30 +181,12 @@ call deoplete#custom#var('tabnine', {
     \ 'line_limit': 500,
     \ 'max_num_results': 20,
     \ })
-call deoplete#custom#source('tabnine', 'rank', 50)
+
+" Custom priority for auto completion sources
+" Higher value means higher priority
+call deoplete#custom#source('ultisnips', 'rank', 520)
+call deoplete#custom#source('tabnine', 'rank', 500)
 "}}}
-
-" Kite config
-"{{{
-" ref: https://github.com/kiteco/plugins/tree/master/vim
-
-let g:kite_tab_complete=1
-
-" Disabling previw window
-set completeopt+=preview
-
-" Automatically close if completion is done
-autocmd CompleteDone * if !pumvisible() | pclose | endif
-
-" snippet placeholder changing
-let g:kite_previous_placeholder = '<tab>'
-let g:kite_next_placeholder = '<s-tab>'
-
-" Copilot changing
-nmap <silent> <buffer> gK <Plug>(kite-docs)
-let g:kite_documentation_continual=1
-"}}}
-
 
 " Custom Undo
 set undofile
@@ -290,14 +293,22 @@ nnoremap <silent> ]r 0f-WvEy:find roles/<c-r>0/tasks/main.yml<CR>
 nnoremap <silent> U :UndotreeToggle<CR>:UndotreeFocus<CR>
 
 " Command mode history
-cmap <M-p> <up>
-cmap <M-n> <down>
+cmap <M-h> <left>
+cmap <M-l> <right>
 cmap <M-k> <up>
 cmap <M-j> <down>
 " tabbing to complete popups
 inoremap <silent><expr><tab> pumvisible() ? "\<c-n>" : "\<tab>"
 inoremap <silent><expr><s-tab> pumvisible() ? "\<c-p>" : "\<s-tab>"
+
+" search through buffers using fzf
+nnoremap <silent><leader>b :Buffers<CR>
+" search through files in current dir using fzf
+nnoremap <silent><leader>f :Files<CR>
+" search through history using fzf
+nnoremap <silent><leader>h :History<CR>
 "}}}
+
 
 " Buffer Mappings
 "{{{

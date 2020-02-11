@@ -125,8 +125,12 @@ function pr() {
 
     branch=${1:-$(git rev-parse --abbrev-ref HEAD | cut -d ':' -f2 | cut -d '/' -f2)}
     upstream=${2:-$(git config --get remote.origin.url | awk -F: '{print $NF}' |awk -F/ '{print $(NF-2)}'|cut -d '.' -f1)}
-    echo hub pull-request -b $upstream:$branch -h $(git rev-parse --abbrev-ref HEAD | cut -d ':' -f2 | cut -d '/' -f2) -f
-    hub pull-request -b $upstream:$branch -h $(git rev-parse --abbrev-ref HEAD | cut -d ':' -f2 | cut -d '/' -f2) -f
+    echo hub pull-request -b $upstream:$branch -h ${branch} -f
+    hub pull-request -b $upstream:$branch -h ${branch} -f
+}
+
+gps(){
+    gopass otp -c $1 $(gopass $1) > /dev/null
 }
 alias m='mkdir'
 alias clea='clear'
@@ -137,8 +141,8 @@ alias l='ls -CF'
 alias cx='chmod +x'
 alias py='function py(){ touch $1;echo -e "#!/usr/bin/env python3\n" >> $1; };py'
 alias p='python3'
-alias ovp='sudo openvpn --config ~/.cred/sunbird-staging.ovpn --auth-user-pass ~/.cred/ntp/vpn'
-alias ovpd='sudo openvpn --config ~/.cred/sunbird-dev.ovpn --auth-user-pass ~/.cred/ntp/vpn'
+alias ovp='gps svpn; sudo openvpn --config ~/.cred/sunbird-staging.ovpn --auth-user-pass ~/.cred/ntp/vpn'
+alias ovpd='gps dvpn; sudo openvpn --config ~/.cred/sunbird-dev.ovpn --auth-user-pass ~/.cred/ntp/vpn'
 alias vn='nvim -u ~/.essential.vim -N'
 alias vv='/usr/bin/vim'
 alias vim='nvim'
@@ -206,6 +210,9 @@ nsr(){
 nsu(){
     nssh ubuntu@$1
 }
+nso(){
+    nssh ops@$1
+}
 # ansible aliases
 alias ap='ansible-playbook'
 alias apc="ansible-playbook -i $2 $1 --syntax-check -e 'hosts=dummy'"
@@ -235,7 +242,7 @@ alias h3='helm'
 # Window manager
 alias a='wmctrl -a'
 # Exporting vars
-#export GOROOT=~/go
+export GOROOT=/usr/lib/go
 export GOPATH=~/go_code
 #export GOBIN=$GOPATH/bin
 #export PATH=$PATH:$GOROOT/bin:$GOPATH:$GOBIN
