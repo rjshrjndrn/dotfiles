@@ -112,6 +112,14 @@ source $ZSH/oh-my-zsh.sh
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
+## Loading plugins
+# To install zplug
+# curl -sL --proto-redir -all,https https://raw.githubusercontent.com/zplug/installer/master/installer.zsh | zsh
+source ~/.zplug/init.zsh
+zplug "changyuheng/fz", defer:1
+zplug "rupa/z", use:z.sh
+zplug "zsh-users/zsh-completions"
+zplug load
 # Aliases
 function sk() {
     local org=${1:-ekstep}
@@ -126,7 +134,7 @@ function pr() {
     branch=${1:-$(git rev-parse --abbrev-ref HEAD | cut -d ':' -f2 | cut -d '/' -f2)}
     upstream=${2:-$(git config --get remote.origin.url | awk -F: '{print $NF}' |awk -F/ '{print $(NF-2)}'|cut -d '.' -f1)}
     echo hub pull-request -b $upstream:$branch -h ${branch} -f
-    hub pull-request -b $upstream:$branch -h ${branch} -f
+    hub pull-request -b $upstream:$branch -h $(git rev-parse --abbrev-ref HEAD | cut -d ':' -f2 | cut -d '/' -f2) -f
 }
 
 gps(){
@@ -148,6 +156,8 @@ alias vv='/usr/bin/vim'
 alias vim='nvim'
 alias v='vim'
 alias x='xdg-open'
+alias emacs='emacs --no-window-system'
+
 # function vim(){
 #     [[ -f Session.vim ]] && nvim -S || nvim -c Obsession $@
 # }
@@ -262,6 +272,8 @@ export VISUAL=nvim
 export EDITOR=nvim
 export PATH=$PATH:~/apps/bin:~/go_code/bin
 
+export FZF_DEFAULT_OPTS='--bind tab:down,shift-tab:up'
+
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 if [ /home/rajeshr/apps/bin/kubectl ]; then source <(kubectl completion zsh); fi
 # xinput disable 9
@@ -319,6 +331,14 @@ alias config='/usr/bin/git --git-dir=$HOME/dotfiles/ --work-tree=$HOME'
 # Command to hide all other files
 # config config --local status.showUntrackedFiles no
 export PATH=$PATH:~/.kube/plugins/jordanwilson230
+# for what ever LANG, tmux should show proper glyphs
+export LANG=en_US.UTF-8
+# loding custom sources
+if [ -d ~/.config/tweaks ]; then
+  for file in ~/.config/tweaks/*; do
+    . $file
+  done
+fi
 # Starship config
 eval "$(starship init zsh)"
 

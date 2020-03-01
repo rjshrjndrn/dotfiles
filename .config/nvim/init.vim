@@ -29,6 +29,7 @@ let g:NERDTreeIndicatorMapCustom = {
 "}}}
 
 Plug 'morhetz/gruvbox'
+Plug 'lifepillar/vim-solarized8'
 
 Plug 'tpope/vim-surround'
 Plug 'tpope/vim-repeat'
@@ -74,7 +75,7 @@ let g:NERDCommentEmptyLines = 1
 let g:NERDTrimTrailingWhitespace = 1
 "}}}
 
-Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries', 'for': 'go' }
+Plug 'fatih/vim-go', {'tag': '*', 'do': ':GoUpdateBinaries', 'for': 'go' }
 "{{{
 let g:go_fmt_command = "goimports"
 "}}}
@@ -119,7 +120,7 @@ nmap <silent> z <Plug>(easymotion-overwin-f2)
 
 " Replacing hjkl
 " Gif config
-map  <silent> <Leader>j <Plug>(easymotion-j)
+map <silent> <Leader>j <Plug>(easymotion-j)
 map <silent> <Leader>k <Plug>(easymotion-k)
 let g:EasyMotion_startofline = 0 " keep cursor column when JK motion
 "}}}
@@ -130,6 +131,7 @@ Plug 'nvie/vim-flake8'
 "{{{
 if has('nvim')
   Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+  Plug 'deoplete-plugins/deoplete-jedi'
   let g:deoplete#enable_at_startup = 1
   Plug 'tbodt/deoplete-tabnine', { 'do': './install.sh' }
 
@@ -159,12 +161,22 @@ let g:mustache_abbreviations = 1
 
 Plug 'mbbill/undotree'
 
+" Vim Headers including licenses
+Plug 'alpertuna/vim-header'
+"{{{
+let g:header_field_author = 'Rajesh Rajendran'
+let g:header_field_author_email = 'rjshrjdnrn@gmail.com'
+let g:header_auto_add_header=0
+map <F4> :AddHeader<CR>
+"}}}
+
+
 " Initialize plugin system
 call plug#end()
 "}}}
 
 " colorscheme solarized8_flat
-colorscheme gruvbox
+colorscheme solarized8_flat
 set background=dark
 let g:gruvbox_contrast_dark = 'medium'
 let g:gruvbox_italicize_comments = 1
@@ -185,7 +197,7 @@ call deoplete#custom#var('tabnine', {
 " Custom priority for auto completion sources
 " Higher value means higher priority
 call deoplete#custom#source('ultisnips', 'rank', 520)
-call deoplete#custom#source('tabnine', 'rank', 500)
+call deoplete#custom#source('tabnine', 'rank', 400)
 "}}}
 
 " Custom Undo
@@ -205,7 +217,7 @@ if has('nvim')
 endif
 
 function! TermTab()
-  tabnew | set nonu | terminal
+  tabnew | setlocal nonu | terminal
 endfunction
 
 function! TrailClear()
@@ -239,7 +251,7 @@ nnoremap <silent> <leader>d :call DiffToggle(&diff)<CR>
 
 " Ansible variable fix {{var}} to {{ var }}
 function! AnsiVarFix()
-    :%s/{{\(\w\+\)}}/{{ \1 }}/g
+    :%s/{{\s*\(\S\+\)\s*}}/{{ \1 }}/g
 endfunction
 command! AnsiVarFix call AnsiVarFix()
 
