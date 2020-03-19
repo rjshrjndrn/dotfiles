@@ -5,7 +5,7 @@ set ic is scs sw=4 ts=4 et termguicolors hidden nu splitbelow splitright mouse=a
 
 call plug#begin('~/.vim/bundle')
 "{{{
-Plug 'scrooloose/nerdtree'
+Plug 'scrooloose/nerdtree', { 'on': ['NERDTreeFind', 'NERDTreeToggle'] }
 "{{{
 "NERDTreefind
 nnoremap <silent> ff :NERDTreeFind <Enter>
@@ -39,7 +39,7 @@ Plug 'tpope/vim-fugitive'
 "fugitive vim
 nnoremap gw :Gwrite<Enter>
 nnoremap gs :Gstatus<Enter>
-nnoremap gc :Gcommit<Enter>
+nnoremap gc :Gcommit -s <Enter>
 nnoremap gp :Gpush
 nnoremap gpf :Gpush --force
 nnoremap gca :Gcommit --amend
@@ -52,7 +52,7 @@ let @r='ggIIssue #000 fix: '
 "}}}
 Plug 'airblade/vim-gitgutter'
 
-Plug 'iamcco/markdown-preview.nvim', { 'do': { -> mkdp#util#install() } }
+Plug 'iamcco/markdown-preview.nvim', { 'for': 'markdown', 'do': { -> mkdp#util#install() } }
 
 " Plugin to show git commit popup
 " Plug 'rhysd/git-messenger.vim'
@@ -75,9 +75,10 @@ let g:NERDCommentEmptyLines = 1
 let g:NERDTrimTrailingWhitespace = 1
 "}}}
 
-Plug 'fatih/vim-go', {'tag': '*', 'do': ':GoUpdateBinaries', 'for': 'go' }
+Plug 'fatih/vim-go', {'do': ':GoUpdateBinaries', 'for': 'go' }
 "{{{
 let g:go_fmt_command = "goimports"
+let g:go_rename_command = 'gopls'
 "}}}
 
 Plug 'vim-airline/vim-airline'
@@ -170,13 +171,23 @@ let g:header_auto_add_header=0
 map <F4> :AddHeader<CR>
 "}}}
 
+Plug 'liuchengxu/vista.vim', {'for': 'go'}
+
+" Jumping to definitions and refs
+Plug 'pechorin/any-jump.vim', {'on': 'AnyJump'}
+"{{{
+let g:any_jump_disable_default_keybindings = 1
+"}}}
+
+Plug 'psliwka/vim-smoothie'
 
 " Initialize plugin system
 call plug#end()
 "}}}
 
 " colorscheme solarized8_flat
-colorscheme solarized8_flat
+colorscheme gruvbox
+" colorscheme nord
 set background=dark
 let g:gruvbox_contrast_dark = 'medium'
 let g:gruvbox_italicize_comments = 1
@@ -217,7 +228,7 @@ if has('nvim')
 endif
 
 function! TermTab()
-  tabnew | setlocal nonu | terminal
+  tabnew | set nonu | terminal
 endfunction
 
 function! TrailClear()
@@ -251,9 +262,9 @@ nnoremap <silent> <leader>d :call DiffToggle(&diff)<CR>
 
 " Ansible variable fix {{var}} to {{ var }}
 function! AnsiVarFix()
-    :%s/{{\s*\(\S\+\)\s*}}/{{ \1 }}/g
+    :%s/{{\zs\(.\{-}\)\ze}}/ \1 /g
 endfunction
-command! AnsiVarFix call AnsiVarFix()
+
 
 "}}}
 
@@ -328,15 +339,17 @@ augroup filetypes
     autocmd!
     " autocmd BufEnter,BufWritePre *.yml set foldmethod=indent foldlevel=10
     autocmd Filetype vim,python,sh setlocal foldmethod=marker shiftwidth=4 tabstop =4  expandtab
-    autocmd Filetype yaml setlocal shiftwidth=2 tabstop=2 expandtab
+    autocmd Filetype yaml setlocal shiftwidth=2 tabstop=2 expandtab | command! AnsiVarFix call AnsiVarFix()
     autocmd Filetype gitcommit setlocal spell
     autocmd Filetype git setlocal nofoldenable
-    autocmd BufEnter ".*\.md$" setlocal spell tabstop=2 expandtab shiftwidth=2 foldmethod=marker
+    autocmd BufEnter,BufNewFile ".*\.md$" setlocal spell tabstop=2 expandtab shiftwidth=2 foldmethod=marker
     autocmd BufEnter Jenkinsfile setlocal ft=groovy
-    autocmd FileType vimwiki let b:auto_save=1
+    autocmd FileType gitcommit,vimwiki let b:auto_save=1 | setlocal spell
     "custom file based remapings
     au FileType go nmap <leader>gr <Plug>(go-run)
     au FileType go nmap <leader>gt <Plug>(go-test)
+    au StdinReadPost * :set buftype=nofile
+    au BufEnter,BufNewFile */ansible/*.y[a]\\\{0,1\}ml setlocal ft=yaml.ansible
 augroup END
 "}}}
 

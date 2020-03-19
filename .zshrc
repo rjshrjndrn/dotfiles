@@ -186,6 +186,7 @@ alias grc='git rebase --continue'
 alias grs='git rebase --skip'
 alias gst='git stash'
 alias gstp='git stash pop'
+alias glo='git log --graph --pretty=oneline --abbrev-commit'
 
 # hub alias
 # Sourcing hub for git
