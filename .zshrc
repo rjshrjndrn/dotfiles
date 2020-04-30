@@ -154,7 +154,8 @@ alias ovpd='gps dvpn; sudo openvpn --config ~/.cred/sunbird-dev.ovpn --auth-user
 alias vn='nvim -u ~/.essential.vim -N'
 alias vv='/usr/bin/vim'
 alias vim='nvim'
-alias v='vim'
+alias v='nvim'
+alias sv='cat | nvim'
 alias x='xdg-open'
 alias emacs='emacs --no-window-system'
 
@@ -233,6 +234,7 @@ alias c="setxkbmap -option caps:escape"
 alias yay="yay --sudoloop"
 # Docker
 alias d='docker'
+alias dr='docker run'
 alias k='kubectl'
 alias kg='kubectl get'
 alias kga='kubectl get all'
