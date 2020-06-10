@@ -1,7 +1,7 @@
 set encoding=utf-8
-let mapleader = ','
+let mapleader = ' '
 set bs=eol,start,indent
-set ic is scs sw=4 ts=4 et termguicolors hidden nu splitbelow splitright mouse=a diffopt+=vertical laststatus=0
+set ic is scs sw=4 ts=4 et termguicolors hidden nu splitbelow splitright mouse=a diffopt+=vertical laststatus=0 cursorline foldlevelstart=1
 call plug#begin('~/.vim/bundle')
 Plug 'scrooloose/nerdtree', { 'on': ['NERDTreeFind', 'NERDTreeToggle'] }
 "{{{
@@ -10,12 +10,19 @@ nnoremap <silent> ff :NERDTreeFind <Enter>
 "NERDTree toggle
 nnoremap <silent> <C-n> :NERDTreeToggle<CR>
 "}}}
-Plug 'morhetz/gruvbox'
+Plug 'gruvbox-community/gruvbox'
+" Fading inactive window
+" Plug 'TaDaa/vimade'
+" "{{{
+" " Support for tmux
+" au! FocusLost * VimadeFadeActive
+" au! FocusGained * VimadeUnfadeActive
+" "}}}
 Plug 'tpope/vim-surround'
 Plug 'tpope/vim-repeat'
 Plug 'tpope/vim-fugitive'
-"{{{
 "fugitive vim
+"{{{
 nnoremap gw :Gwrite<Enter>
 nnoremap gs :Gstatus<Enter>
 nnoremap gc :Gcommit -s <Enter>
@@ -29,13 +36,22 @@ let @w='5G$vByggIIssue #000 feat: <CR><CR><ESC>pggA'
 let @e='ggIIssue #000 feat: '
 let @r='ggIIssue #000 fix: '
 "}}}
+Plug 'junegunn/gv.vim'
+"{{{
+nmap <silent> <leader>v :GV?<CR>
+vmap <silent> <leader>v :GV?<CR>
+"}}}
 Plug 'tpope/vim-rhubarb'
 Plug 'junegunn/fzf'
+"{{{
+nnoremap <silent> <leader>p <nop>
+"}}}
 Plug 'junegunn/fzf.vim'
 " Autocomplete engine
 "{{{
 if has('nvim')
   Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+  set completeopt=menu,noselect
   Plug 'deoplete-plugins/deoplete-jedi'
   let g:deoplete#enable_at_startup = 1
   Plug 'tbodt/deoplete-tabnine', { 'do': './install.sh' }
@@ -102,7 +118,7 @@ Plug 'wincent/ferret'
 let g:FerretJob=0
 let g:FerretMaxResults=1000
 " vnoremap /s "zy:Ack! -w --ignore *\.wiki --ignore *doc --ignore ekstep-devops <c-r>z<CR>
-vnoremap <silent> /S "zy:Ack! -w  <c-r>z<CR>
+vnoremap <silent> /S "zy:Ack! -w <c-r>z<CR>
 vnoremap <silent> /s "zy:Ack!  <c-r>z<CR>
 "}}}
 Plug 'fatih/vim-go', {'do': ':GoUpdateBinaries', 'for': 'go' }
@@ -110,6 +126,7 @@ Plug 'fatih/vim-go', {'do': ':GoUpdateBinaries', 'for': 'go' }
 let g:go_fmt_command = "goimports"
 let g:go_rename_command = 'gopls'
 "}}}
+Plug 'liuchengxu/vista.vim', {'for': 'go'}
 
 Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
@@ -160,7 +177,7 @@ Plug 'easymotion/vim-easymotion'
 " Easymotion plug
 " Jump to anywhere you want with minimal keystrokes, with just one key binding.
 " `s{char}{label}`
-nmap <silent> z <Plug>(easymotion-overwin-f2)
+nmap <silent> , <Plug>(easymotion-overwin-f2)
 
 " Replacing hjkl
 " Gif config
@@ -197,6 +214,11 @@ call deoplete#custom#var('tabnine', {
 " Higher value means higher priority
 call deoplete#custom#source('ultisnips', 'rank', 520)
 call deoplete#custom#source('tabnine', 'rank', 400)
+call deoplete#custom#option({
+    \ 'auto_complete_delay': 200,
+    \ 'smart_case': v:true,
+    \ 'min_pattern_length': 3,
+    \ })
 "Add extra filetypes
 let g:deoplete#sources#ternjs#filetypes = [
                 \ 'jsx',
@@ -218,7 +240,6 @@ function! Term()
   exec winheight(0)/4."split" | set nonu | terminal
 endfunction
 if has('nvim')
-     nnoremap <expr> <leader>t ":call Term()\<CR>"
      nnoremap <expr> <leader>T ":call TermTab()\<CR>"
 endif
 
@@ -230,6 +251,7 @@ function! TrailClear()
     :%s/\s\+$//g
 endfunction
 command! TrailClear call TrailClear()
+command! Date :r !date
 
 function! DiffToggle(diff)
     "named argument diff
@@ -238,6 +260,10 @@ function! DiffToggle(diff)
     else
         :windo diffthis
     endif
+endfunction
+
+function! SpaceEscape(...)
+    return substitute(a:str," ","\ ","")
 endfunction
 
 function! PyRunner()
@@ -259,6 +285,24 @@ nnoremap <silent> <leader>d :call DiffToggle(&diff)<CR>
 function! AnsiVarFix()
     :%s/{{\s*\(.\{-}\)\s*}}/{{ \1 }}/g
     " :%s/{{\zs\s\+\(.\{-}\)\ze}}/{{ \2 }}/g
+endfunction
+
+
+let g:ansible_goto_role_paths = './roles,../_common/roles'
+
+function! FindAnsibleRoleUnderCursor()
+  if exists("g:ansible_goto_role_paths")
+    let l:role_paths = g:ansible_goto_role_paths
+  else
+    let l:role_paths = "./roles"
+  endif
+  let l:tasks_main = expand("<cfile>") . "/tasks/main.yml"
+  let l:found_role_path = findfile(l:tasks_main, l:role_paths)
+  if l:found_role_path == ""
+    echo l:tasks_main . " not found"
+  else
+    execute "edit " . fnameescape(l:found_role_path)
+  endif
 endfunction
 
 
@@ -300,10 +344,6 @@ vnoremap /B "zy:Back! -w <C-R>z<CR>
 
 " Copying to system clipboard
 vnoremap Y "+y
-" FZF remap
-nnoremap <C-p> :<C-u>Files<cr>
-nnoremap <C-b> :<C-u>Buffers<cr>
-nnoremap <C-S-h> :<C-u>History<cr>
 
 " Switch windows
 nnoremap <c-j> <c-w>j
@@ -319,7 +359,6 @@ if has('nvim')
     tnoremap <c-k> <c-\><c-n><c-w>k
     tnoremap <c-l> <c-\><c-n><c-w>l
 endif
-nnoremap <silent> ]r 0f-WvEy:find roles/<c-r>0/tasks/main.yml<CR>
 
 "Undo map
 nnoremap <silent> U :UndotreeToggle<CR>:UndotreeFocus<CR>
@@ -340,6 +379,9 @@ nnoremap <silent><leader>f :Files<CR>
 " search through history using fzf
 nnoremap <silent><leader>h :History<CR>
 "}}}
+
+" Creating new tab
+nnoremap <silent> <leader>t :tabnew<CR>
 
 " Custom priority for auto completion sources
 " Higher value means higher priority
@@ -362,11 +404,14 @@ augroup filetypes
     "custom file based remapings
     au FileType go nmap <leader>gr <Plug>(go-run)
     au FileType go nmap <leader>gt <Plug>(go-test)
+    au FileType go nmap <silent><leader>gd :GoDecls<CR>
     " no save question if the content is coming from stdin
     au StdinReadPost * :set buftype=nofile
     au BufEnter,BufNewFile */ansible/*.y[a]\\\{0,1\}ml setlocal ft=yaml.ansible
+    au BufEnter,BufNewFile */ansible/*.y[a]\\\{0,1\}ml nnoremap <silent> ]r :call FindAnsibleRoleUnderCursor()<CR>
     au BufEnter,BufNewFile ~/vimwiki/* lcd ~/vimwiki
     au FileType html,css EmmetInstall " | imap <M-c> @<Plug>(emmet-expand-abbr)
+
 augroup END
 "}}}
 
@@ -408,7 +453,6 @@ if has('nvim')
     tnoremap <c-k> <c-\><c-n><c-w>k
     tnoremap <c-l> <c-\><c-n><c-w>l
 endif
-nnoremap <silent> ]r 0f-WvEy:find roles/<c-r>0/tasks/main.yml<CR>
 
 "Undo map
 nnoremap <silent> U :UndotreeToggle<CR>:UndotreeFocus<CR>
