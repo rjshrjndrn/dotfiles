@@ -36,6 +36,11 @@ let @w='5G$vByggIIssue #000 feat: <CR><CR><ESC>pggA'
 let @e='ggIIssue #000 feat: '
 let @r='ggIIssue #000 fix: '
 "}}}
+Plug 'junegunn/vim-easy-align'
+"{{{
+nmap ga <Plug>(EasyAlign)
+xmap ga <Plug>(EasyAlign)
+"}}}
 Plug 'junegunn/gv.vim'
 "{{{
 nmap <silent> <leader>v :GV?<CR>

@@ -129,6 +129,15 @@ function sk() {
 
 sk
 
+function k3c() {
+    k3d create cluster $1 --k3s-server-arg --no-deploy --k3s-server-arg traefik --network kubelocal --k3s-server-arg --no-deploy --k3s-server-arg local-storage --k3s-server-arg --kubelet-arg --k3s-server-arg containerd=/run/k3s/containerd/containerd.sock --api-port ${2:-16433}  --image rancher/k3s:v1.0.1
+}
+function k3g() {
+    k3d get kubeconfig $1 -o ~/.k3d/kube/$1
+    sleep .5
+    export KUBECONFIG=~/.k3d/kube/$1
+}
+
 function pr() {
 
     branch=${1:-$(git rev-parse --abbrev-ref HEAD | cut -d ':' -f2 | cut -d '/' -f2)}
@@ -137,9 +146,15 @@ function pr() {
     hub pull-request -b $upstream:$branch -h $(git rev-parse --abbrev-ref HEAD | cut -d ':' -f2 | cut -d '/' -f2) -f
 }
 
+csh (){
+    curl cheat.sh/$1
+}
+
+
 gps(){
     gopass otp -c $1 $(gopass $1) > /dev/null
 }
+alias ek='export KUBECONFIG='
 alias m='mkdir'
 alias clea='clear'
 alias sk=sk
@@ -177,7 +192,7 @@ alias ga='git add'
 alias gs='git status -sb'
 alias gc='git checkout'
 alias gpl='git pull --rebase'
-alias gplo='git pull --rebase origin $(git rev-parse --abbrev-ref HEAD)'
+alias gplo='git pull --rebase origin heads/$(git rev-parse --abbrev-ref HEAD)'
 alias gplr='git pull --rebase rjshrjndrn $(git rev-parse --abbrev-ref HEAD)'
 alias gpo='git push origin $(git rev-parse --abbrev-ref HEAD)'
 alias gpr='git push rjshrjndrn $(git rev-parse --abbrev-ref HEAD)'
