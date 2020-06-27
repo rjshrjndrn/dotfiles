@@ -1,6 +1,7 @@
 #! /bin/sh
 
 sxhkd &
+polybar -r example &
 
 bspc monitor -d I II III IV V VI VII VIII IX X
 
@@ -16,4 +17,4 @@ bspc rule -a Chromium desktop='^2'
 bspc rule -a mplayer2 state=floating
 bspc rule -a Kupfer.py focus=on
 bspc rule -a Screenkey manage=off
-feh --bg-center ~/Pictureseson_goku_ultra_instinct_form_by_rmehedi_dbpwu2b-fullview.jpg
+feh --bg-center ~/Pictures/goku_dragon_ball_super_4k.jpg
