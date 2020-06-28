@@ -6,4 +6,7 @@
 5. nmcli
 6. feh
 7. rofi
-8. font: "Iosevka Term,Iosevka Nerd Font" (usually comes with nerdfont)
+8. xorg-xbacklight
+9. font: "Iosevka Term,Iosevka Nerd Font" (usually comes with nerdfont)
+
+# Ref: https://github.com/Craio/dots
