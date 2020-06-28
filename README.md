@@ -11,5 +11,6 @@
 10. mps-youtube
 11. mplayer
 12. https://github.com/bulletmark/libinput-gestures
+13. betterlockscreen # before starting to use, `betterlockscreen -u ~/Pictures/zoro.jpg`
 
 # Ref: https://github.com/Craio/dots
