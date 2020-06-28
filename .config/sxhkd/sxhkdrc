@@ -8,7 +8,7 @@ super + Return
 
 # program launcher
 super + @space
-	dmenu_run
+	rofi -show run
 
 # make sxhkd reload its configuration files:
 super + Escape
@@ -84,6 +84,18 @@ super + {o,i}
 super + {_,shift + }{1-9,0}
 	bspc {desktop -f,node -d} '^{1-9,10}'
 
+# Rotate tree
+super + r
+	bspc node @/ -R 90
+
+# Make split ratios equal
+super + equal
+	bspc node @/ --equalize
+
+# Make split ratios balanced
+super + minus
+	bspc node @/ --balance
+
 #
 # preselect
 #
@@ -119,3 +131,25 @@ super + alt + shift + {h,j,k,l}
 # move a floating window
 super + {Left,Down,Up,Right}
 	bspc node -v {-20 0,0 20,0 -20,20 0}
+
+## Extras
+
+#	Mute speaker volume
+XF86AudioMute
+	amixer set Master toggle
+
+#	Raise/Lower volume settings
+{XF86AudioLowerVolume,XF86AudioRaiseVolume}
+	amixer set Master 5%{-,+} unmute
+
+#	Mute microphone
+# XF86AudioMute
+super + alt + m
+    amixer set Capture toggle
+
+# Brightness
+XF86MonBrightnessUp
+    xbacklight -inc 5
+
+XF86MonBrightnessDown
+    xbacklight -dec 5
