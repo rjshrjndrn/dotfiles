@@ -8,5 +8,7 @@
 7. rofi
 8. xorg-xbacklight
 9. font: "Iosevka Term,Iosevka Nerd Font" (usually comes with nerdfont)
+10. mps-youtube
+11. mplayer
 
 # Ref: https://github.com/Craio/dots
