@@ -10,5 +10,6 @@
 9. font: "Iosevka Term,Iosevka Nerd Font" (usually comes with nerdfont)
 10. mps-youtube
 11. mplayer
+12. https://github.com/bulletmark/libinput-gestures
 
 # Ref: https://github.com/Craio/dots
