@@ -10,7 +10,8 @@
 7. rofi
 8. xorg-xbacklight
 9. font: "Iosevka Term,Iosevka Nerd Font" (usually comes with nerdfont)
-10. mps-youtube
+10. mps-youtube:
+    1. to play all songs `1-`
 11. mplayer
 12. https://github.com/bulletmark/libinput-gestures
 13. betterlockscreen:
