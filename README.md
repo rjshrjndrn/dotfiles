@@ -16,5 +16,8 @@
 12. https://github.com/bulletmark/libinput-gestures
 13. betterlockscreen:
     1. before starting to use, `betterlockscreen -u ~/Pictures/zoro.jpg`
+14. wmctrl
+15. pulseaudio
+16. [alsa](alsa)
 
 # Ref: https://github.com/Craio/dots
