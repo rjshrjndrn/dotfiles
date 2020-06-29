@@ -12,7 +12,7 @@
 9. font: "Iosevka Term,Iosevka Nerd Font" (usually comes with nerdfont)
 10. mps-youtube:
     1. to play all songs `1-`
-11. mplayer
+11. mpv
 12. https://github.com/bulletmark/libinput-gestures
 13. betterlockscreen:
     1. before starting to use, `betterlockscreen -u ~/Pictures/zoro.jpg`
