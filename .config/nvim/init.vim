@@ -25,10 +25,10 @@ Plug 'tpope/vim-fugitive'
 "{{{
 nnoremap gw :Gwrite<Enter>
 nnoremap gs :Gstatus<Enter>
-nnoremap gc :Gcommit -s <Enter>
+nnoremap gc :Gcommit --gpg-sign -s <Enter>
 nnoremap gp :Gpush
 nnoremap gpf :Gpush --force
-nnoremap gca :Gcommit --amend
+nnoremap gca :Gcommit -S --amend
 nnoremap gpl :Gpull --rebase
 " Commenting for fugitive commit session
 " will take branch name as #Issue-number
@@ -52,58 +52,6 @@ Plug 'junegunn/fzf'
 nnoremap <silent> <leader>p <nop>
 "}}}
 Plug 'junegunn/fzf.vim'
-" Autocomplete engine
-"{{{
-if has('nvim')
-  Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
-  set completeopt=menu,noselect
-  Plug 'deoplete-plugins/deoplete-jedi'
-  let g:deoplete#enable_at_startup = 1
-  Plug 'tbodt/deoplete-tabnine', { 'do': './install.sh' }
-endif
-"}}}
-
-Plug 'carlitux/deoplete-ternjs'
-"{{{
-let g:deoplete#sources#ternjs#tern_bin = '/usr/local/bin/tern'
-let g:deoplete#sources#ternjs#timeout = 1
-" Whether to include the types of the completions in the result data. Default: 0
-let g:deoplete#sources#ternjs#types = 1
-" Whether to include the distance (in scopes for variables, in prototypes for 
-" properties) between the completions and the origin position in the result 
-" data. Default: 0
-let g:deoplete#sources#ternjs#depths = 1
-
-" Whether to include documentation strings (if found) in the result data.
-" Default: 0
-" let g:deoplete#sources#ternjs#docs = 1
-
-" When on, only completions that match the current word at the given point will
-" be returned. Turn this off to get all results, so that you can filter on the 
-" client side. Default: 1
-let g:deoplete#sources#ternjs#filter = 0
-
-" Whether to use a case-insensitive compare between the current word and 
-" potential completions. Default 0
-let g:deoplete#sources#ternjs#case_insensitive = 1
-
-" When completing a property and no completions are found, Tern will use some 
-" heuristics to try and return some properties anyway. Set this to 0 to 
-" turn that off. Default: 1
-let g:deoplete#sources#ternjs#guess = 0
-
-
-"}}}
-Plug 'mattn/emmet-vim'
-"{{{
-let g:user_emmet_install_global = 0
-let g:user_emmet_leader_key='<M-c>'
-"}}}
-
-" Floating preview window
-Plug 'ncm2/float-preview.nvim'
-let g:float_preview#docked = 0
-
 Plug 'vimwiki/vimwiki'
 "{{{
 " customization for wiki
@@ -117,6 +65,8 @@ let g:vimwiki_folding='custom'
 " map gc<Space> <Plug>VimwikiToggleListItem
 "}}}
 
+Plug 'iamcco/markdown-preview.nvim', { 'do': { -> mkdp#util#install() }, 'for': ['vimwiki', 'markdown', 'vim-plug']}
+
 Plug 'andrewstuart/vim-kubernetes'
 Plug 'wincent/ferret'
 "{{{
@@ -126,13 +76,6 @@ let g:FerretMaxResults=1000
 vnoremap <silent> /S "zy:Ack! -w <c-r>z<CR>
 vnoremap <silent> /s "zy:Ack!  <c-r>z<CR>
 "}}}
-Plug 'fatih/vim-go', {'do': ':GoUpdateBinaries', 'for': 'go' }
-"{{{
-let g:go_fmt_command = "goimports"
-let g:go_rename_command = 'gopls'
-"}}}
-Plug 'liuchengxu/vista.vim', {'for': 'go'}
-
 Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
 Plug 'tpope/vim-unimpaired'
@@ -217,7 +160,15 @@ map <silent> <Leader>k <Plug>(easymotion-k)
 let g:EasyMotion_startofline = 0 " keep cursor column when JK motion
 "}}}
 
-" Plug 'terryma/vim-multiple-cursors'
+Plug 'fatih/vim-go'
+Plug 'liuchengxu/vista.vim'
+
+Plug 'vim-pandoc/vim-pandoc'
+
+" Autocompletion engine
+" Use release branch (recommend)
+Plug 'neoclide/coc.nvim', {'branch': 'release'}
+
 call plug#end()
 
 " colorscheme solarized8_flat
@@ -228,36 +179,6 @@ let g:gruvbox_contrast_dark = 'medium'
 let g:gruvbox_italicize_comments = 1
 
 
-" Deoplete configuration
-" {{{
-" populate vim-go plugin suggestions
-" Enabling vim-go integreation with deopplete
-" https://github.com/fatih/vim-go/issues/2185#issuecomment-483064904
-call deoplete#custom#option('omni_patterns', {
-    \ 'go': '[^. *\t]\.\w*',
-    \})
-call deoplete#custom#var('tabnine', {
-    \ 'line_limit': 500,
-    \ 'max_num_results': 20,
-    \ })
-
-" Custom priority for auto completion sources
-" Higher value means higher priority
-call deoplete#custom#source('ultisnips', 'rank', 520)
-call deoplete#custom#source('tabnine', 'rank', 400)
-call deoplete#custom#option({
-    \ 'auto_complete_delay': 200,
-    \ 'smart_case': v:true,
-    \ 'min_pattern_length': 3,
-    \ })
-"Add extra filetypes
-let g:deoplete#sources#ternjs#filetypes = [
-                \ 'jsx',
-                \ 'javascript.jsx',
-                \ 'vue',
-                \ 'javascript',
-                \ ]
-"}}}
 
 " Custom Undo
 set undofile
@@ -335,89 +256,6 @@ function! FindAnsibleRoleUnderCursor()
     execute "edit " . fnameescape(l:found_role_path)
   endif
 endfunction
-
-
-"}}}
-
-" Deoplete configuration
-" {{{
-" populate vim-go plugin suggestions
-" Enabling vim-go integreation with deopplete
-" https://github.com/fatih/vim-go/issues/2185#issuecomment-483064904
-call deoplete#custom#option('omni_patterns', {
-    \ 'go': '[^. *\t]\.\w*',
-    \})
-call deoplete#custom#var('tabnine', {
-    \ 'line_limit': 500,
-    \ 'max_num_results': 20,
-    \ })
-
-
-" Keyboard Mappings
-" {{{
-" Quit
-nnoremap <leader>w :w<Enter>
-nnoremap <leader>q :q<Enter>
-nnoremap <leader>Q :qa<Enter>
-nnoremap <leader>wq :wq<Enter>
-nnoremap <leader>wQ :wqa!<Enter>
-
-" Folding
-" au BufNewFile,BufRead *.py,*.go set foldmethod=indent
-vnoremap <silent> <space> :fold<CR>
-nnoremap <silent> <space> za<CR>
-
-
-" visual select
-vnoremap // "zy/<C-R>z<CR>
-vnoremap /b "zy:Back! <C-R>z<CR>
-vnoremap /B "zy:Back! -w <C-R>z<CR>
-
-" Copying to system clipboard
-vnoremap Y "+y
-
-" Switch windows
-nnoremap <c-j> <c-w>j
-nnoremap <c-k> <c-w>k
-nnoremap <c-h> <c-w>h
-nnoremap <c-l> <c-w>l
-if has('nvim')
-    " Escape mode
-    tnoremap <C-b><C-b> <C-\><C-n>
-    " shell jumping
-    tnoremap <c-h> <c-\><c-n><c-w>h
-    tnoremap <c-j> <c-\><c-n><c-w>j
-    tnoremap <c-k> <c-\><c-n><c-w>k
-    tnoremap <c-l> <c-\><c-n><c-w>l
-endif
-
-"Undo map
-nnoremap <silent> U :UndotreeToggle<CR>:UndotreeFocus<CR>
-
-" Command mode history
-cmap <M-h> <left>
-cmap <M-l> <right>
-cmap <M-k> <up>
-cmap <M-j> <down>
-" tabbing to complete popups
-inoremap <silent><expr><tab> pumvisible() ? "\<c-n>" : "\<tab>"
-inoremap <silent><expr><s-tab> pumvisible() ? "\<c-p>" : "\<s-tab>"
-
-" search through buffers using fzf
-nnoremap <silent><leader>b :Buffers<CR>
-" search through files in current dir using fzf
-nnoremap <silent><leader>f :Files<CR>
-" search through history using fzf
-nnoremap <silent><leader>h :History<CR>
-"}}}
-
-" Creating new tab
-nnoremap <silent> <leader>t :tabnew<CR>
-
-" Custom priority for auto completion sources
-" Higher value means higher priority
-call deoplete#custom#source('ultisnips', 'rank', 520)
-call deoplete#custom#source('tabnine', 'rank', 400)
 "}}}
 
 " Buffer Mappings
@@ -426,10 +264,11 @@ augroup filetypes
     autocmd!
     " autocmd BufEnter,BufWritePre *.yml set foldmethod=indent foldlevel=10
     autocmd Filetype vim,python,sh setlocal foldmethod=marker shiftwidth=4 tabstop =4  expandtab
-    autocmd Filetype yaml setlocal shiftwidth=2 tabstop=2 expandtab | command! AnsiVarFix call AnsiVarFix()
-    autocmd Filetype gitcommit setlocal spell
+    autocmd Filetype yaml setlocal foldmethod=indent foldlevel=4 foldnestmax=2 shiftwidth=2 tabstop=2 expandtab | command! AnsiVarFix call AnsiVarFix()
+    autocmd Filetype gitcommit setlocal spell completeopt-=preview
     autocmd Filetype git setlocal nofoldenable
-    autocmd BufEnter,BufNewFile ".*\.md$" setlocal spell tabstop=2 expandtab shiftwidth=2 foldmethod=marker
+    autocmd BufEnter,BufNewFile ".*\.md$" setlocal spell tabstop=2 expandtab shiftwidth=2 foldmethod=indent foldlevel=4 foldnestmax=2
+    autocmd BufEnter,BufNewFile ".*\.go$" setlocal ft=go
     autocmd BufEnter Jenkinsfile setlocal ft=groovy
     autocmd FileType gitcommit,vimwiki let b:auto_save=1 | setlocal spell
     "custom file based remapings
@@ -438,7 +277,7 @@ augroup filetypes
     au FileType go nmap <silent><leader>gd :GoDecls<CR>
     " no save question if the content is coming from stdin
     au StdinReadPost * :set buftype=nofile
-    au BufEnter,BufNewFile */ansible/*.y[a]\\\{0,1\}ml setlocal ft=yaml.ansible
+    au BufEnter,BufNewFile */ansible/*.y[a]\\\{0,1\}ml setlocal foldmethod=indent foldlevel=2 ft=yaml.ansible
     au BufEnter,BufNewFile */ansible/*.y[a]\\\{0,1\}ml nnoremap <silent> ]r :call FindAnsibleRoleUnderCursor()<CR>
     au BufEnter,BufNewFile ~/vimwiki/* lcd ~/vimwiki
     au FileType html,css EmmetInstall " | imap <M-c> @<Plug>(emmet-expand-abbr)
@@ -540,7 +379,173 @@ if has('nvim') && exists('&winblend') && &termguicolors
   let g:fzf_layout = { 'window': 'call FloatingFZF()' }
 endif
 
+" hack to commit the dotfiles
+command! ConfigAdd !/usr/bin/git --git-dir=$HOME/dotfiles/ --work-tree=$HOME add %
+command! ConfigCommit !/usr/bin/git --git-dir=$HOME/dotfiles/ --work-tree=$HOME commit -m "
+command! ConfigPush !/usr/bin/git --git-dir=$HOME/dotfiles/ --work-tree=$HOME push
+
 command! -bang -nargs=? -complete=dir Files
         \ call fzf#vim#files(<q-args>, fzf#vim#with_preview({'options': ['--layout=reverse', '--info=inline']}), <bang>0)
 
 "}}}
+
+" COC-settings
+"{{{
+" Plugins
+" TextEdit might fail if hidden is not set.
+set hidden
+
+" Some servers have issues with backup files, see #649.
+set nobackup
+set nowritebackup
+
+" Give more space for displaying messages.
+set cmdheight=2
+
+" Having longer updatetime (default is 4000 ms = 4 s) leads to noticeable
+" delays and poor user experience.
+set updatetime=300
+
+" Don't pass messages to |ins-completion-menu|.
+set shortmess+=c
+
+" Always show the signcolumn, otherwise it would shift the text each time
+" diagnostics appear/become resolved.
+if has("patch-8.1.1564")
+  " Recently vim can merge signcolumn and number column into one
+  set signcolumn=number
+else
+  set signcolumn=yes
+endif
+
+" Use tab for trigger completion with characters ahead and navigate.
+" NOTE: Use command ':verbose imap <tab>' to make sure tab is not mapped by
+" other plugin before putting this into your config.
+inoremap <silent><expr> <TAB>
+      \ pumvisible() ? "\<C-n>" :
+      \ <SID>check_back_space() ? "\<TAB>" :
+      \ coc#refresh()
+inoremap <expr><S-TAB> pumvisible() ? "\<C-p>" : "\<C-h>"
+
+function! s:check_back_space() abort
+  let col = col('.') - 1
+  return !col || getline('.')[col - 1]  =~# '\s'
+endfunction
+
+" Use <c-space> to trigger completion.
+inoremap <silent><expr> <c-space> coc#refresh()
+
+" Use <cr> to confirm completion, `<C-g>u` means break undo chain at current
+" position. Coc only does snippet and additional edit on confirm.
+" <cr> could be remapped by other vim plugin, try `:verbose imap <CR>`.
+if exists('*complete_info')
+  inoremap <expr> <cr> complete_info()["selected"] != "-1" ? "\<C-y>" : "\<C-g>u\<CR>"
+else
+  inoremap <expr> <cr> pumvisible() ? "\<C-y>" : "\<C-g>u\<CR>"
+endif
+
+" Use `[g` and `]g` to navigate diagnostics
+" Use `:CocDiagnostics` to get all diagnostics of current buffer in location list.
+nmap <silent> [g <Plug>(coc-diagnostic-prev)
+nmap <silent> ]g <Plug>(coc-diagnostic-next)
+
+" GoTo code navigation.
+nmap <silent> gD <Plug>(coc-definition)
+nmap <silent> gY <Plug>(coc-type-definition)
+nmap <silent> gI <Plug>(coc-implementation)
+nmap <silent> gR <Plug>(coc-references)
+
+" Use K to show documentation in preview window.
+nnoremap <silent> gK :call <SID>show_documentation()<CR>
+
+function! s:show_documentation()
+  if (index(['vim','help'], &filetype) >= 0)
+    execute 'h '.expand('<cword>')
+  else
+    call CocAction('doHover')
+  endif
+endfunction
+
+" Highlight the symbol and its references when holding the cursor.
+autocmd CursorHold * silent call CocActionAsync('highlight')
+
+" Symbol renaming.
+nmap <leader>rn <Plug>(coc-rename)
+
+" Formatting selected code.
+xmap <leader>F  <Plug>(coc-format-selected)
+nmap <leader>F  <Plug>(coc-format-selected)
+
+augroup mygroup
+  autocmd!
+  " Setup formatexpr specified filetype(s).
+  autocmd FileType typescript,json setl formatexpr=CocAction('formatSelected')
+  " Update signature help on jump placeholder.
+  autocmd User CocJumpPlaceholder call CocActionAsync('showSignatureHelp')
+augroup end
+
+" Applying codeAction to the selected region.
+" Example: `<leader>aap` for current paragraph
+" xmap <leader>a  <Plug>(coc-codeaction-selected)
+" nmap <leader>a  <Plug>(coc-codeaction-selected)
+
+" Remap keys for applying codeAction to the current buffer.
+" nmap <leader>ac  <Plug>(coc-codeaction)
+" Apply AutoFix to problem on the current line.
+" nmap <leader>qf  <Plug>(coc-fix-current)
+
+" Map function and class text objects
+" NOTE: Requires 'textDocument.documentSymbol' support from the language server.
+xmap if <Plug>(coc-funcobj-i)
+omap if <Plug>(coc-funcobj-i)
+xmap af <Plug>(coc-funcobj-a)
+omap af <Plug>(coc-funcobj-a)
+xmap ic <Plug>(coc-classobj-i)
+omap ic <Plug>(coc-classobj-i)
+xmap ac <Plug>(coc-classobj-a)
+omap ac <Plug>(coc-classobj-a)
+
+" Use CTRL-S for selections ranges.
+" Requires 'textDocument/selectionRange' support of LS, ex: coc-tsserver
+nmap <silent> <C-s> <Plug>(coc-range-select)
+xmap <silent> <C-s> <Plug>(coc-range-select)
+
+" Add `:Format` command to format current buffer.
+command! -nargs=0 Format :call CocAction('format')
+
+" Add `:Fold` command to fold current buffer.
+command! -nargs=? Fold :call     CocAction('fold', <f-args>)
+
+" Add `:OR` command for organize imports of the current buffer.
+command! -nargs=0 OR   :call     CocAction('runCommand', 'editor.action.organizeImport')
+
+" Add (Neo)Vim's native statusline support.
+" NOTE: Please see `:h coc-status` for integrations with external plugins that
+" provide custom statusline: lightline.vim, vim-airline.
+set statusline^=%{coc#status()}%{get(b:,'coc_current_function','')}
+
+" Mappings for CoCList
+" Show all diagnostics.
+" nnoremap <silent><nowait> <space>a  :<C-u>CocList diagnostics<cr>
+" " Manage extensions.
+" nnoremap <silent><nowait> <space>e  :<C-u>CocList extensions<cr>
+" " Show commands.
+" nnoremap <silent><nowait> <space>c  :<C-u>CocList commands<cr>
+" " Find symbol of current document.
+" nnoremap <silent><nowait> <space>o  :<C-u>CocList outline<cr>
+" " Search workspace symbols.
+" nnoremap <silent><nowait> <space>s  :<C-u>CocList -I symbols<cr>
+" " Do default action for next item.
+" nnoremap <silent><nowait> <space>j  :<C-u>CocNext<CR>
+" " Do default action for previous item.
+" nnoremap <silent><nowait> <space>k  :<C-u>CocPrev<CR>
+" " Resume latest coc list.
+" nnoremap <silent><nowait> <space>p  :<C-u>CocListResume<CR>
+
+" Plugin settings
+" coc-go
+autocmd BufWritePre *.go :call CocAction('runCommand', 'editor.action.organizeImport')
+
+"}}}
+
+set foldlevelstart=0
