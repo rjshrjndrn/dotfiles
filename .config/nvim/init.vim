@@ -47,7 +47,7 @@ nmap <silent> <leader>v :GV?<CR>
 vmap <silent> <leader>v :GV?<CR>
 "}}}
 Plug 'tpope/vim-rhubarb'
-Plug 'junegunn/fzf'
+Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 "{{{
 nnoremap <silent> <leader>p <nop>
 "}}}
@@ -122,13 +122,13 @@ au Syntax * RainbowParenthesesLoadRound
 au Syntax * RainbowParenthesesLoadSquare
 au Syntax * RainbowParenthesesLoadBraces
 "}}}
-Plug 'SirVer/ultisnips'
-"{{{
-" Trigger configuration. Do not use <tab> if you use https://github.com/Valloric/YouCompleteMe.
-let g:UltiSnipsExpandTrigger="<c-j>"
-let g:UltiSnipsJumpForwardTrigger="<c-j>"
-let g:UltiSnipsJumpBackwardTrigger="<c-k>"
-"}}}
+" Plug 'SirVer/ultisnips'
+" "{{{
+" " Trigger configuration. Do not use <tab> if you use https://github.com/Valloric/YouCompleteMe.
+" let g:UltiSnipsExpandTrigger="<c-j>"
+" let g:UltiSnipsJumpForwardTrigger="<c-j>"
+" let g:UltiSnipsJumpBackwardTrigger="<c-k>"
+" "}}}
 Plug 'andrewstuart/vim-kubernetes'
 Plug 'pearofducks/ansible-vim', { 'do': 'cd ./UltiSnips; ./generate.py --style dictionary' }
 "{{{
