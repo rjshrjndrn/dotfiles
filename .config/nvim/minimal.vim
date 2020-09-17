@@ -6,7 +6,7 @@ set ic is scs sw=4 ts=4 et termguicolors hidden nu splitbelow splitright mouse=a
 colorscheme industry
 
 call plug#begin('~/.vim/bundle')
-Plug 'fatih/vim-go'
+Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
 "Auto pair
 Plug 'cohama/lexima.vim'
 Plug 'christoomey/vim-tmux-navigator'
@@ -69,8 +69,35 @@ Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 nnoremap <silent> <leader>p <nop>
 "}}}
 Plug 'junegunn/fzf.vim'
+Plug 'vimwiki/vimwiki'
+"{{{
+" customization for wiki
+let wiki_personal= {'path': '~/vimwiki_personal/', 'syntax': 'markdown', 'ext': '.md'}
+let wiki_work = {'path': '~/vimwiki/', 'syntax': 'markdown', 'ext': '.md'}
+let g:vimwiki_list = [wiki_work, wiki_personal]
+let g:vimwiki_ext2syntax = {'.md': 'markdown',
+                  \ '.mkd': 'markdown',
+                  \ '.wiki': 'media'}
+let g:vimwiki_folding='custom'
+" map gc<Space> <Plug>VimwikiToggleListItem
+"}}}
+Plug '907th/vim-auto-save'
+let g:auto_save_events = ["CursorHold"]
+set updatetime=600
 
 " Autocompletion engine
+let g:coc_global_extensions = [
+            \'coc-vimlsp',
+            \'coc-tabnine',
+            \'coc-snippets',
+            \'coc-git',
+            \'coc-eslint',
+            \'coc-emoji',
+            \'coc-yaml',
+            \'coc-tsserver',
+            \'coc-tslint',
+            \'coc-pyls'
+        \]
 " Use release branch (recommend)
 Plug 'neoclide/coc.nvim', {'branch': 'release'}
 call plug#end()
@@ -89,7 +116,7 @@ let g:gruvbox_italicize_comments = 1
 " {{{
 augroup auto_go
 	autocmd!
-    autocmd FileType go set foldmethod=syntax "foldlevel=4 "foldnestmax=2 
+    autocmd FileType go set foldmethod=syntax foldlevel=1 foldnestmax=2 
 	autocmd BufWritePre *.go :GoDiagnostics
 	autocmd BufWritePost *_test.go :GoTest
 augroup end
@@ -99,9 +126,19 @@ augroup auto_vim
     autocmd FileType vim set foldmethod=marker
 augroup END
 
+augroup auto_vimwiki
+    autocmd!
+    au BufEnter,BufNewFile ~/vimwiki/* let b:auto_save=1 | lcd ~/vimwiki | setlocal spell sw=2 sts=2 et ts=2
+augroup END
+
 augroup auto_markdown
     autocmd!
-    autocmd FileType markdown setlocal spell
+    autocmd FileType markdown setlocal spell sw=2 sts=2 et ts=2
+augroup END
+
+augroup auto_yaml
+    autocmd!
+    autocmd FileType yaml setlocal sw=2 sts=2 et ts=2
 augroup END
 " }}}
 
@@ -116,7 +153,7 @@ endif
 
 " quit
 nnoremap <silent><leader>q :q<CR>
-nnoremap <silent><leader>w :w<CR>
+" nnoremap <silent><leader>w :w<CR>
 " Folding
 nnoremap <silent><leader>f za
 nnoremap <silent><leader>F zA

@@ -7,12 +7,23 @@ super + Return
 	kitty
 
 # program launcher
-super + @space
+super + d
 	rofi -show run
 
 # make sxhkd reload its configuration files:
 super + Escape
 	pkill -USR1 -x sxhkd
+
+# Application binding
+
+super + b
+  bspc desktop --focus ^2 && ( wmctrl -a firefox || firefox-developer-edition )
+
+super + c
+  bspc desktop --focus ^3 && ( wmctrl -a slack || slack )
+
+super + @space
+  bspc desktop --focus ^1 && ( wmctrl -a tmux || kitty)
 
 #
 # bspwm hotkeys
@@ -63,7 +74,8 @@ super + {p,b,comma,period}
 	bspc node -f @{parent,brother,first,second}
 
 # focus the next/previous node in the current desktop
-super + {_,shift + }c
+# super + {_,shift + }c
+alt + Tab
 	bspc node -f {next,prev}.local
 
 # focus the next/previous desktop in the current monitor
@@ -73,6 +85,9 @@ super + bracket{left,right}
 # focus the last node/desktop
 super + {grave,Tab}
 	bspc {node,desktop} -f last
+# focus the last node/desktop
+# alt + {grave,Tab}
+#     bspc {node,desktop} -f last
 
 # focus the older or newer node in the focus history
 super + {o,i}
@@ -153,3 +168,7 @@ XF86MonBrightnessUp
 
 XF86MonBrightnessDown
     xbacklight -dec 5
+
+# Lock the session.
+super + semicolon
+  bash betterlockscreen -l
