@@ -18,6 +18,9 @@ Plug 'tpope/vim-surround'
 Plug 'tpope/vim-repeat'
 Plug 'tpope/vim-fugitive'
 Plug 'gruvbox-community/gruvbox'
+Plug 'flazz/vim-colorschemes'
+Plug 'TaDaa/vimade'
+Plug 'tmux-plugins/vim-tmux-focus-events'
 Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
 Plug 'scrooloose/nerdtree', { 'on': ['NERDTreeFind', 'NERDTreeToggle'] }
@@ -105,7 +108,8 @@ call plug#end()
 " Themes
 " {{{
 " colorscheme solarized8_flat
-colorscheme gruvbox
+colorscheme molokai
+let g:airline_theme='distinguished'
 " colorscheme nord
 set background=dark
 let g:gruvbox_contrast_dark = 'medium'
