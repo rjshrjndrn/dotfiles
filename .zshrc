@@ -172,7 +172,7 @@ alias ovpd='gps dvpn; sudo openvpn --config ~/.cred/sunbird-dev.ovpn --auth-user
 alias ovpl='gps lvpn; sudo openvpn --config ~/.cred/loadtest.ovpn --auth-user-pass ~/.cred/ntp/vpn'
 alias vn='nvim -u ~/.essential.vim -N'
 alias vim='/usr/bin/nvim -u ~/.config/nvim/minimal.vim'
-alias sv='cat | nvim'
+alias sv='cat | vim'
 alias x='xdg-open'
 # alias emacs='emacs --no-window-system'
 
@@ -205,7 +205,7 @@ alias grs='git rebase --skip'
 alias grb='git rebase'
 alias gst='git stash'
 alias gstp='git stash pop'
-alias glo='git log --graph --pretty=oneline --abbrev-commit'
+# alias glo='git log --graph --pretty=oneline --abbrev-commit'
 alias tf="terraform"
 alias pu="pulumi"
 
@@ -373,3 +373,6 @@ if [ -d ~/.config/tweaks ]; then
 fi
 # Starship config
 eval "$(starship init zsh)"
+# Setting terminal header so that wmctrl can work
+DISABLE_AUTO_TITLE="true"
+echo -n -e "\033]0;T3rm\007"

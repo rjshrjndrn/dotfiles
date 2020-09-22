@@ -19,6 +19,7 @@ Plug 'tpope/vim-repeat'
 Plug 'tpope/vim-fugitive'
 Plug 'gruvbox-community/gruvbox'
 Plug 'flazz/vim-colorschemes'
+Plug 'pearofducks/ansible-vim', { 'do': 'cd ./UltiSnips; ./generate.py --style dictionary' }
 Plug 'TaDaa/vimade'
 Plug 'tmux-plugins/vim-tmux-focus-events'
 Plug 'vim-airline/vim-airline'
@@ -90,6 +91,7 @@ set updatetime=600
 
 " Autocompletion engine
 let g:coc_global_extensions = [
+            \'coc-json',
             \'coc-vimlsp',
             \'coc-tabnine',
             \'coc-snippets',
@@ -157,6 +159,7 @@ endif
 
 " quit
 nnoremap <silent><leader>q :q<CR>
+nnoremap <silent>X :qa<CR>
 " nnoremap <silent><leader>w :w<CR>
 " Folding
 nnoremap <silent><leader>f za
