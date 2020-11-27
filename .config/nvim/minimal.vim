@@ -6,7 +6,7 @@ set ic is scs sw=4 ts=4 et termguicolors hidden nu splitbelow splitright mouse=a
 colorscheme industry
 
 call plug#begin('~/.vim/bundle')
-Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
+Plug 'fatih/vim-go'", { 'do': ':GoUpdateBinaries' }
 "Auto pair
 Plug 'cohama/lexima.vim'
 Plug 'christoomey/vim-tmux-navigator'
@@ -17,10 +17,10 @@ Plug 'tpope/vim-rhubarb'
 Plug 'tpope/vim-surround'
 Plug 'tpope/vim-repeat'
 Plug 'tpope/vim-fugitive'
+Plug 'junegunn/gv.vim'
 Plug 'gruvbox-community/gruvbox'
 Plug 'flazz/vim-colorschemes'
-Plug 'pearofducks/ansible-vim', { 'do': 'cd ./UltiSnips; ./generate.py --style dictionary' }
-Plug 'TaDaa/vimade'
+" Plug 'TaDaa/vimade'
 Plug 'tmux-plugins/vim-tmux-focus-events'
 Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
@@ -65,6 +65,11 @@ Plug 'wincent/ferret'
 let g:FerretJob=0
 let g:FerretMaxResults=1000
 " vnoremap /s "zy:Ack! -w --ignore *\.wiki --ignore *doc --ignore ekstep-devops <c-r>z<CR>
+" Override default args
+let g:FerretExecutableArguments = {
+  \   'rg': '--column --with-filename -S'
+  \ }
+
 vnoremap <silent> /S "zy:Ack! -w <c-r>z<CR>
 vnoremap <silent> /s "zy:Ack!  <c-r>z<CR>
 "}}}
@@ -82,29 +87,65 @@ let g:vimwiki_list = [wiki_work, wiki_personal]
 let g:vimwiki_ext2syntax = {'.md': 'markdown',
                   \ '.mkd': 'markdown',
                   \ '.wiki': 'media'}
-let g:vimwiki_folding='custom'
+let g:vimwiki_folding='expr'
 " map gc<Space> <Plug>VimwikiToggleListItem
 "}}}
+Plug 'pearofducks/ansible-vim', { 'do': 'cd ./UltiSnips; ./generate.py --style dictionary' }
+"{{{
+let g:ansible_attribute_highlight = "ob"
+let g:ansible_name_highlight = 'd'
+let g:ansible_extra_keywords_highlight = 1
+let g:ansible_normal_keywords_highlight = 'Constant'
+"}}}
+Plug 'easymotion/vim-easymotion'
+"{{{
+" Easymotion plug
+" Jump to anywhere you want with minimal keystrokes, with just one key binding.
+" `s{char}{label}`
+nmap <silent> , <Plug>(easymotion-overwin-f2)
+
+" Replacing hjkl
+" Gif config
+map <silent> <Leader>j <Plug>(easymotion-j)
+map <silent> <Leader>k <Plug>(easymotion-k)
+let g:EasyMotion_startofline = 0 " keep cursor column when JK motion
+"}}}
+
+Plug 'unblevable/quick-scope'
+"{{{
+
+" Trigger a highlight in the appropriate direction when pressing these keys:
+let g:qs_highlight_on_keys = ['f', 'F', 't', 'T']
+
+" Trigger a highlight only when pressing f and F.
+let g:qs_highlight_on_keys = ['f', 'F']
+"}}}
+
 Plug '907th/vim-auto-save'
+"{{{
 let g:auto_save_events = ["CursorHold"]
 set updatetime=600
+"}}}
+" Platform
+Plug 'rjshrjndrn/vim-kubernetes'
 
+" Use release branch (recommend)
+Plug 'neoclide/coc.nvim', {'branch': 'release'}
 " Autocompletion engine
 let g:coc_global_extensions = [
-            \'coc-json',
             \'coc-vimlsp',
             \'coc-tabnine',
             \'coc-snippets',
             \'coc-git',
             \'coc-eslint',
             \'coc-emoji',
-            \'coc-yaml',
+            \'coc-yaml@1.0.4',
             \'coc-tsserver',
             \'coc-tslint',
             \'coc-pyls'
         \]
-" Use release branch (recommend)
-Plug 'neoclide/coc.nvim', {'branch': 'release'}
+            " \'coc-tsserver',
+            " \'coc-tslint',
 call plug#end()
 
 " Themes
@@ -137,14 +178,18 @@ augroup auto_vimwiki
     au BufEnter,BufNewFile ~/vimwiki/* let b:auto_save=1 | lcd ~/vimwiki | setlocal spell sw=2 sts=2 et ts=2
 augroup END
 
-augroup auto_markdown
+augroup auto_markdown_gitcommit
     autocmd!
-    autocmd FileType markdown setlocal spell sw=2 sts=2 et ts=2
+    autocmd FileType markdown,gitcommit setlocal spell sw=2 sts=2 et ts=2
 augroup END
 
 augroup auto_yaml
     autocmd!
-    autocmd FileType yaml setlocal sw=2 sts=2 et ts=2
+    autocmd FileType yaml setlocal sw=2 sts=2 et ts=2 | nnoremap <silent> ]r :call FindAnsibleRoleUnderCursor()<CR>
+augroup END
+augroup auto_ansible
+    autocmd!
+    au BufEnter,BufNewFile */ansible/*.y[a]\\\{0,1\}ml setlocal ft=yaml.ansible
 augroup END
 " }}}
 
@@ -154,20 +199,49 @@ if !has('nvim')
     set undodir=~/.vim/undo
 endif
 
+" Functions
+" {{{
+function! DiffToggle(diff)
+    "named argument diff
+    if a:diff
+        :windo diffoff
+    else
+        :windo diffthis
+    endif
+endfunction
+nnoremap <silent> <leader>d :call DiffToggle(&diff)<CR>
+
+
+let g:ansible_goto_role_paths = './roles,../_common/roles'
+
+function! FindAnsibleRoleUnderCursor()
+  if exists("g:ansible_goto_role_paths")
+    let l:role_paths = g:ansible_goto_role_paths
+  else
+    let l:role_paths = "./roles"
+  endif
+  let l:tasks_main = expand("<cfile>") . "/tasks/main.yml"
+  let l:found_role_path = findfile(l:tasks_main, l:role_paths)
+  if l:found_role_path == ""
+    echo l:tasks_main . " not found"
+  else
+    execute "edit " . fnameescape(l:found_role_path)
+  endif
+endfunction
+
+" }}}
+
 " Keyboard Mappings
 " {{{
 
+nnoremap <silent><leader>w :w<CR>
 " quit
 nnoremap <silent><leader>q :q<CR>
-nnoremap <silent>X :qa<CR>
-" nnoremap <silent><leader>w :w<CR>
+nnoremap <silent><leader>Q :qa<CR>
 " Folding
 nnoremap <silent><leader>f za
 nnoremap <silent><leader>F zA
 vnoremap <silent><leader>f :fold<CR>
-
-" Quit
-nnoremap <silent><leader>q :q<CR>
 
 " visual select
 vnoremap // "zy/<C-R>z<CR>
@@ -210,6 +284,7 @@ nnoremap <silent><leader>b :Buffers<CR>
 nnoremap <C-p> :<C-u>Files<cr>
 " search through history using fzf
 nnoremap <silent><leader>h :History<CR>
+
 "}}}
 
 " Popup window for fzf
@@ -393,7 +468,7 @@ set statusline^=%{coc#status()}%{get(b:,'coc_current_function','')}
 " Mappings for CoCList
 nnoremap <silent><nowait> <space>l  :<C-u>CocList<cr>
 " Show all diagnostics.
-nnoremap <silent><nowait> <space>a  :<C-u>CocList diagnostics<cr>
+" nnoremap <silent><nowait> <space>a  :<C-u>CocList diagnostics<cr>
 " " Manage extensions.
 " nnoremap <silent><nowait> <space>e  :<C-u>CocList extensions<cr>
 " " Show commands.
