@@ -136,7 +136,7 @@ function k3c() {
     k3d create cluster $1 --k3s-server-arg --no-deploy --k3s-server-arg traefik --network kubelocal --k3s-server-arg --no-deploy --k3s-server-arg local-storage --k3s-server-arg --kubelet-arg --k3s-server-arg containerd=/run/k3s/containerd/containerd.sock --api-port ${2:-16433}  --image rancher/k3s:v1.0.1
 }
 function k3g() {
-    k3d get kubeconfig $1 -o ~/.k3d/kube/$1
+    k3d kubeconfig get $1 -o ~/.k3d/kube/$1
     sleep .5
     export KUBECONFIG=~/.k3d/kube/$1
 }
@@ -167,9 +167,12 @@ alias l='ls -CF'
 alias cx='chmod +x'
 alias py='function py(){ touch $1;echo -e "#!/usr/bin/env python3\n" >> $1; };py'
 alias p='python3'
-alias ovp='gps svpn; sudo openvpn --config ~/.cred/sunbird-staging.ovpn --auth-user-pass ~/.cred/ntp/vpn'
-alias ovpd='gps dvpn; sudo openvpn --config ~/.cred/sunbird-dev.ovpn --auth-user-pass ~/.cred/ntp/vpn'
-alias ovpl='gps lvpn; sudo openvpn --config ~/.cred/loadtest.ovpn --auth-user-pass ~/.cred/ntp/vpn'
+alias sovp='gps svpn; sudo openvpn --config ~/.cred/sunbird-staging.ovpn --auth-user-pass ~/.cred/ntp/vpn'
+alias ovp="gps svpn; docker run -it --rm -e JENKINS_ADDR=10.20.0.9:8080 --privileged -p 8081:8080 -v ${HOME}/.cred/sunbird-staging.ovpn:/tmp/l.ovpn:ro -v $(pwd)/.cred/ntp/vpn:/tmp/vpn:ro rjshrjndrn/openvpn:latest /bin/sh -c '/tmp/socat.sh; /usr/sbin/openvpn --config /tmp/l.ovpn --auth-user-pass /tmp/vpn --ask-pass' "
+alias sovpd='gps dvpn; sudo openvpn --config ~/.cred/sunbird-dev.ovpn --auth-user-pass ~/.cred/ntp/vpn'
+alias ovpd="gps dvpn; docker run -it --rm -e JENKINS_ADDR=10.20.0.14:443 --privileged -p 443:8080 -v ${HOME}/.cred/sunbird-dev.ovpn:/tmp/l.ovpn:ro -v $(pwd)/.cred/ntp/vpn:/tmp/vpn:ro rjshrjndrn/openvpn:latest /bin/sh -c '/tmp/socat.sh; /usr/sbin/openvpn --config /tmp/l.ovpn --auth-user-pass /tmp/vpn --ask-pass' "
+alias sovpl='gps lvpn; sudo openvpn --config ~/.cred/loadtest.ovpn --auth-user-pass ~/.cred/ntp/vpn'
+alias ovpl="gps lvpn; docker run -it --rm -e JENKINS_ADDR=27.0.0.11:8080 --privileged -p 8082:8080 -v ${HOME}/.cred/loadtest.ovpn:/tmp/l.ovpn:ro -v $(pwd)/.cred/ntp/vpn:/tmp/vpn:ro rjshrjndrn/openvpn:latest /bin/sh -c '/tmp/socat.sh; /usr/sbin/openvpn --config /tmp/l.ovpn --auth-user-pass /tmp/vpn --ask-pass' "
 alias vn='nvim -u ~/.essential.vim -N'
 alias vim='/usr/bin/nvim -u ~/.config/nvim/minimal.vim'
 alias sv='cat | vim'
@@ -205,15 +208,16 @@ alias grs='git rebase --skip'
 alias grb='git rebase'
 alias gst='git stash'
 alias gstp='git stash pop'
-# alias glo='git log --graph --pretty=oneline --abbrev-commit'
+alias glo='git log --graph --pretty=oneline --abbrev-commit'
 alias tf="terraform"
 alias pu="pulumi"
+alias hn='hugo new'
 
 # hub alias
 # Sourcing hub for git
 eval "$(hub alias -s)"
 alias at='docker run --rm -it -v $(pwd):/work -w /work -urajeshr ansible_ubuntu:16.04 bash'
-# simple git todo
+# simpl3 git todo
 gt() {
   git commit --allow-empty -m "TODO: $*"
 }
@@ -301,7 +305,9 @@ bindkey '^n' autosuggest-accept
 
 export VISUAL=nvim
 export EDITOR=nvim
-export PATH=$PATH:~/apps/bin:~/go_code/bin
+# pip local packages
+# to see the directory: python3 -c 'import site; print(site.USER_BASE)')/bin
+export PATH=$PATH:~/apps/bin:~/go_code/bin:${HOME}/.local/bin
 
 export FZF_DEFAULT_OPTS='--bind tab:down,shift-tab:up'
 
@@ -373,6 +379,7 @@ if [ -d ~/.config/tweaks ]; then
 fi
 # Starship config
 eval "$(starship init zsh)"
-# Setting terminal header so that wmctrl can work
-DISABLE_AUTO_TITLE="true"
-echo -n -e "\033]0;T3rm\007"
+
+# Vault configs
+export VAULT_ADDR="http://localhost:8200"
+export VAULT_TOKEN="s.tT8SPJfc5Obr8xJUTvCJGiTx"

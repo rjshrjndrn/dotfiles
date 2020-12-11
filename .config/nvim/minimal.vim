@@ -87,7 +87,7 @@ let g:vimwiki_list = [wiki_work, wiki_personal]
 let g:vimwiki_ext2syntax = {'.md': 'markdown',
                   \ '.mkd': 'markdown',
                   \ '.wiki': 'media'}
-let g:vimwiki_folding='expr'
+let g:vimwiki_folding=''
 " map gc<Space> <Plug>VimwikiToggleListItem
 "}}}
 Plug 'pearofducks/ansible-vim', { 'do': 'cd ./UltiSnips; ./generate.py --style dictionary' }
