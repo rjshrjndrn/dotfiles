@@ -11,7 +11,7 @@ super + @space
 	rofi -combi-modi window,drun -show combi -modi combi
 
 # make sxhkd reload its configuration files:
-super + X
+super + x
 	pkill -USR1 -x sxhkd
 
 #
@@ -145,5 +145,5 @@ XF86AudioNext
 # Applications
 super + f
 	/bin/bash -c "wmctrl -a firefox || firefox"
-super + c
-	/bin/bash -c "wmctrl -a Slack || slack"
+super + b
+	/bin/bash -c "wmctrl -a slack || slack"
