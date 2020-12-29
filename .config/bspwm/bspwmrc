@@ -1,8 +1,10 @@
 #! /bin/sh
 
+pkill -9 polybar && (polybar -r mine &) || (polybar -r mine &)
 pgrep -x sxhkd > /dev/null || sxhkd &
-pkill -9 polybar && polybar -r mine &
-pgrep -x picom > /dev/null || picom --config ~/.config/picom/picom.conf &
+pgrep -x dunst > /dev/null || dunst &
+# Fancy thing
+# pgrep -x picom > /dev/null || picom --config ~/.config/picom/picom.conf &
 feh --bg-scale ~/Pictures/zoro.jpg
 # set capslock to escape if shift is not pressed
 setxkbmap -option caps:escape_shifted_capslock
@@ -15,10 +17,12 @@ bspc config window_gap          8
 bspc config split_ratio          0.52
 bspc config borderless_monocle   true
 bspc config gapless_monocle      true
-bspc config top_padding         1
+bspc config top_padding         30
 
 bspc rule -a Gimp desktop='^8' state=floating follow=on
 bspc rule -a firefox desktop='^2' follow=on
+bspc rule -a Slack desktop='^3' follow=on
+bspc rule -a vlc desktop='^4'
 bspc rule -a Chromium desktop='^2'
 bspc rule -a mplayer2 state=floating
 bspc rule -a Kupfer.py focus=on
