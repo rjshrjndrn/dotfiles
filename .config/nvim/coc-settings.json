@@ -1,0 +1,48 @@
+{
+    "languageserver": {
+        "terraform": {
+            "command": "terraform-lsp",
+            "filetypes": [
+                "terraform",
+                "tf"
+            ],
+            "initializationOptions": {},
+            "settings": {}
+        },
+        "golang": {
+            "command": "gopls",
+            "rootPatterns": [
+                "go.mod",
+                ".vim/",
+                ".git/",
+                ".hg/"
+            ],
+            "filetypes": [
+                "go"
+            ]
+        }
+    },
+    // coc-emoji
+    "coc.source.emoji.filetypes": [
+        "vimwiki",
+        "markdown"
+    ],
+    // coc-yaml
+    "yaml.format.enable": true,
+    // coc-git config
+    "git.addGBlameToVirtualText": true,
+    "git.remoteName": "origin",
+    // COC formatting
+    "coc.preferences.formatOnSaveFiletypes": [
+        "go"
+    ],
+    "tabnine.priority": 50,
+    // Snippets
+    "snippets.ultisnips.enable": true,
+    "snippets.ultisnips.directories": [
+		"UltiSnips",
+		"gosnippets/UltiSnips"
+	],
+
+    "diagnostic.virtualText": true
+}
