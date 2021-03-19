@@ -232,6 +232,10 @@ awful.keyboard.append_global_keybindings({
          screen[1].tags[1]:view_only()
     end,
               {description = "switch to tmux", group = "launcher"}),
+    awful.key({ modkey },            ";",     function ()
+        awful.util.spawn("bash betterlockscreen -l dimblur")
+    end,
+              {description = "lock screen", group = "launcher"}),
     awful.key({ modkey },            "r",     function ()
         awful.util.spawn("rofi -combi-modi window,drun -show combi -modi combi")
     end,
