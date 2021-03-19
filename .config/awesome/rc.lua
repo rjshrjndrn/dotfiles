@@ -227,6 +227,11 @@ awful.keyboard.append_global_keybindings({
     awful.key({ modkey }, "p", function() menubar.show() end,
               {description = "show the menubar", group = "launcher"}),
     -- Custom apps
+    -- Ref: https://awesomewm.org/apidoc/core_components/tag.html#view_only
+    awful.key({ modkey },            "space",     function ()
+         screen[1].tags[1]:view_only()
+    end,
+              {description = "switch to tmux", group = "launcher"}),
     awful.key({ modkey },            "r",     function ()
         awful.util.spawn("rofi -combi-modi window,drun -show combi -modi combi")
     end,
