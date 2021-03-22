@@ -24,6 +24,7 @@ require("awful.hotkeys_popup.keys")
 -- custom widgets
 local volume_widget = require('awesome-wm-widgets.volume-widget.volume')
 local battery_widget = require("awesome-wm-widgets.battery-widget.battery")
+local calendar_widget = require("awesome-wm-widgets.calendar-widget.calendar")
 
 -- {{{ Error handling
 -- Check if awesome encountered an error during startup and fell back to
@@ -104,6 +105,15 @@ mykeyboardlayout = awful.widget.keyboardlayout()
 
 -- Create a textclock widget
 mytextclock = wibox.widget.textclock()
+-- Custom drop down
+local cw = calendar_widget({
+    placement = "top_right"
+})
+mytextclock:connect_signal("button::press",
+    function(_, _, _, button)
+        if button == 1 then cw.toggle() end
+    end)
+
 
 screen.connect_signal("request::wallpaper", function(s)
     -- Wallpaper
