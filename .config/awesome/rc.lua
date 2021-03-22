@@ -21,6 +21,10 @@ local hotkeys_popup = require("awful.hotkeys_popup")
 -- when client with a matching name is opened:
 require("awful.hotkeys_popup.keys")
 
+-- custom widgets
+local volume_widget = require('awesome-wm-widgets.volume-widget.volume')
+local battery_widget = require("awesome-wm-widgets.battery-widget.battery")
+
 -- {{{ Error handling
 -- Check if awesome encountered an error during startup and fell back to
 -- another config (This code will only ever execute for the fallback config)
@@ -184,8 +188,13 @@ screen.connect_signal("request::desktop_decoration", function(s)
         { -- Right widgets
             layout = wibox.layout.fixed.horizontal,
             mykeyboardlayout,
-            wibox.widget.systray(),
+            battery_widget(),
+            -- customized
+            volume_widget{
+                widget_type = 'icon_and_text'
+            },
             mytextclock,
+            wibox.widget.systray(),
             s.mylayoutbox,
         },
     }
@@ -248,7 +257,27 @@ awful.keyboard.append_global_keybindings({
         awful.util.spawn('/bin/bash -c "wmctrl -a slack || slack"')
     end,
               {description = "run slack", group = "myapps", class = "Slack"}),
+    -- Multi media
+    awful.key(
+      {},
+      'XF86AudioRaiseVolume',
+      volume_widget.raise,
+      {description = 'volume up', group = 'hotkeys'}
+    ),
+    awful.key(
+      {},
+      'XF86AudioLowerVolume',
+      volume_widget.lower,
+      {description = 'volume down', group = 'hotkeys'}
+    ),
+    awful.key(
+      {},
+      'XF86AudioMute',
+      volume_widget.toggle,
+      {description = 'toggle mute', group = 'hotkeys'}
+    ),
 })
+
 
 -- Tags related keybindings
 awful.keyboard.append_global_keybindings({
