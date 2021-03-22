@@ -115,17 +115,18 @@ mytextclock:connect_signal("button::press",
     end)
 
 
-screen.connect_signal("request::wallpaper", function(s)
-    -- Wallpaper
-    if beautiful.wallpaper then
-        local wallpaper = beautiful.wallpaper
-        -- If wallpaper is a function, call it with the screen
-        if type(wallpaper) == "function" then
-            wallpaper = wallpaper(s)
-        end
-        gears.wallpaper.maximized(wallpaper, s, true)
-    end
-end)
+-- Removing default wallpapers.
+-- screen.connect_signal("request::wallpaper", function(s)
+--     -- Wallpaper
+--     if beautiful.wallpaper then
+--         local wallpaper = beautiful.wallpaper
+--         -- If wallpaper is a function, call it with the screen
+--         if type(wallpaper) == "function" then
+--             wallpaper = wallpaper(s)
+--         end
+--         gears.wallpaper.maximized(wallpaper, s, true)
+--     end
+-- end)
 
 screen.connect_signal("request::desktop_decoration", function(s)
     -- Each screen has its own tag table.
@@ -597,5 +598,6 @@ end)
 beautiful.useless_gap = 5
 
 -- Autostart apps
-awful.spawn.with_shell("feh --bg-center ~/Pictures/zoro.jpg")
 awful.spawn.with_shell("picom")
+awful.spawn.with_shell("feh --bg-center ~/Pictures/zoro.jpg")
+-- gears.wallpaper.maximized("~/Pictures/zoro.jpg")
