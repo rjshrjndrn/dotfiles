@@ -1,3 +1,3 @@
-[submodule ".config/polybar/scripts/polybar-bluetooth"]
-	path = .config/polybar/scripts/polybar-bluetooth
-	url = https://github.com/msaitz/polybar-bluetooth
+[submodule "/home/rajeshr/.config/awesome/awesome-wm-widgets"]
+	path = /home/rajeshr/.config/awesome/awesome-wm-widgets
+	url = https://github.com/streetturtle/awesome-wm-widgets
