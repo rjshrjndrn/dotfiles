@@ -578,13 +578,28 @@ ruled.notification.connect_signal('request::rules', function()
         rule       = { },
         properties = {
             screen           = awful.screen.preferred,
-            implicit_timeout = 5,
+            implicit_timeout = 30,
         }
     }
 end)
 
 naughty.connect_signal("request::display", function(n)
     naughty.layout.box { notification = n }
+end)
+
+-- Open links on click by naughty.
+-- Ref: https://www.reddit.com/r/awesomewm/comments/itsb5o/clicking_to_notifications_doesnt_raise_app/
+-- Note: need awesome-git to be installed.
+local cst = require("naughty.constants");
+
+naughty.connect_signal('destroyed', function(n, reason)
+    if not n.clients then return end
+    if reason == cst.notification_closed_reason.dismissed_by_user then
+        for _, cli in ipairs(n.clients) do
+            cli.urgent = true
+            cli:emit_signal("request::activate", {raise=true})
+        end
+    end
 end)
 
 -- }}}
