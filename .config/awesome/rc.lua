@@ -13,6 +13,17 @@ local wibox = require("wibox")
 local beautiful = require("beautiful")
 -- Notification library
 local naughty = require("naughty")
+local nconf = naughty.config
+nconf.defaults.border_width = 0
+nconf.defaults.margin = 16
+nconf.padding = 8
+nconf.presets.critical.bg = "#FE634E"
+nconf.presets.critical.fg = "#fefefa"
+nconf.presets.low.bg = "#1771F1"
+nconf.presets.normal.bg = "#1771F1"
+nconf.defaults.icon_size = 64
+nconf.spacing = 8
+
 -- Declarative object management
 local ruled = require("ruled")
 local menubar = require("menubar")
