@@ -12,17 +12,18 @@ local wibox = require("wibox")
 -- Theme handling library
 local beautiful = require("beautiful")
 -- Notification library
-local naughty = require("naughty")
-local nconf = naughty.config
-nconf.defaults.border_width = 0
-nconf.defaults.margin = 16
-nconf.padding = 8
-nconf.presets.critical.bg = "#FE634E"
-nconf.presets.critical.fg = "#fefefa"
-nconf.presets.low.bg = "#1771F1"
-nconf.presets.normal.bg = "#1771F1"
-nconf.defaults.icon_size = 64
-nconf.spacing = 8
+-- local naughty = require("naughty")
+package.loaded['naughty.dbus'] = {}
+-- local nconf = naughty.config
+-- nconf.defaults.border_width = 0
+-- nconf.defaults.margin = 16
+-- nconf.padding = 8
+-- nconf.presets.critical.bg = "#FE634E"
+-- nconf.presets.critical.fg = "#fefefa"
+-- nconf.presets.low.bg = "#1771F1"
+-- nconf.presets.normal.bg = "#1771F1"
+-- nconf.defaults.icon_size = 64
+-- nconf.spacing = 8
 
 -- Declarative object management
 local ruled = require("ruled")
@@ -40,13 +41,13 @@ local calendar_widget = require("awesome-wm-widgets.calendar-widget.calendar")
 -- {{{ Error handling
 -- Check if awesome encountered an error during startup and fell back to
 -- another config (This code will only ever execute for the fallback config)
-naughty.connect_signal("request::display_error", function(message, startup)
-    naughty.notification {
-        urgency = "critical",
-        title   = "Oops, an error happened"..(startup and " during startup!" or "!"),
-        message = message
-    }
-end)
+-- naughty.connect_signal("request::display_error", function(message, startup)
+--     naughty.notification {
+--         urgency = "critical",
+--         title   = "Oops, an error happened"..(startup and " during startup!" or "!"),
+--         message = message
+--     }
+-- end)
 -- }}}
 
 -- {{{ Variable definitions
@@ -264,7 +265,7 @@ awful.keyboard.append_global_keybindings({
     end,
               {description = "switch to tmux", group = "launcher"}),
     awful.key({ modkey },            ";",     function ()
-        awful.util.spawn("bash betterlockscreen -l dimblur")
+        awful.util.spawn("asciiquarium-lock")
     end,
               {description = "lock screen", group = "launcher"}),
     awful.key({ modkey },            "r",     function ()
@@ -621,24 +622,24 @@ ruled.notification.connect_signal('request::rules', function()
     }
 end)
 
-naughty.connect_signal("request::display", function(n)
-    naughty.layout.box { notification = n }
-end)
+-- naughty.connect_signal("request::display", function(n)
+--     naughty.layout.box { notification = n }
+-- end)
 
 -- Open links on click by naughty.
 -- Ref: https://www.reddit.com/r/awesomewm/comments/itsb5o/clicking_to_notifications_doesnt_raise_app/
 -- Note: need awesome-git to be installed.
-local cst = require("naughty.constants");
-
-naughty.connect_signal('destroyed', function(n, reason)
-    if not n.clients then return end
-    if reason == cst.notification_closed_reason.dismissed_by_user then
-        for _, cli in ipairs(n.clients) do
-            cli.urgent = true
-            cli:emit_signal("request::activate", {raise=true})
-        end
-    end
-end)
+-- local cst = require("naughty.constants");
+--
+-- naughty.connect_signal('destroyed', function(n, reason)
+--     if not n.clients then return end
+--     if reason == cst.notification_closed_reason.dismissed_by_user then
+--         for _, cli in ipairs(n.clients) do
+--             cli.urgent = true
+--             cli:emit_signal("request::activate", {raise=true})
+--         end
+--     end
+-- end)
 
 -- }}}
 
@@ -652,5 +653,6 @@ beautiful.useless_gap = 5
 
 -- Autostart apps
 awful.spawn.with_shell("picom")
+awful.spawn.with_shell("dunst")
 awful.spawn.with_shell("feh --bg-center ~/Pictures/zoro.jpg")
 -- gears.wallpaper.maximized("~/Pictures/zoro.jpg")
