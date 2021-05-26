@@ -1,23 +1,19 @@
+" vim:set ft=vim: "
 set encoding=utf-8
 let mapleader = ' '
 set bs=eol,start,indent
 set ic is scs sw=4 ts=4 et termguicolors hidden nu splitbelow splitright mouse=a diffopt+=vertical laststatus=0 cursorline
+colorscheme industry
+
 call plug#begin('~/.vim/bundle')
-Plug 'scrooloose/nerdtree', { 'on': ['NERDTreeFind', 'NERDTreeToggle'] }
-"{{{
-"NERDTreefind
-nnoremap <silent> ff :NERDTreeFind <Enter>
-"NERDTree toggle
-nnoremap <silent> <C-n> :NERDTreeToggle<CR>
-"}}}
-Plug 'gruvbox-community/gruvbox'
-" Fading inactive window
-" Plug 'TaDaa/vimade'
-" "{{{
-" " Support for tmux
-" au! FocusLost * VimadeFadeActive
-" au! FocusGained * VimadeUnfadeActive
-" "}}}
+Plug 'fatih/vim-go'", { 'do': ':GoUpdateBinaries' }
+"Auto pair
+Plug 'cohama/lexima.vim'
+Plug 'christoomey/vim-tmux-navigator'
+Plug 'tpope/vim-unimpaired'
+Plug 'tpope/vim-dispatch'
+Plug 'radenling/vim-dispatch-neovim'
+Plug 'tpope/vim-rhubarb'
 Plug 'tpope/vim-surround'
 Plug 'tpope/vim-repeat'
 Plug 'tpope/vim-fugitive'
@@ -25,62 +21,38 @@ Plug 'tpope/vim-fugitive'
 "{{{
 nnoremap gw :Gwrite<Enter>
 nnoremap gs :Gstatus<Enter>
-nnoremap gc :Gcommit --gpg-sign -s <Enter>
-nnoremap gp :Gpush
-nnoremap gpf :Gpush --force
-nnoremap gca :Gcommit -S --amend
-nnoremap gpl :Gpull --rebase
+nnoremap gc :Git commit --gpg-sign -s <Enter>
+nnoremap gp :Dispatch! git push
+nnoremap gpf :Dispatch! push --force
+nnoremap gca :Git commit --gpg-sign -S --amend
+nnoremap gpl :Dispatch git pull --rebase
 " Commenting for fugitive commit session
 " will take branch name as #Issue-number
+" Ref: https://github.com/tpope/vim-fugitive/commit/d4bcc75ef6449c0e5592513fb1e0a42b017db9ca
 let @w='5G$vByggIIssue #000 feat: <CR><CR><ESC>pggA'
 let @e='ggIIssue #000 feat: '
 let @r='ggIIssue #000 fix: '
-"}}}
-Plug 'junegunn/vim-easy-align'
-"{{{
-nmap ga <Plug>(EasyAlign)
-xmap ga <Plug>(EasyAlign)
+
+" " Enabling async :Gpush and :Gpull
+" command! -bang -bar -nargs=* Gpush execute 'Dispatch<bang> -dir=' .
+"       \ fnameescape(FugitiveGitDir()) 'git push' <q-args>
+" command! -bang -bar -nargs=* Gfetch execute 'Dispatch<bang> -dir=' .
+"       \ fnameescape(FugitiveGitDir()) 'git fetch' <q-args>
 "}}}
 Plug 'junegunn/gv.vim'
-"{{{
-nmap <silent> <leader>v :GV?<CR>
-vmap <silent> <leader>v :GV?<CR>
-"}}}
-Plug 'tpope/vim-rhubarb'
-Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
-"{{{
-nnoremap <silent> <leader>p <nop>
-"}}}
-Plug 'junegunn/fzf.vim'
-Plug 'vimwiki/vimwiki'
-"{{{
-" customization for wiki
-let wiki_personal= {'path': '~/vimwiki_personal/', 'syntax': 'markdown', 'ext': '.md'}
-let wiki_work = {'path': '~/vimwiki/', 'syntax': 'markdown', 'ext': '.md'}
-let g:vimwiki_list = [wiki_work, wiki_personal]
-let g:vimwiki_ext2syntax = {'.md': 'markdown',
-                  \ '.mkd': 'markdown',
-                  \ '.wiki': 'media'}
-let g:vimwiki_folding='custom'
-" map gc<Space> <Plug>VimwikiToggleListItem
-"}}}
-
-Plug 'iamcco/markdown-preview.nvim', { 'do': { -> mkdp#util#install() }, 'for': ['vimwiki', 'markdown', 'vim-plug']}
-
-Plug 'andrewstuart/vim-kubernetes'
-Plug 'wincent/ferret'
-"{{{
-let g:FerretJob=0
-let g:FerretMaxResults=1000
-" vnoremap /s "zy:Ack! -w --ignore *\.wiki --ignore *doc --ignore ekstep-devops <c-r>z<CR>
-vnoremap <silent> /S "zy:Ack! -w <c-r>z<CR>
-vnoremap <silent> /s "zy:Ack!  <c-r>z<CR>
-"}}}
+Plug 'gruvbox-community/gruvbox'
+Plug 'flazz/vim-colorschemes'
+" Plug 'TaDaa/vimade'
+Plug 'tmux-plugins/vim-tmux-focus-events'
 Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
-Plug 'tpope/vim-unimpaired'
-Plug 'tpope/vim-dispatch'
-Plug 'radenling/vim-dispatch-neovim'
+Plug 'scrooloose/nerdtree', { 'on': ['NERDTreeFind', 'NERDTreeToggle'] }
+"{{{
+"NERDTreefind
+nnoremap <silent> ff :NERDTreeFind <Enter>
+"NERDTree toggle
+nnoremap <silent> <C-n> :NERDTreeToggle<CR>
+"}}}
 Plug 'scrooloose/nerdcommenter'
 "{{{
 " Add spaces after comment delimiters by default
@@ -95,41 +67,44 @@ let g:NERDCommentEmptyLines = 1
 " Enable trimming of trailing whitespace when uncommenting
 let g:NERDTrimTrailingWhitespace = 1
 "}}}
-Plug 'kien/rainbow_parentheses.vim'
+Plug 'wincent/ferret'
 "{{{
-let g:rbpt_colorpairs = [
-    \ ['brown',       'RoyalBlue3'],
-    \ ['Darkblue',    'SeaGreen3'],
-    \ ['darkgray',    'DarkOrchid3'],
-    \ ['darkgreen',   'firebrick3'],
-    \ ['darkcyan',    'RoyalBlue3'],
-    \ ['darkred',     'SeaGreen3'],
-    \ ['darkmagenta', 'DarkOrchid3'],
-    \ ['brown',       'firebrick3'],
-    \ ['gray',        'RoyalBlue3'],
-    \ ['black',       'SeaGreen3'],
-    \ ['darkmagenta', 'DarkOrchid3'],
-    \ ['Darkblue',    'firebrick3'],
-    \ ['darkgreen',   'RoyalBlue3'],
-    \ ['darkcyan',    'SeaGreen3'],
-    \ ['darkred',     'DarkOrchid3'],
-    \ ['red',         'firebrick3'],
-    \ ]
-let g:rbpt_max = 16
-let g:rbpt_loadcmd_toggle = 0
-au VimEnter * RainbowParenthesesToggle
-au Syntax * RainbowParenthesesLoadRound
-au Syntax * RainbowParenthesesLoadSquare
-au Syntax * RainbowParenthesesLoadBraces
+let g:FerretJob=0
+let g:FerretMaxResults=1000
+" vnoremap /s "zy:Ack! -w --ignore *\.wiki --ignore *doc --ignore ekstep-devops <c-r>z<CR>
+" Override default args
+let g:FerretExecutableArguments = {
+  \   'rg': '--column --with-filename -S'
+  \ }
+
+vnoremap <silent> /S "zy:Ack! -w <c-r>z<CR>
+vnoremap <silent> /s "zy:Ack!  <c-r>z<CR>
 "}}}
-" Plug 'SirVer/ultisnips'
-" "{{{
-" " Trigger configuration. Do not use <tab> if you use https://github.com/Valloric/YouCompleteMe.
-" let g:UltiSnipsExpandTrigger="<c-j>"
-" let g:UltiSnipsJumpForwardTrigger="<c-j>"
-" let g:UltiSnipsJumpBackwardTrigger="<c-k>"
-" "}}}
-Plug 'andrewstuart/vim-kubernetes'
+Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
+"{{{
+nnoremap <silent> <leader>p <nop>
+"}}}
+Plug 'junegunn/fzf.vim'
+Plug 'junegunn/vim-easy-align'
+"{{{
+" Start interactive EasyAlign in visual mode (e.g. vipga)
+xmap ga <Plug>(EasyAlign)
+" Start interactive EasyAlign for a motion/text object (e.g. gaip)
+nmap ga <Plug>(EasyAlign)
+"}}}
+Plug 'iamcco/markdown-preview.nvim', { 'do': { -> mkdp#util#install() }, 'for': ['markdown', 'vim-plug']}
+Plug 'vimwiki/vimwiki'
+"{{{
+" customization for wiki
+let wiki_personal= {'path': '~/vimwiki_personal/', 'syntax': 'markdown', 'ext': '.md'}
+let wiki_work = {'path': '~/vimwiki/', 'syntax': 'markdown', 'ext': '.md'}
+let g:vimwiki_list = [wiki_work, wiki_personal]
+let g:vimwiki_ext2syntax = {'.md': 'markdown',
+                  \ '.mkd': 'markdown',
+                  \ '.wiki': 'media'}
+let g:vimwiki_folding=''
+" map gc<Space> <Plug>VimwikiToggleListItem
+"}}}
 Plug 'pearofducks/ansible-vim', { 'do': 'cd ./UltiSnips; ./generate.py --style dictionary' }
 "{{{
 let g:ansible_attribute_highlight = "ob"
@@ -137,21 +112,12 @@ let g:ansible_name_highlight = 'd'
 let g:ansible_extra_keywords_highlight = 1
 let g:ansible_normal_keywords_highlight = 'Constant'
 "}}}
-Plug 'michaeljsmith/vim-indent-object'
-Plug 'mbbill/undotree'
-Plug '907th/vim-auto-save'
-let g:auto_save_events = ["CursorHold"]
-set updatetime=600
-
-Plug 'christoomey/vim-tmux-navigator'
-
-
-Plug 'easymotion/vim-easymotion'
+" Plug 'easymotion/vim-easymotion'
 "{{{
 " Easymotion plug
 " Jump to anywhere you want with minimal keystrokes, with just one key binding.
 " `s{char}{label}`
-nmap <silent> , <Plug>(easymotion-overwin-f2)
+" nmap <silent> , <Plug>(easymotion-overwin-f2)
 
 " Replacing hjkl
 " Gif config
@@ -159,29 +125,107 @@ map <silent> <Leader>j <Plug>(easymotion-j)
 map <silent> <Leader>k <Plug>(easymotion-k)
 let g:EasyMotion_startofline = 0 " keep cursor column when JK motion
 "}}}
+Plug 'justinmk/vim-sneak'
+"{{{
+let g:sneak#label = 1
+map f <Plug>Sneak_f
+map F <Plug>Sneak_F
+map t <Plug>Sneak_t
+map T <Plug>Sneak_T
+"}}}
 
-Plug 'fatih/vim-go'
-Plug 'liuchengxu/vista.vim'
+Plug 'unblevable/quick-scope'
+"{{{
 
-Plug 'vim-pandoc/vim-pandoc'
+" Trigger a highlight in the appropriate direction when pressing these keys:
+let g:qs_highlight_on_keys = ['f', 'F', 't', 'T']
 
-"Auto pair
-Plug 'cohama/lexima.vim'
+" Trigger a highlight only when pressing f and F.
+let g:qs_highlight_on_keys = ['f', 'F']
+"}}}
 
-" Autocompletion engine
+Plug '907th/vim-auto-save'
+"{{{
+let g:auto_save_events = ["CursorHold"]
+set updatetime=600
+"}}}
+" Platform
+Plug 'rjshrjndrn/vim-kubernetes'
+
+" HTML
+Plug 'mattn/emmet-vim'
 " Use release branch (recommend)
 Plug 'neoclide/coc.nvim', {'branch': 'release'}
+" Autocompletion engine
+" {{{
+let g:coc_global_extensions = [
+            \'coc-vimlsp',
+            \'coc-tabnine',
+            \'coc-snippets',
+            \'coc-git',
+            \'coc-eslint',
+            \'coc-emoji',
+            \'coc-yaml@1.0.4',
+            \'coc-tsserver',
+            \'coc-tslint',
+            \'coc-pyright',
+            \'coc-emmet',
+            \'coc-json'
+        \]
+            " \'coc-tsserver',
+            " \'coc-tslint',
+" }}}
 
+" To see all color schemes
+" help: https://vim.fandom.com/wiki/Switch_color_schemes
+" Plug 'felixhummel/setcolors.vim'
 call plug#end()
 
+" Themes
+" {{{
 " colorscheme solarized8_flat
+" colorscheme molokai
 colorscheme gruvbox
+let g:airline_theme='distinguished'
 " colorscheme nord
-set background=dark
+" set background=dark
 let g:gruvbox_contrast_dark = 'medium'
 let g:gruvbox_italicize_comments = 1
+" }}}
 
+" AuGroup Commands
+" {{{
+augroup auto_go
+    autocmd!
+    autocmd FileType go set foldmethod=syntax foldlevel=1 foldnestmax=2 
+    autocmd BufWritePre *.go :GoDiagnostics
+    autocmd BufWritePost *_test.go :GoTest
+augroup end
 
+augroup auto_vim
+    autocmd!
+    autocmd FileType vim set foldmethod=marker
+augroup END
+
+augroup auto_vimwiki
+    autocmd!
+    au BufEnter,BufNewFile ~/vimwiki/* let b:auto_save=1 | lcd ~/vimwiki | setlocal spell sw=2 sts=2 et ts=2
+augroup END
+
+augroup auto_markdown_gitcommit
+    autocmd!
+    autocmd FileType markdown,gitcommit setlocal spell sw=2 sts=2 et ts=2
+augroup END
+
+augroup auto_yaml
+    autocmd!
+    autocmd FileType yaml setlocal sw=2 sts=2 et ts=2 | nnoremap <silent> ]r :call FindAnsibleRoleUnderCursor()<CR>
+augroup END
+augroup auto_ansible
+    autocmd!
+    au BufEnter,BufNewFile */ansible/*.y[a]\\\{0,1\}ml setlocal ft=yaml.ansible
+augroup END
+" }}}
 
 " Custom Undo
 set undofile
@@ -191,44 +235,6 @@ endif
 
 " Functions
 " {{{
-function! Term()
-  exec winheight(0)/4."split" | set nonu | terminal
-endfunction
-if has('nvim')
-     nnoremap <expr> <leader>T ":call TermTab()\<CR>"
-endif
-
-function! TermTab()
-  tabnew | set nonu | terminal
-endfunction
-
-function! TrailClear()
-    :%s/\s\+$//g
-endfunction
-command! TrailClear call TrailClear()
-command! Date :r !date
-" FZF :LS command
-command! -bang -complete=dir -nargs=* LS
-    \ call fzf#run(fzf#wrap({'source': 'ls', 'dir': <q-args>}, <bang>0))
-
-function! DiffToggle(diff)
-    "named argument diff
-    if a:diff
-        :windo diffoff
-    else
-        :windo diffthis
-    endif
-endfunction
-
-function! SpaceEscape(...)
-    return substitute(a:str," ","\ ","")
-endfunction
-
-function! PyRunner()
-    :Dispatch! python %
-endfunction
-command! PyRunner call PyRunner()
-
 function! DiffToggle(diff)
     "named argument diff
     if a:diff
@@ -238,12 +244,6 @@ function! DiffToggle(diff)
     endif
 endfunction
 nnoremap <silent> <leader>d :call DiffToggle(&diff)<CR>
-
-" Ansible variable fix {{var}} to {{ var }}
-function! AnsiVarFix()
-    :%s/{{\s*\(.\{-}\)\s*}}/{{ \1 }}/g
-    " :%s/{{\zs\s\+\(.\{-}\)\ze}}/{{ \2 }}/g
-endfunction
 
 
 let g:ansible_goto_role_paths = './roles,../_common/roles'
@@ -263,75 +263,19 @@ function! FindAnsibleRoleUnderCursor()
   endif
 endfunction
 
-function ShowSpaces(...)
-  let @/='\v(\s+$)|( +\ze\t)'
-  let oldhlsearch=&hlsearch
-  if !a:0
-    let &hlsearch=!&hlsearch
-  else
-    let &hlsearch=a:1
-  end
-  return oldhlsearch
-endfunction
-
-function TrimSpaces() range
-  let oldhlsearch=ShowSpaces(1)
-  execute a:firstline.",".a:lastline."substitute ///gec"
-  let &hlsearch=oldhlsearch
-endfunction
-
-command -bar -nargs=? ShowSpaces call ShowSpaces(<args>)
-command -bar -nargs=0 -range=% TrimSpaces <line1>,<line2>call TrimSpaces()
-
-"}}}
-
-" Buffer Mappings
-"{{{
-
-augroup auto_go
-	autocmd!
-    autocmd BufEnter,BufNewFile *.go set foldmethod=syntax foldnestmax=1 "foldlevel=3
-	autocmd BufWritePre *.go :GoDiagnostics
-	autocmd BufWritePost *_test.go :GoTest
-augroup end
-
-augroup filetypes
-    autocmd!
-    " autocmd BufEnter,BufWritePre *.yml set foldmethod=indent foldlevel=10
-    autocmd Filetype vim,python,sh setlocal foldmethod=marker shiftwidth=4 tabstop =4  expandtab
-    autocmd Filetype yaml setlocal foldmethod=indent foldlevel=4 foldnestmax=2 shiftwidth=2 tabstop=2 expandtab | command! AnsiVarFix call AnsiVarFix()
-    autocmd Filetype gitcommit setlocal spell completeopt-=preview
-    autocmd Filetype git setlocal nofoldenable
-    autocmd BufEnter,BufNewFile ".*\.md$" setlocal spell tabstop=2 expandtab shiftwidth=2 foldmethod=indent foldlevel=4 foldnestmax=2
-    autocmd BufEnter Jenkinsfile setlocal ft=groovy
-    autocmd FileType gitcommit,vimwiki let b:auto_save=1 | setlocal spell
-    "custom file based remapings
-    au FileType go nmap <leader>gr <Plug>(go-run)
-    au FileType go nmap <leader>gt <Plug>(go-test)
-    au FileType go nmap <silent><leader>gd :GoDecls<CR>
-    " no save question if the content is coming from stdin
-    au StdinReadPost * :set buftype=nofile
-    au BufEnter,BufNewFile */ansible/*.y[a]\\\{0,1\}ml setlocal foldmethod=indent foldlevel=2 ft=yaml.ansible
-    au BufEnter,BufNewFile */ansible/*.y[a]\\\{0,1\}ml nnoremap <silent> ]r :call FindAnsibleRoleUnderCursor()<CR>
-    au BufEnter,BufNewFile ~/vimwiki/* lcd ~/vimwiki
-    au FileType html,css EmmetInstall " | imap <M-c> @<Plug>(emmet-expand-abbr)
-augroup END
-"}}}
+" }}}
 
 " Keyboard Mappings
 " {{{
-" Quit
-nnoremap <leader>w :w<Enter>
-nnoremap <leader>q :q<Enter>
-nnoremap <leader>Q :qa<Enter>
-nnoremap <leader>wq :wq<Enter>
-nnoremap <leader>wQ :wqa!<Enter>
 
+nnoremap <silent><leader>w :w<CR>
+" quit
+nnoremap <silent><leader>q :q<CR>
+nnoremap <silent><leader>Q :qa<CR>
 " Folding
-" au BufNewFile,BufRead *.py,*.go set foldmethod=indent
-vnoremap <silent> <space> :fold<CR>
-nnoremap <silent> <space> za<CR>
-
+nnoremap <silent><leader>f za
+nnoremap <silent><leader>F zA
+vnoremap <silent><leader>f :fold<CR>
 
 " visual select
 vnoremap // "zy/<C-R>z<CR>
@@ -340,7 +284,6 @@ vnoremap /B "zy:Back! -w <C-R>z<CR>
 
 " Copying to system clipboard
 vnoremap Y "+y
-nnoremap <C-p> :<C-u>Files<cr>
 
 " Switch windows
 nnoremap <c-j> <c-w>j
@@ -372,12 +315,11 @@ inoremap <silent><expr><s-tab> pumvisible() ? "\<c-p>" : "\<s-tab>"
 " search through buffers using fzf
 nnoremap <silent><leader>b :Buffers<CR>
 " search through files in current dir using fzf
-nnoremap <silent><leader>f :Files<CR>
+nnoremap <C-p> :<C-u>Files<cr>
 " search through history using fzf
 nnoremap <silent><leader>h :History<CR>
+
 "}}}
-
-
 
 " Popup window for fzf
 " Terminal buffer options for fzf
@@ -506,8 +448,8 @@ autocmd CursorHold * silent call CocActionAsync('highlight')
 nmap <leader>rn <Plug>(coc-rename)
 
 " Formatting selected code.
-xmap <leader>F  <Plug>(coc-format-selected)
-nmap <leader>F  <Plug>(coc-format-selected)
+" xmap <leader>F  <Plug>(coc-format-selected)
+" nmap <leader>F  <Plug>(coc-format-selected)
 
 augroup mygroup
   autocmd!
@@ -560,7 +502,7 @@ set statusline^=%{coc#status()}%{get(b:,'coc_current_function','')}
 " Mappings for CoCList
 nnoremap <silent><nowait> <space>l  :<C-u>CocList<cr>
 " Show all diagnostics.
-nnoremap <silent><nowait> <space>a  :<C-u>CocList diagnostics<cr>
+" nnoremap <silent><nowait> <space>a  :<C-u>CocList diagnostics<cr>
 " " Manage extensions.
 " nnoremap <silent><nowait> <space>e  :<C-u>CocList extensions<cr>
 " " Show commands.
@@ -578,12 +520,18 @@ nnoremap <silent><nowait> <space>o  :<C-u>CocList outline<cr>
 
 " Plugin settings
 " coc-go
-autocmd BufWritePre *.go :call CocAction('runCommand', 'editor.action.organizeImport')
+" autocmd BufWritePre *.go :call CocAction('runCommand', 'editor.action.organizeImport')
 
 " coc-snippets
 " Use <C-j> for both expand and jump (make expand higher priority.)
 imap <C-j> <Plug>(coc-snippets-expand-jump)
 
 "}}}
+"
 
-set foldlevelstart=0
+" GUI configs
+" set guifont=FiraCode:h16
+set guifont=FiraCode\ Nerd\ Font:h12
+" set guifont=FiraCode\ Nerd\ Font\\:style\\=Medium\\,Regular:h16
+" set guifont=FiraCode\ Nerd\ Font\ Mono\\:style\\=Light\\,Regular:h12
+" set guifont=Source\ Code\ Pro\\,Source\ Code\ Pro\ Semibold:h16

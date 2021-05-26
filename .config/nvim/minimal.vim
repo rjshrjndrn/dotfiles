@@ -17,6 +17,28 @@ Plug 'tpope/vim-rhubarb'
 Plug 'tpope/vim-surround'
 Plug 'tpope/vim-repeat'
 Plug 'tpope/vim-fugitive'
+"fugitive vim
+"{{{
+nnoremap gw :Gwrite<Enter>
+nnoremap gs :Gstatus<Enter>
+nnoremap gc :Git commit --gpg-sign -s <Enter>
+nnoremap gp :Dispatch! git push
+nnoremap gpf :Dispatch! push --force
+nnoremap gca :Git commit --gpg-sign -S --amend
+nnoremap gpl :Dispatch git pull --rebase
+" Commenting for fugitive commit session
+" will take branch name as #Issue-number
+" Ref: https://github.com/tpope/vim-fugitive/commit/d4bcc75ef6449c0e5592513fb1e0a42b017db9ca
+let @w='5G$vByggIIssue #000 feat: <CR><CR><ESC>pggA'
+let @e='ggIIssue #000 feat: '
+let @r='ggIIssue #000 fix: '
+
+" " Enabling async :Gpush and :Gpull
+" command! -bang -bar -nargs=* Gpush execute 'Dispatch<bang> -dir=' .
+"       \ fnameescape(FugitiveGitDir()) 'git push' <q-args>
+" command! -bang -bar -nargs=* Gfetch execute 'Dispatch<bang> -dir=' .
+"       \ fnameescape(FugitiveGitDir()) 'git fetch' <q-args>
+"}}}
 Plug 'junegunn/gv.vim'
 Plug 'gruvbox-community/gruvbox'
 Plug 'flazz/vim-colorschemes'
@@ -45,21 +67,6 @@ let g:NERDCommentEmptyLines = 1
 " Enable trimming of trailing whitespace when uncommenting
 let g:NERDTrimTrailingWhitespace = 1
 "}}}
-"fugitive vim
-"{{{
-nnoremap gw :Gwrite<Enter>
-nnoremap gs :Gstatus<Enter>
-nnoremap gc :Gcommit --gpg-sign -s <Enter>
-nnoremap gp :Gpush
-nnoremap gpf :Gpush --force
-nnoremap gca :Gcommit -S --amend
-nnoremap gpl :Gpull --rebase
-" Commenting for fugitive commit session
-" will take branch name as #Issue-number
-let @w='5G$vByggIIssue #000 feat: <CR><CR><ESC>pggA'
-let @e='ggIIssue #000 feat: '
-let @r='ggIIssue #000 fix: '
-"}}}
 Plug 'wincent/ferret'
 "{{{
 let g:FerretJob=0
@@ -78,6 +85,14 @@ Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 nnoremap <silent> <leader>p <nop>
 "}}}
 Plug 'junegunn/fzf.vim'
+Plug 'junegunn/vim-easy-align'
+"{{{
+" Start interactive EasyAlign in visual mode (e.g. vipga)
+xmap ga <Plug>(EasyAlign)
+" Start interactive EasyAlign for a motion/text object (e.g. gaip)
+nmap ga <Plug>(EasyAlign)
+"}}}
+Plug 'iamcco/markdown-preview.nvim', { 'do': { -> mkdp#util#install() }, 'for': ['markdown', 'vim-plug']}
 Plug 'vimwiki/vimwiki'
 "{{{
 " customization for wiki
@@ -97,18 +112,26 @@ let g:ansible_name_highlight = 'd'
 let g:ansible_extra_keywords_highlight = 1
 let g:ansible_normal_keywords_highlight = 'Constant'
 "}}}
-Plug 'easymotion/vim-easymotion'
+" Plug 'easymotion/vim-easymotion'
 "{{{
 " Easymotion plug
 " Jump to anywhere you want with minimal keystrokes, with just one key binding.
 " `s{char}{label}`
-nmap <silent> , <Plug>(easymotion-overwin-f2)
+" nmap <silent> , <Plug>(easymotion-overwin-f2)
 
 " Replacing hjkl
 " Gif config
 map <silent> <Leader>j <Plug>(easymotion-j)
 map <silent> <Leader>k <Plug>(easymotion-k)
 let g:EasyMotion_startofline = 0 " keep cursor column when JK motion
+"}}}
+Plug 'justinmk/vim-sneak'
+"{{{
+let g:sneak#label = 1
+map f <Plug>Sneak_f
+map F <Plug>Sneak_F
+map t <Plug>Sneak_t
+map T <Plug>Sneak_T
 "}}}
 
 Plug 'unblevable/quick-scope'
@@ -129,9 +152,12 @@ set updatetime=600
 " Platform
 Plug 'rjshrjndrn/vim-kubernetes'
 
+" HTML
+Plug 'mattn/emmet-vim'
 " Use release branch (recommend)
 Plug 'neoclide/coc.nvim', {'branch': 'release'}
 " Autocompletion engine
+" {{{
 let g:coc_global_extensions = [
             \'coc-vimlsp',
             \'coc-tabnine',
@@ -142,19 +168,27 @@ let g:coc_global_extensions = [
             \'coc-yaml@1.0.4',
             \'coc-tsserver',
             \'coc-tslint',
-            \'coc-pyls'
+            \'coc-pyright',
+            \'coc-emmet',
+            \'coc-json'
         \]
             " \'coc-tsserver',
             " \'coc-tslint',
+" }}}
+
+" To see all color schemes
+" help: https://vim.fandom.com/wiki/Switch_color_schemes
+" Plug 'felixhummel/setcolors.vim'
 call plug#end()
 
 " Themes
 " {{{
 " colorscheme solarized8_flat
-colorscheme molokai
+" colorscheme molokai
+colorscheme gruvbox
 let g:airline_theme='distinguished'
 " colorscheme nord
-set background=dark
+" set background=dark
 let g:gruvbox_contrast_dark = 'medium'
 let g:gruvbox_italicize_comments = 1
 " }}}
@@ -162,10 +196,10 @@ let g:gruvbox_italicize_comments = 1
 " AuGroup Commands
 " {{{
 augroup auto_go
-	autocmd!
+    autocmd!
     autocmd FileType go set foldmethod=syntax foldlevel=1 foldnestmax=2 
-	autocmd BufWritePre *.go :GoDiagnostics
-	autocmd BufWritePost *_test.go :GoTest
+    autocmd BufWritePre *.go :GoDiagnostics
+    autocmd BufWritePost *_test.go :GoTest
 augroup end
 
 augroup auto_vim
@@ -486,10 +520,18 @@ nnoremap <silent><nowait> <space>o  :<C-u>CocList outline<cr>
 
 " Plugin settings
 " coc-go
-autocmd BufWritePre *.go :call CocAction('runCommand', 'editor.action.organizeImport')
+" autocmd BufWritePre *.go :call CocAction('runCommand', 'editor.action.organizeImport')
 
 " coc-snippets
 " Use <C-j> for both expand and jump (make expand higher priority.)
 imap <C-j> <Plug>(coc-snippets-expand-jump)
 
 "}}}
+"
+
+" GUI configs
+" set guifont=FiraCode:h16
+set guifont=FiraCode\ Nerd\ Font:h12
+" set guifont=FiraCode\ Nerd\ Font\\:style\\=Medium\\,Regular:h16
+" set guifont=FiraCode\ Nerd\ Font\ Mono\\:style\\=Light\\,Regular:h12
+" set guifont=Source\ Code\ Pro\\,Source\ Code\ Pro\ Semibold:h16

@@ -6,9 +6,9 @@ pgrep -x dunst > /dev/null || dunst &
 # Fancy thing
 # pgrep -x picom > /dev/null || picom --config ~/.config/picom/picom.conf &
 feh --bg-scale ~/Pictures/zoro.jpg
-# set capslock to escape if shift is not pressed
-setxkbmap -option caps:escape_shifted_capslock
+setxkbmap -option caps:escape
 
+# bspc monitor eDP1 -d I II III IV V VI
 bspc monitor DP2 -d I II III IV V VI
 bspc monitor eDP1 -d VII VIII IX X
 
@@ -18,12 +18,21 @@ bspc config split_ratio          0.52
 bspc config borderless_monocle   true
 bspc config gapless_monocle      true
 bspc config top_padding         30
+bspc config focus_follows_pointer true
 
 bspc rule -a Gimp desktop='^8' state=floating follow=on
 bspc rule -a firefox desktop='^2' state=floating_rectangle follow=on
-bspc rule -a Slack desktop='^3' follow=on
+bspc rule -a GNvim state=tilled follow=on
+bspc rule -a gnvim state=tilled follow=on
+bspc rule -a Emacs state=tiled manage=on
+# Windows are not unfocused when leave them.
+# Kind of workaround:
+# https://github.com/baskerville/bspwm/issues/811#issuecomment-667998646
+bspc rule -a Slack desktop='^3' state=floating_rectangle follow=on
+bspc rule -a megasync state=floating
 bspc rule -a vlc desktop='^4' state=floating_rectangle
 bspc rule -a Chromium desktop='^2'
 bspc rule -a mplayer2 state=floating
 bspc rule -a Kupfer.py focus=on
 bspc rule -a Screenkey manage=off
+

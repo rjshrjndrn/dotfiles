@@ -168,13 +168,14 @@ alias cx='chmod +x'
 alias py='function py(){ touch $1;echo -e "#!/usr/bin/env python3\n" >> $1; };py'
 alias p='python3'
 alias sovp='gps svpn; sudo openvpn --config ~/.cred/sunbird-staging.ovpn --auth-user-pass ~/.cred/ntp/vpn'
-alias ovp="gps svpn; docker run -it --rm -e JENKINS_ADDR=10.20.0.9:8080 --privileged -p 8081:8080 -v ${HOME}/.cred/sunbird-staging.ovpn:/tmp/l.ovpn:ro -v $(pwd)/.cred/ntp/vpn:/tmp/vpn:ro rjshrjndrn/openvpn:latest /bin/sh -c '/tmp/socat.sh; /usr/sbin/openvpn --config /tmp/l.ovpn --auth-user-pass /tmp/vpn --ask-pass' "
+alias ovp="gps svpn; docker run -it --rm -e JENKINS_ADDR=10.20.0.9:8080 --privileged -p 8081:8080 -v ${HOME}/.cred/sunbird-staging.ovpn:/tmp/l.ovpn:ro -v ${HOME}/.cred/ntp/vpn:/tmp/vpn:ro rjshrjndrn/openvpn:latest /bin/sh -c '/tmp/socat.sh; /usr/sbin/openvpn --config /tmp/l.ovpn --auth-user-pass /tmp/vpn --ask-pass' "
 alias sovpd='gps dvpn; sudo openvpn --config ~/.cred/sunbird-dev.ovpn --auth-user-pass ~/.cred/ntp/vpn'
-alias ovpd="gps dvpn; docker run -it --rm -e JENKINS_ADDR=10.20.0.14:443 --privileged -p 443:8080 -v ${HOME}/.cred/sunbird-dev.ovpn:/tmp/l.ovpn:ro -v $(pwd)/.cred/ntp/vpn:/tmp/vpn:ro rjshrjndrn/openvpn:latest /bin/sh -c '/tmp/socat.sh; /usr/sbin/openvpn --config /tmp/l.ovpn --auth-user-pass /tmp/vpn --ask-pass' "
+alias ovpd="gps dvpn; docker run -it --rm -e JENKINS_ADDR=10.20.0.14:443 --privileged -p 443:8080 -v ${HOME}/.cred/sunbird-dev.ovpn:/tmp/l.ovpn:ro -v ${HOME}/.cred/ntp/vpn:/tmp/vpn:ro rjshrjndrn/openvpn:latest /bin/sh -c '/tmp/socat.sh; /usr/sbin/openvpn --config /tmp/l.ovpn --auth-user-pass /tmp/vpn --ask-pass' "
 alias sovpl='gps lvpn; sudo openvpn --config ~/.cred/loadtest.ovpn --auth-user-pass ~/.cred/ntp/vpn'
-alias ovpl="gps lvpn; docker run -it --rm -e JENKINS_ADDR=27.0.0.11:8080 --privileged -p 8082:8080 -v ${HOME}/.cred/loadtest.ovpn:/tmp/l.ovpn:ro -v $(pwd)/.cred/ntp/vpn:/tmp/vpn:ro rjshrjndrn/openvpn:latest /bin/sh -c '/tmp/socat.sh; /usr/sbin/openvpn --config /tmp/l.ovpn --auth-user-pass /tmp/vpn --ask-pass' "
+alias ovpl="gps lvpn; docker run -it --rm -e JENKINS_ADDR=27.0.0.11:8080 --privileged -p 8082:8080 -v ${HOME}/.cred/loadtest.ovpn:/tmp/l.ovpn:ro -v ${HOME}/.cred/ntp/vpn:/tmp/vpn:ro rjshrjndrn/openvpn:latest /bin/sh -c '/tmp/socat.sh; /usr/sbin/openvpn --config /tmp/l.ovpn --auth-user-pass /tmp/vpn --ask-pass' "
 alias vn='nvim -u ~/.essential.vim -N'
 alias vim='/usr/bin/nvim -u ~/.config/nvim/minimal.vim'
+alias gvim='neovide -u ~/.config/nvim/minimal.vim'
 alias sv='cat | vim'
 alias x='xdg-open'
 # alias emacs='emacs --no-window-system'
@@ -194,7 +195,7 @@ alias g='git'
 alias gb='git branch'
 alias gl='git log'
 alias ga='git add'
-alias gs='git status -sb'
+alias gs='git status'
 alias gc='git checkout'
 alias gpl='git pull --rebase'
 alias gplo='git pull --rebase origin heads/$(git rev-parse --abbrev-ref HEAD | rev | cut -d '/' -f1 | rev)'
@@ -208,7 +209,7 @@ alias grs='git rebase --skip'
 alias grb='git rebase'
 alias gst='git stash'
 alias gstp='git stash pop'
-alias glo='git log --graph --pretty=oneline --abbrev-commit'
+# alias glo='git log --graph --pretty=oneline --abbrev-commit'
 alias tf="terraform"
 alias pu="pulumi"
 alias hn='hugo new'
@@ -234,7 +235,7 @@ alias nssh='ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking fals
 alias nscp='scp -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"'
 
 nmosh(){
-    mosh --ssh='ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"' -p 60001 $1
+    mosh --ssh='ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"' -p 60011 $1
 }
 
 jt(){
@@ -368,18 +369,26 @@ ftpane() {
 alias config='/usr/bin/git --git-dir=$HOME/dotfiles/ --work-tree=$HOME'
 # Command to hide all other files
 # config config --local status.showUntrackedFiles no
-export PATH=$PATH:~/.kube/plugins/jordanwilson230
+export PATH=$PATH:${HOME}/.krew/bin
 # for what ever LANG, tmux should show proper glyphs
-export LANG=en_US.UTF-8
+export LANG=en_IN.UTF-8
 # loding custom sources
 if [ -d ~/.config/tweaks ]; then
   for file in ~/.config/tweaks/*; do
     . $file
   done
 fi
-# Starship config
-eval "$(starship init zsh)"
-
 # Vault configs
 export VAULT_ADDR="http://localhost:8200"
 export VAULT_TOKEN="s.tT8SPJfc5Obr8xJUTvCJGiTx"
+
+bindkey -v
+bindkey -M viins '^r' fzf-history-widget # r for reverse history search
+bindkey -M viins '^x^v' fzf-cd-widget # v for jump
+bindkey -M viins '^x^f' fzf-file-widget # f for file
+bindkey -M viins '^t' transpose-chars # t for transpose
+bindkey -M viins '\ec' capitalize-word # c for capitalizae
+
+# Starship config
+eval "$(starship init zsh)"
+

@@ -3,10 +3,14 @@
 #
 
 # Applications
+super + S
+	gnome-screenshot -i
 super + semicolon
 	bash betterlockscreen -l dimblur
 super + f
 	/bin/bash -c "wmctrl -a firefox || firefox"
+super + b
+	/bin/bash -c "wmctrl -a brave || brave"
 super + c
 	/bin/bash -c "wmctrl -a slack || slack"
 # terminal emulator
@@ -14,7 +18,7 @@ super + Return
 	/bin/bash -c "wmctrl -a tmux || kitty"
 # program launcher
 super + @space
-	/bin/bash -c "wmctrl -a tmux || kitty"
+	bspc desktop -f ^1
 
 # program launcher
 super + r
@@ -27,6 +31,10 @@ super + X
 #
 # bspwm hotkeys
 #
+
+# set the window state
+super + {t,shift + t,s,f}
+	bspc node -t {tiled,pseudo_tiled,floating,fullscreen}
 
 # quit/restart bspwm
 super + alt + {q,r}
@@ -81,7 +89,8 @@ super + bracket{left,right}
 	bspc desktop -f {prev,next}.local
 
 # focus the last node/desktop
-super + {grave,Tab}
+# super + {grave,Tab}
+alt + {grave,Tab}
 	bspc {node,desktop} -f last
 
 # focus the older or newer node in the focus history

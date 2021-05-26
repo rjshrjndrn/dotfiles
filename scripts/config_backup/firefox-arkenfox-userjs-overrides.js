@@ -18,9 +18,14 @@ user_pref("privacy.clearOnShutdown.history", false); // 2803
 // user_pref("dom.popup_allowed_events", "change click dblclick auxclick mouseup pointerup notificationclick reset submit touchend contextmenu"); //2212
 
 // Fonts 1400
-
+user_pref("gfx.downloadable_fonts.enabled", true); // [FF41+]
 user_pref("gfx.font_rendering.opentype_svg.enabled", true);
-// user_pref("gfx.font_rendering.graphite.enabled", true);
+user_pref("gfx.font_rendering.graphite.enabled", true);
+
+// Some websites has https issue
+// for example, https://4anime.to fonts.google.com
+// This might cause website to break
+user_pref("network.dns.disableIPv6", false); //1701
 
 // 2010
 user_pref("webgl.disabled", false);

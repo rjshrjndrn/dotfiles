@@ -1,7 +1,8 @@
 {
     "languageserver": {
         "terraform": {
-            "command": "terraform-lsp",
+            "command": "terraform-ls",
+            "args": ["serve"],
             "filetypes": [
                 "terraform",
                 "tf"
@@ -9,6 +10,15 @@
             "initializationOptions": {},
             "settings": {}
         },
+        // "terraform": {
+        //     "command": "terraform-lsp",
+        //     "filetypes": [
+        //         "terraform",
+        //         "tf"
+        //     ],
+        //     "initializationOptions": {},
+        //     "settings": {}
+        // },
         "golang": {
             "command": "gopls",
             "rootPatterns": [
@@ -23,6 +33,12 @@
         }
     },
     // coc-emoji
+    // "coc.source.emoji.filetypes": [
+    //     "null"
+    // ],
+    // "coc.source.emoji.triggerCharacters": [
+    //     "null"
+    // ],
     "coc.source.emoji.filetypes": [
         "vimwiki",
         "markdown"

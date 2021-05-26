@@ -1,6 +1,12 @@
 let g:netrw_dirhistmax  =10
-let g:netrw_dirhistcnt =4
-let g:netrw_dirhist_4='scp://ops@keycloak.centralindia.cloudapp.azure.com//home/ops/k3d/sunbird-devops/3node/helm/sunbird/'
-let g:netrw_dirhist_3='scp://ops@keycloak.centralindia.cloudapp.azure.com//home/ops/k3d/sunbird-devops/3node/helm/'
-let g:netrw_dirhist_2='scp://ops@keycloak.centralindia.cloudapp.azure.com//home/ops/k3d/sunbird-devops/3node/'
-let g:netrw_dirhist_1='scp://ops@keycloak.centralindia.cloudapp.azure.com//home/ops/k3d/sunbird-devops/'
+let g:netrw_dirhistcnt =2
+let g:netrw_dirhist_2='/tmp/cassandra-medusa/packaging/docker-build'
+let g:netrw_dirhist_1='/home/rajesh/Documents/projects/asayer/install/kubernetes/helm'
+let g:netrw_dirhist_0='/home/rajesh/Documents/projects/asayer/parrot-api/README'
+let g:netrw_dirhist_9='/home/rajesh/Documents/projects/ntp-devops/ansible/inventory/loadtest/KnowledgePlatform'
+let g:netrw_dirhist_8='/home/rajesh/Documents/projects/public-devops/kubernetes/helm_charts/monitoring/additional-scrape-configs/templates'
+let g:netrw_dirhist_7='/home/rajesh/Documents/projects/public-devops/kubernetes/helm_charts/monitoring/additional-scrape-configs'
+let g:netrw_dirhist_6='/home/rajesh/Documents/projects/public-devops/pipelines/build/nodebb'
+let g:netrw_dirhist_5='/usr/share/nvim/runtime'
+let g:netrw_dirhist_4='/home/rajesh/Documents/projects/asayer/install/kubernetes/helm/db/init_dbs/postgresql'
+let g:netrw_dirhist_3='/home/rajesh/Documents/projects/asayer/install/kubernetes/helm/db/init_dbs/clickhouse/natives'
