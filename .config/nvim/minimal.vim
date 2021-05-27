@@ -112,12 +112,12 @@ let g:ansible_name_highlight = 'd'
 let g:ansible_extra_keywords_highlight = 1
 let g:ansible_normal_keywords_highlight = 'Constant'
 "}}}
-" Plug 'easymotion/vim-easymotion'
+Plug 'easymotion/vim-easymotion'
 "{{{
 " Easymotion plug
 " Jump to anywhere you want with minimal keystrokes, with just one key binding.
 " `s{char}{label}`
-" nmap <silent> , <Plug>(easymotion-overwin-f2)
+nmap <silent> , <Plug>(easymotion-overwin-f2)
 
 " Replacing hjkl
 " Gif config
@@ -125,13 +125,13 @@ map <silent> <Leader>j <Plug>(easymotion-j)
 map <silent> <Leader>k <Plug>(easymotion-k)
 let g:EasyMotion_startofline = 0 " keep cursor column when JK motion
 "}}}
-Plug 'justinmk/vim-sneak'
+" Plug 'justinmk/vim-sneak'
 "{{{
-let g:sneak#label = 1
-map f <Plug>Sneak_f
-map F <Plug>Sneak_F
-map t <Plug>Sneak_t
-map T <Plug>Sneak_T
+" let g:sneak#label = 1
+" map f <Plug>Sneak_f
+" map F <Plug>Sneak_F
+" map t <Plug>Sneak_t
+" map T <Plug>Sneak_T
 "}}}
 
 Plug 'unblevable/quick-scope'
@@ -151,6 +151,9 @@ set updatetime=600
 "}}}
 " Platform
 Plug 'rjshrjndrn/vim-kubernetes'
+
+" Programming language function overview.
+Plug 'liuchengxu/vista.vim'
 
 " HTML
 Plug 'mattn/emmet-vim'
@@ -197,7 +200,7 @@ let g:gruvbox_italicize_comments = 1
 " {{{
 augroup auto_go
     autocmd!
-    autocmd FileType go set foldmethod=syntax foldlevel=1 foldnestmax=2 
+    autocmd FileType go set foldmethod=syntax foldlevel=1 foldnestmax=2 | nnoremap <leader>v :Vista finder!<CR>
     autocmd BufWritePre *.go :GoDiagnostics
     autocmd BufWritePost *_test.go :GoTest
 augroup end
