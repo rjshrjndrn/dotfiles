@@ -1,4 +1,7 @@
 {
+    "yaml.schemas": {
+        "kubernetes": "/*.yaml"
+    },
     "languageserver": {
         "terraform": {
             "command": "terraform-ls",

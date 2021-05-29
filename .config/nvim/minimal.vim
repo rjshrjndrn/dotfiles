@@ -39,6 +39,7 @@ let @r='ggIIssue #000 fix: '
 " command! -bang -bar -nargs=* Gfetch execute 'Dispatch<bang> -dir=' .
 "       \ fnameescape(FugitiveGitDir()) 'git fetch' <q-args>
 "}}}
+" Plug 'AGhost-7/critiq.vim'
 Plug 'junegunn/gv.vim'
 Plug 'gruvbox-community/gruvbox'
 Plug 'flazz/vim-colorschemes'
@@ -200,7 +201,7 @@ let g:gruvbox_italicize_comments = 1
 " {{{
 augroup auto_go
     autocmd!
-    autocmd FileType go set foldmethod=syntax foldlevel=1 foldnestmax=2 | nnoremap <leader>v :Vista finder!<CR>
+    autocmd FileType go set foldmethod=syntax foldlevel=1 foldnestmax=2
     autocmd BufWritePre *.go :GoDiagnostics
     autocmd BufWritePost *_test.go :GoTest
 augroup end
@@ -270,6 +271,8 @@ endfunction
 
 " Keyboard Mappings
 " {{{
+" Vista function overview
+nnoremap <leader>v :Vista finder!<CR>
 
 nnoremap <silent><leader>w :w<CR>
 " quit
