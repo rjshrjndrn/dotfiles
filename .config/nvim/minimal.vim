@@ -272,7 +272,7 @@ endfunction
 " Keyboard Mappings
 " {{{
 " Vista function overview
-nnoremap <leader>v :Vista finder!<CR>
+nnoremap <leader>v :Vista finder<CR>
 
 nnoremap <silent><leader>w :w<CR>
 " quit

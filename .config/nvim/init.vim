@@ -156,6 +156,9 @@ Plug 'rjshrjndrn/vim-kubernetes'
 " Programming language function overview.
 Plug 'liuchengxu/vista.vim'
 
+" Language grammer check
+" Plug 'vigoux/LanguageTool.nvim'
+
 " HTML
 Plug 'mattn/emmet-vim'
 " Use release branch (recommend)
@@ -272,7 +275,7 @@ endfunction
 " Keyboard Mappings
 " {{{
 " Vista function overview
-nnoremap <leader>v :Vista finder!<CR>
+nnoremap <leader>v :Vista finder<CR>
 
 nnoremap <silent><leader>w :w<CR>
 " quit

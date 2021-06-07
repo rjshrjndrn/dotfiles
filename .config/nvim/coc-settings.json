@@ -1,6 +1,8 @@
 {
+    // "yaml.trace.server": "verbose",
     "yaml.schemas": {
-        "kubernetes": "/*.yaml"
+        "https://json.schemastore.org/github-action.json": "/workflows/*.yaml",
+        "kubernetes": "kubernetes/*.yaml"
     },
     "languageserver": {
         "terraform": {
