@@ -540,7 +540,8 @@ imap <C-j> <Plug>(coc-snippets-expand-jump)
 
 " GUI configs
 " set guifont=FiraCode:h16
-set guifont=FiraCode\ Nerd\ Font:h12
+set guifont=FiraCode\ Nerd\ Font:h14
+set guioptions-=m
 " set guifont=FiraCode\ Nerd\ Font\\:style\\=Medium\\,Regular:h16
 " set guifont=FiraCode\ Nerd\ Font\ Mono\\:style\\=Light\\,Regular:h12
 " set guifont=Source\ Code\ Pro\\,Source\ Code\ Pro\ Semibold:h16

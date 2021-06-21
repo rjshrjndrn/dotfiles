@@ -1,9 +1,14 @@
 {
     // "yaml.trace.server": "verbose",
+    // "pyright.trace.server": "verbose",
+
     "yaml.schemas": {
-        "https://json.schemastore.org/github-action.json": "/workflows/*.yaml",
-        "kubernetes": "kubernetes/*.yaml"
-    },
+            "https://json.schemastore.org/github-action.json": "/workflows/*.yaml",
+            "kubernetes": "kubernetes/*.yaml",
+            "https://json.schemastore.org/ansible-inventory.json": ["inventory/*.yml"],
+            "https://json.schemastore.org/ansible-role-2.9.json": ["ansible/*/tasks/*.yml","tasks/*.yaml", "handlers/*.yml"],
+            // "https://json.schemastore.org/ansible-playbook.json": ["ansible/*.yml"]
+        },
     "languageserver": {
         "terraform": {
             "command": "terraform-ls",

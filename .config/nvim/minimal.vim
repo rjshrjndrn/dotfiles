@@ -106,13 +106,13 @@ let g:vimwiki_ext2syntax = {'.md': 'markdown',
 let g:vimwiki_folding=''
 " map gc<Space> <Plug>VimwikiToggleListItem
 "}}}
-Plug 'pearofducks/ansible-vim', { 'do': 'cd ./UltiSnips; ./generate.py --style dictionary' }
-"{{{
-let g:ansible_attribute_highlight = "ob"
-let g:ansible_name_highlight = 'd'
-let g:ansible_extra_keywords_highlight = 1
-let g:ansible_normal_keywords_highlight = 'Constant'
-"}}}
+" Plug 'pearofducks/ansible-vim', { 'do': 'cd ./UltiSnips; ./generate.py --style dictionary' }
+" "{{{
+" let g:ansible_attribute_highlight = "ob"
+" let g:ansible_name_highlight = 'd'
+" let g:ansible_extra_keywords_highlight = 1
+" let g:ansible_normal_keywords_highlight = 'Constant'
+" "}}}
 Plug 'easymotion/vim-easymotion'
 "{{{
 " Easymotion plug
@@ -225,10 +225,10 @@ augroup auto_yaml
     autocmd!
     autocmd FileType yaml setlocal sw=2 sts=2 et ts=2 | nnoremap <silent> ]r :call FindAnsibleRoleUnderCursor()<CR>
 augroup END
-augroup auto_ansible
-    autocmd!
-    au BufEnter,BufNewFile */ansible/*.y[a]\\\{0,1\}ml setlocal ft=yaml.ansible
-augroup END
+" augroup auto_ansible
+"     autocmd!
+"     au BufEnter,BufNewFile */ansible/*.y[a]\\\{0,1\}ml setlocal ft=yaml.ansible
+" augroup END
 " }}}
 
 " Custom Undo
