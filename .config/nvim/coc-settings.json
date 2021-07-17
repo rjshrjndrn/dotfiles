@@ -2,14 +2,39 @@
     // "yaml.trace.server": "verbose",
     // "pyright.trace.server": "verbose",
 
+    "yaml.customTags": [
+        "!And",
+        "!If",
+        "!Not",
+        "!Equals",
+        "!Or",
+        "!FindInMap sequence",
+        "!Base64",
+        "!Cidr",
+        "!Ref",
+        "!Sub",
+        "!GetAtt",
+        "!GetAZs",
+        "!ImportValue",
+        "!Select",
+        "!Select sequence",
+        "!Split",
+        "!Join sequence"
+    ],
     "yaml.schemas": {
+            // "https://raw.githubusercontent.com/awslabs/goformation/master/schema/cloudformation.schema.json": "*cfn.yaml",
             "https://json.schemastore.org/github-action.json": "/workflows/*.yaml",
             "kubernetes": "kubernetes/*.yaml",
             "https://json.schemastore.org/ansible-inventory.json": ["inventory/*.yml"],
-            "https://json.schemastore.org/ansible-role-2.9.json": ["ansible/*/tasks/*.yml","tasks/*.yaml", "handlers/*.yml"],
+            "https://json.schemastore.org/ansible-role-2.9.json": ["ansible/*/tasks/*.yml","tasks/*.yaml", "handlers/*.yml"]
             // "https://json.schemastore.org/ansible-playbook.json": ["ansible/*.yml"]
         },
     "languageserver": {
+      "bash": {
+        "command": "bash-language-server",
+        "args": ["start"],
+        "filetypes": ["sh"]
+      },
         "terraform": {
             "command": "terraform-ls",
             "args": ["serve"],

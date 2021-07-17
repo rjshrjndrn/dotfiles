@@ -42,6 +42,7 @@ let @r='ggIIssue #000 fix: '
 " Plug 'AGhost-7/critiq.vim'
 Plug 'junegunn/gv.vim'
 Plug 'gruvbox-community/gruvbox'
+Plug 'arcticicestudio/nord-vim'
 Plug 'flazz/vim-colorschemes'
 " Plug 'TaDaa/vimade'
 Plug 'tmux-plugins/vim-tmux-focus-events'
@@ -93,6 +94,9 @@ xmap ga <Plug>(EasyAlign)
 " Start interactive EasyAlign for a motion/text object (e.g. gaip)
 nmap ga <Plug>(EasyAlign)
 "}}}
+" Select indent object
+Plug 'michaeljsmith/vim-indent-object'
+
 Plug 'iamcco/markdown-preview.nvim', { 'do': { -> mkdp#util#install() }, 'for': ['markdown', 'vim-plug']}
 Plug 'vimwiki/vimwiki'
 "{{{
@@ -183,18 +187,34 @@ let g:coc_global_extensions = [
 " To see all color schemes
 " help: https://vim.fandom.com/wiki/Switch_color_schemes
 " Plug 'felixhummel/setcolors.vim'
+" 
+" Syntax highlight
+Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
+Plug 'nvim-treesitter/playground'
 call plug#end()
 
 " Themes
 " {{{
 " colorscheme solarized8_flat
 " colorscheme molokai
-colorscheme gruvbox
-let g:airline_theme='distinguished'
-" colorscheme nord
-" set background=dark
-let g:gruvbox_contrast_dark = 'medium'
-let g:gruvbox_italicize_comments = 1
+"
+" colorscheme gruvbox
+" let g:airline_theme='distinguished'
+" let g:gruvbox_contrast_dark = 'medium'
+" let g:gruvbox_italicize_comments = 1
+"
+colorscheme nord
+set background=dark
+let g:airline_theme='nord_minimal'
+let g:nord_uniform_diff_background = 1
+let g:nord_bold = 0
+let g:nord_italic = 1
+let g:nord_italic_comments = 1
+augroup nord-theme-overrides
+  autocmd!
+  " Use 'nord7' as foreground color for Vim comment titles.
+  autocmd ColorScheme nord highlight vimCommentTitle ctermfg=14 guifg=#8FBCBB
+augroup END
 " }}}
 
 " AuGroup Commands

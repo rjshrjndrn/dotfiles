@@ -279,6 +279,8 @@ alias kc='kubectl create'
 alias h3='helm'
 alias civo="docker run -it --rm -v ${HOME}/.cred/civo/civo.json:/.civo.json civo/cli:latest"
 
+alias xc='xclip -sel clip'
+
 function uf() {
     url=$(echo $1 | rev | cut -d'/' -f 1 | rev)
     echo " curl --upload-file $url https://transfer.sh/$url -H 'Max-Downloads: 1' "
