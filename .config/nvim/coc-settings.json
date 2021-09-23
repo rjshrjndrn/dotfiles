@@ -88,6 +88,8 @@
         "go"
     ],
     "tabnine.priority": 50,
+    // "tabnine.priority": 1000,
+    
     // Snippets
     "snippets.ultisnips.enable": true,
     "snippets.ultisnips.directories": [

@@ -144,7 +144,11 @@ function k3g() {
 function pr() {
     opts=$1
     branch=${2:-$(git rev-parse --abbrev-ref HEAD | cut -d ':' -f2 | cut -d '/' -f2)}
-    upstream=${3:-$(git config --get remote.origin.url | awk -F: '{print $NF}' |awk -F/ '{print $(NF-2)}'|cut -d '.' -f1)}
+    # upstream=${3:-$(git config --get remote.origin.url | awk -F: '{print $NF}' |awk -F/ '{print $(NF-2)}'|cut -d '.' -f1)}
+    upstream_tmp=${3:-$(git config --get remote.origin.url | awk -F: '{print $NF}' |awk -F/ '{print $(NF-2)}')}
+    # Removing the .git part from repos
+    # Ref: https://stackoverflow.com/questions/27658675/how-to-remove-last-n-characters-from-a-string-in-bash
+    upstream=${upstream_tmp%.git}
     echo hub pull-request -b $upstream:$branch -h ${branch} -f $opts
     hub pull-request -b $upstream:$branch -h $(git rev-parse --abbrev-ref HEAD | cut -d ':' -f2 | cut -d '/' -f2) -f $opts
 }
@@ -393,4 +397,23 @@ bindkey -M viins '\ec' capitalize-word # c for capitalizae
 
 # Starship config
 eval "$(starship init zsh)"
+
+###-begin-cfpack-completions-###
+#
+# yargs command completion script
+#
+# Installation: cfpack completion >> ~/.zshrc
+#    or cfpack completion >> ~/.zsh_profile on OSX.
+#
+_cfpack_yargs_completions()
+{
+  local reply
+  local si=$IFS
+  IFS=$'
+' reply=($(COMP_CWORD="$((CURRENT-1))" COMP_LINE="$BUFFER" COMP_POINT="$CURSOR" cfpack --get-yargs-completions "${words[@]}"))
+  IFS=$si
+  _describe 'values' reply
+}
+compdef _cfpack_yargs_completions cfpack
+###-end-cfpack-completions-###
 

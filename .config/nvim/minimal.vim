@@ -20,7 +20,7 @@ Plug 'tpope/vim-fugitive'
 "fugitive vim
 "{{{
 nnoremap gw :Gwrite<Enter>
-nnoremap gs :Gstatus<Enter>
+nnoremap gs :Git<Enter>
 nnoremap gc :Git commit --gpg-sign -s <Enter>
 nnoremap gp :Dispatch! git push
 nnoremap gpf :Dispatch! push --force
