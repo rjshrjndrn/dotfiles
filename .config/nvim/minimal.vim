@@ -380,6 +380,7 @@ if has('nvim') && exists('&winblend') && &termguicolors
   let g:fzf_layout = { 'window': 'call FloatingFZF()' }
 endif
 
+command! JsonPretty :%!python -m json.tool
 " hack to commit the dotfiles
 command! ConfigAdd !/usr/bin/git --git-dir=$HOME/dotfiles/ --work-tree=$HOME add %
 command! ConfigCommit !/usr/bin/git --git-dir=$HOME/dotfiles/ --work-tree=$HOME commit -m "
