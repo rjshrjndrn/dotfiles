@@ -108,6 +108,7 @@ let g:vimwiki_ext2syntax = {'.md': 'markdown',
                   \ '.mkd': 'markdown',
                   \ '.wiki': 'media'}
 let g:vimwiki_folding=''
+let g:vimwiki_listsyms = ' ○◐●✓'
 " map gc<Space> <Plug>VimwikiToggleListItem
 "}}}
 " Plug 'pearofducks/ansible-vim', { 'do': 'cd ./UltiSnips; ./generate.py --style dictionary' }
@@ -183,6 +184,9 @@ let g:coc_global_extensions = [
             " \'coc-tsserver',
             " \'coc-tslint',
 " }}}
+
+" Terraform
+Plug 'hashivim/vim-terraform'
 
 " To see all color schemes
 " help: https://vim.fandom.com/wiki/Switch_color_schemes

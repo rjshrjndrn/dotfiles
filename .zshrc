@@ -325,6 +325,7 @@ source <(stern --completion=zsh)
 source <(helm completion zsh)
 source <(linkerd completion zsh)
 source <(k3d completion zsh)
+source <(eksctl completion zsh)
 # [[ $(xmodmap -pk | grep Caps | awk '{ print $1 }') -ne 9 ]] && setxkbmap -option caps:escape
 
 ##### Tmux functions #####
