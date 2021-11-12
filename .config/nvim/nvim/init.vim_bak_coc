@@ -1,0 +1,213 @@
+set encoding=utf-8
+let mapleader = ' '
+set bs=eol,start,indent
+set ic is scs sw=4 ts=4 et termguicolors hidden nu splitbelow splitright mouse=a diffopt+=vertical laststatus=0 cursorline foldlevelstart=1
+call plug#begin('~/.vim/bundle')
+Plug 'gruvbox-community/gruvbox'
+
+Plug 'scrooloose/nerdtree', { 'on': ['NERDTreeFind', 'NERDTreeToggle'] }
+"{{{
+"NERDTreefind
+nnoremap <silent> ff :NERDTreeFind <Enter>
+"NERDTree toggle
+nnoremap <silent> <C-n> :NERDTreeToggle<CR>
+"}}}
+Plug 'gruvbox-community/gruvbox'
+" Fading inactive window
+" Plug 'TaDaa/vimade'
+" "{{{
+" " Support for tmux
+" au! FocusLost * VimadeFadeActive
+" au! FocusGained * VimadeUnfadeActive
+" "}}}
+Plug 'tpope/vim-surround'
+Plug 'tpope/vim-repeat'
+Plug 'tpope/vim-fugitive'
+"{{{
+"fugitive vim
+nnoremap gw :Gwrite<Enter>
+nnoremap gs :Gstatus<Enter>
+nnoremap gc :Gcommit -s <Enter>
+nnoremap gp :Gpush
+nnoremap gpf :Gpush --force
+nnoremap gca :Gcommit --amend
+nnoremap gpl :Gpull --rebase
+" Commenting for fugitive commit session
+" will take branch name as #Issue-number
+let @w='5G$vByggIIssue #000 feat: <CR><CR><ESC>pggA'
+let @e='ggIIssue #000 feat: '
+let @r='ggIIssue #000 fix: '
+"}}}
+Plug 'tpope/vim-rhubarb'
+Plug 'junegunn/fzf'
+Plug 'junegunn/fzf.vim'
+
+
+
+" Coc.nvim
+Plug 'neoclide/coc.nvim', {'tag': '*', 'do': { -> coc#util#install()}}
+call plug#end()
+
+" coc settings
+"{{{
+
+let g:coc_global_extensions = [  'coc-json', 'coc-pyls', 'coc-yaml', 'coc-go' ]
+
+" Use tab for trigger completion with characters ahead and navigate.
+" NOTE: Use command ':verbose imap <tab>' to make sure tab is not mapped by
+" other plugin before putting this into your config.
+inoremap <silent><expr> <TAB>
+      \ pumvisible() ? "\<C-n>" :
+      \ <SID>check_back_space() ? "\<TAB>" :
+      \ coc#refresh()
+inoremap <expr><S-TAB> pumvisible() ? "\<C-p>" : "\<C-h>"
+
+function! s:check_back_space() abort
+  let col = col('.') - 1
+  return !col || getline('.')[col - 1]  =~# '\s'
+endfunction
+
+" Use <c-space> to trigger completion.
+inoremap <silent><expr> <c-space> coc#refresh()
+
+" Better display for messages
+set cmdheight=2
+" Smaller updatetime for CursorHold & CursorHoldI
+set updatetime=300
+" don't give |ins-completion-menu| messages.
+set shortmess+=c
+" always show signcolumns
+set signcolumn=yes
+
+" Use `[g` and `]g` to navigate diagnostics
+nmap <silent> [g <Plug>(coc-diagnostic-prev)
+nmap <silent> ]g <Plug>(coc-diagnostic-next)
+
+" GoTo code navigation.
+nmap <silent> gd <Plug>(coc-definition)
+nmap <silent> gy <Plug>(coc-type-definition)
+nmap <silent> gi <Plug>(coc-implementation)
+nmap <silent> gr <Plug>(coc-references)
+
+" Symbol renaming.
+nmap <leader>rn <Plug>(coc-rename)
+
+" Use K for show documentation in preview window
+nnoremap <silent> K :call <SID>show_documentation()<CR>
+
+function! s:show_documentation()
+  if &filetype == 'vim'
+    execute 'h '.expand('<cword>')
+  else
+    call CocAction('doHover')
+  endif
+endfunction
+
+" Highlight symbol under cursor on CursorHold
+autocmd CursorHold * silent call CocActionAsync('highlight')
+
+let g:coc_filetype_map = {
+\ 'yaml.ansible': 'yaml',
+\ }
+
+"}}}
+colorscheme gruvbox
+
+
+" Keyboard Mappings
+" {{{
+" Quit
+nnoremap <leader>w :w<Enter>
+nnoremap <leader>q :q<Enter>
+nnoremap <leader>Q :qa<Enter>
+nnoremap <leader>wq :wq<Enter>
+nnoremap <leader>wQ :wqa!<Enter>
+
+" Folding
+" au BufNewFile,BufRead *.py,*.go set foldmethod=indent
+vnoremap <silent> <space> :fold<CR>
+nnoremap <silent> <space> za<CR>
+
+
+" visual select
+vnoremap // "zy/<C-R>z<CR>
+vnoremap /b "zy:Back! <C-R>z<CR>
+vnoremap /B "zy:Back! -w <C-R>z<CR>
+
+" Copying to system clipboard
+vnoremap Y "+y
+nnoremap <C-p> :<C-u>Files<cr>
+
+" Switch windows
+nnoremap <c-j> <c-w>j
+nnoremap <c-k> <c-w>k
+nnoremap <c-h> <c-w>h
+nnoremap <c-l> <c-w>l
+if has('nvim')
+    " Escape mode
+    tnoremap <C-b><C-b> <C-\><C-n>
+    " shell jumping
+    tnoremap <c-h> <c-\><c-n><c-w>h
+    tnoremap <c-j> <c-\><c-n><c-w>j
+    tnoremap <c-k> <c-\><c-n><c-w>k
+    tnoremap <c-l> <c-\><c-n><c-w>l
+endif
+
+"Undo map
+nnoremap <silent> U :UndotreeToggle<CR>:UndotreeFocus<CR>
+
+" Command mode history
+cmap <M-h> <left>
+cmap <M-l> <right>
+cmap <M-k> <up>
+cmap <M-j> <down>
+" tabbing to complete popups
+inoremap <silent><expr><tab> pumvisible() ? "\<c-n>" : "\<tab>"
+inoremap <silent><expr><s-tab> pumvisible() ? "\<c-p>" : "\<s-tab>"
+
+" search through buffers using fzf
+nnoremap <silent><leader>b :Buffers<CR>
+" search through files in current dir using fzf
+nnoremap <silent><leader>f :Files<CR>
+" search through history using fzf
+nnoremap <silent><leader>h :History<CR>
+"}}}
+
+
+" Popup window for fzf
+" Terminal buffer options for fzf
+" {{{
+autocmd! FileType fzf
+autocmd  FileType fzf set noshowmode noruler nonu
+
+if has('nvim') && exists('&winblend') && &termguicolors
+  set winblend=20
+
+  hi NormalFloat guibg=None
+  if exists('g:fzf_colors.bg')
+    call remove(g:fzf_colors, 'bg')
+  endif
+
+  if stridx($FZF_DEFAULT_OPTS, '--border') == -1
+    let $FZF_DEFAULT_OPTS .= ' --border'
+  endif
+
+  function! FloatingFZF()
+    let width = float2nr(&columns * 0.8)
+    let height = float2nr(&lines * 0.6)
+    let opts = { 'relative': 'editor',
+               \ 'row': (&lines - height) / 2,
+               \ 'col': (&columns - width) / 2,
+               \ 'width': width,
+               \ 'height': height }
+
+    call nvim_open_win(nvim_create_buf(v:false, v:true), v:true, opts)
+  endfunction
+
+  let g:fzf_layout = { 'window': 'call FloatingFZF()' }
+endif
+
+command! -bang -nargs=? -complete=dir Files
+        \ call fzf#vim#files(<q-args>, fzf#vim#with_preview({'options': ['--layout=reverse', '--info=inline']}), <bang>0)
+
+"}}}

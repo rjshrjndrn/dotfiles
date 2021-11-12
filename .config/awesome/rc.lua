@@ -272,10 +272,18 @@ awful.keyboard.append_global_keybindings({
         awful.util.spawn("rofi -combi-modi window,drun -show combi -modi combi")
     end,
               {description = "run prompt", group = "launcher"}),
+
     awful.key({ modkey },            "f",     function ()
         awful.util.spawn('/bin/bash -c "wmctrl -a firefox || firefox"')
     end,
               {description = "run firefox", group = "myapps", class = "firefox"}),
+
+    awful.key({ modkey },            "v",     function ()
+        awful.util.spawn('/bin/bash -c "wmctrl -a signal || signal-desktop-beta "')
+    end,
+              {description = "run signal", group = "myapps", class = "signal"}),
+
+
     awful.key({ modkey },            "c",     function ()
         awful.util.spawn('/bin/bash -c "wmctrl -a slack || slack"')
     end,
@@ -603,6 +611,10 @@ ruled.client.connect_signal("request::rules", function()
     ruled.client.append_rule {
         rule       = { class = "Slack"     },
         properties = { tag = "3" }
+    }
+    ruled.client.append_rule {
+        rule       = { class = "Signal Beta"     },
+        properties = { tag = "6" }
     }
 end)
 
