@@ -283,6 +283,11 @@ awful.keyboard.append_global_keybindings({
     end,
               {description = "run signal", group = "myapps", class = "signal"}),
 
+    awful.key({ modkey },            "b",     function ()
+        awful.util.spawn('/bin/bash -c "wmctrl -a brave || brave "')
+    end,
+              {description = "run brave", group = "myapps", class = "brave"}),
+
 
     awful.key({ modkey },            "c",     function ()
         awful.util.spawn('/bin/bash -c "wmctrl -a slack || slack"')
@@ -615,6 +620,10 @@ ruled.client.connect_signal("request::rules", function()
     ruled.client.append_rule {
         rule       = { class = "Signal Beta"     },
         properties = { tag = "6" }
+    }
+    ruled.client.append_rule {
+        rule       = { class = "Brave-browser"     },
+        properties = { tag = "4" }
     }
 end)
 

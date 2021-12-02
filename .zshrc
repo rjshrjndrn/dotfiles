@@ -153,6 +153,10 @@ function pr() {
     hub pull-request -b $upstream:$branch -h $(git rev-parse --abbrev-ref HEAD | cut -d ':' -f2 | cut -d '/' -f2) -f $opts
 }
 
+function sendfile(){
+    curl -F "file=@${1}" https://file.io | jq ".link"
+}
+
 csh (){
     curl cheat.sh/$1
 }
