@@ -30,11 +30,11 @@
             "kubernetes": "kubernetes/*.yaml"
         },
     "languageserver": {
-      "bash": {
-        "command": "bash-language-server",
-        "args": ["start"],
-        "filetypes": ["sh"]
-      },
+      // "bash": {
+      //   "command": "bash-language-server",
+      //   "args": ["start"],
+      //   "filetypes": ["sh"]
+      // },
         "terraform": {
             "command": "terraform-ls",
             "args": ["serve"],

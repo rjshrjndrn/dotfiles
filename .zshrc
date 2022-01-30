@@ -183,6 +183,7 @@ alias sovpl='gps lvpn; sudo openvpn --config ~/.cred/loadtest.ovpn --auth-user-p
 alias ovpl="gps lvpn; docker run -it --rm -e JENKINS_ADDR=27.0.0.11:8080 --privileged -p 8082:8080 -v ${HOME}/.cred/loadtest.ovpn:/tmp/l.ovpn:ro -v ${HOME}/.cred/ntp/vpn:/tmp/vpn:ro rjshrjndrn/openvpn:latest /bin/sh -c '/tmp/socat.sh; /usr/sbin/openvpn --config /tmp/l.ovpn --auth-user-pass /tmp/vpn --ask-pass' "
 alias vn='nvim -u ~/.essential.vim -N'
 alias vim='/usr/bin/nvim -u ~/.config/nvim/minimal.vim'
+alias scratch='/usr/bin/nvim -u ~/.config/nvim/minimal.vim -c Scratch'
 alias gvim='neovide -u ~/.config/nvim/minimal.vim'
 alias sv='cat | vim'
 alias x='xdg-open'
@@ -243,7 +244,7 @@ alias nssh='ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking fals
 alias nscp='scp -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"'
 
 nmosh(){
-    mosh --ssh='ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"' -p 60011 $1
+    mosh --ssh='ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"' -p 60001 $1
 }
 
 jt(){

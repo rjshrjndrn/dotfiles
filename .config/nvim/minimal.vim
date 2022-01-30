@@ -21,10 +21,12 @@ Plug 'tpope/vim-fugitive'
 "{{{
 nnoremap gw :Gwrite<Enter>
 nnoremap gs :Git<Enter>
-nnoremap gc :Git commit --gpg-sign -s <Enter>
+" nnoremap gc :Git commit --gpg-sign -s <Enter>
+nnoremap gc :Git commit -s <Enter>
 nnoremap gp :Dispatch! git push
 nnoremap gpf :Dispatch! push --force
-nnoremap gca :Git commit --gpg-sign -S --amend
+" nnoremap gca :Git commit --gpg-sign -S --amend
+nnoremap gca :Git commit -s --amend
 nnoremap gpl :Dispatch git pull --rebase
 " Commenting for fugitive commit session
 " will take branch name as #Issue-number
@@ -162,7 +164,7 @@ Plug 'rjshrjndrn/vim-kubernetes'
 Plug 'liuchengxu/vista.vim'
 
 " HTML
-Plug 'mattn/emmet-vim'
+Plug 'mattn/emmet-vim', {'for': 'html'}
 " Use release branch (recommend)
 Plug 'neoclide/coc.nvim', {'branch': 'release'}
 " Autocompletion engine
@@ -193,9 +195,22 @@ Plug 'hashivim/vim-terraform'
 " Plug 'felixhummel/setcolors.vim'
 " 
 " Syntax highlight
-Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
+Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}  " We recommend updating the parsers on update
 Plug 'nvim-treesitter/playground'
+
+" Telescope
+Plug 'nvim-lua/plenary.nvim'
+Plug 'nvim-telescope/telescope.nvim'
+
+Plug 'voldikss/vim-floaterm'
+" :help key-notation for key-notations
+" Alt is <M
+let g:floaterm_keymap_toggle = '<M-t>'
+
+"}}}
 call plug#end()
+
+lua require('plugins')
 
 " Themes
 " {{{
@@ -219,7 +234,7 @@ augroup nord-theme-overrides
   " Use 'nord7' as foreground color for Vim comment titles.
   autocmd ColorScheme nord highlight vimCommentTitle ctermfg=14 guifg=#8FBCBB
 augroup END
-" }}}
+"}}}
 
 " AuGroup Commands
 " {{{
@@ -566,3 +581,8 @@ set guifont=FiraCode\ Nerd\ Font:h12
 " set guifont=FiraCode\ Nerd\ Font\\:style\\=Medium\\,Regular:h16
 " set guifont=FiraCode\ Nerd\ Font\ Mono\\:style\\=Light\\,Regular:h12
 " set guifont=Source\ Code\ Pro\\,Source\ Code\ Pro\ Semibold:h16
+ 
+ 
+" Lua code
+command! Scratch lua require'tools'.makeScratch()
+lua require'keybindings'.sane_mappings()
