@@ -33,6 +33,7 @@ nix-env -iA \
 stow tmux
 stow zsh
 stow kitty
+stow nvim
 
 # Install tmux plugin
 git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
