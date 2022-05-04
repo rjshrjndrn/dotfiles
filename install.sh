@@ -9,6 +9,7 @@ nix-env -iA \
         nixpkgs.zsh \
         nixpkgs.git \
         nixpkgs.hub \
+        nixpkgs.aria \
         nixpkgs.tree \
         nixpkgs.neovim \
         nixpkgs.kitty \
