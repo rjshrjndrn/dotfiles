@@ -7,6 +7,15 @@
 . ~/.nix-profile/etc/profile.d/nix.sh
 
 # Installing nix packages
+nix-env -iA nixpkgs.stow
+
+# stow dotfiles
+configs=(tmux zsh kitty nvim starship nix)
+for config in ${configs[*]};do
+    stow $config
+done
+
+# Installing nix packages
 nix-env -iA nixpkgs.myPackages
 
 # Install tmux plugin
@@ -24,12 +33,6 @@ sudo chsh -s $(which zsh) $USER
 git clone https://github.com/ohmyzsh/ohmyzsh ~/.oh-my-zsh
 # Install zsh-autosuggestions plugin
 git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
-
-# stow dotfiles
-configs=(tmux zsh kitty nvim starship nix)
-for config in ${configs[*]};do
-    stow $config
-done
 
 # Installing vim-plug
 sh -c 'curl -fLo "${XDG_DATA_HOME:-$HOME/.local/share}"/nvim/site/autoload/plug.vim --create-dirs \
