@@ -7,6 +7,8 @@
         nox
         zsh
         git
+        curl
+        stow
         hub
         kube3d
         eksctl

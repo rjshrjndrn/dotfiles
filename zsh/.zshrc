@@ -1,7 +1,6 @@
 if [ -e ~/.nix-profile/etc/profile.d/nix.sh ]; then . ~/.nix-profile/etc/profile.d/nix.sh; fi # added by Nix installer
 
-autoload -Uz compinit
-compinit
+export ZSH="${HOME}/.oh-my-zsh"
 
 HISTFILE=~/.histfile
 HISTSIZE=10000
@@ -9,8 +8,23 @@ SAVEHIST=10000
 setopt appendhistory
 setopt completealiases
 
+plugins=(
+    vi-mode
+    history
+    history-substring-search
+    z
+    zsh-autosuggestions
+    # forgit
+    terraform
+    # pulumi
+    lxd
+    fzf
+    # zsh-syntax-highlighting
+    )
+
+source $ZSH/oh-my-zsh.sh
+
 source ~/aliases
-source ~/.antigen_plugins.sh
 source ~/.completions.sh
 
 eval "$(starship init zsh)"
