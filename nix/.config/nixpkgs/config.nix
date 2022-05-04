@@ -11,6 +11,7 @@
         antibody
         aria
         tree
+        curlie
         neovim
         kitty
         tmux
