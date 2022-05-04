@@ -14,7 +14,7 @@
         neovim
         kitty
         tmux
-        nixUnstable
+        # nixUnstable
         fzf
         ripgrep
         bat
