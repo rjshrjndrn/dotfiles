@@ -1,5 +1,7 @@
 # install nix
-curl -L https://nixos.org/nix/install | sh
+[[ -x "$(command -v nix-env)" ]] || {
+    curl -L https://nixos.org/nix/install | sh
+}
 
 # source nix
 . ~/.nix-profile/etc/profile.d/nix.sh
