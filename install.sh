@@ -22,6 +22,7 @@ nix-env -iA \
         nixpkgs.gcc \
         nixpkgs.k9s \
         nixpkgs.stern \
+        nixpkgs.kubernetes-helm \
         nixpkgs.kubectl
 
 # stow dotfiles
