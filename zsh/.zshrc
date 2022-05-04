@@ -8,6 +8,6 @@ autoload -Uz compinit
 compinit
 
 source ~/aliases
-source ~/.zsh_plugins.sh
+source ~/.antigen_plugins.sh
 
 eval "$(starship init zsh)"
