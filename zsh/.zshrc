@@ -8,5 +8,6 @@ setopt completealiases
 
 source ~/aliases
 source ~/.antigen_plugins.sh
+source ~/.completions.sh
 
 eval "$(starship init zsh)"
