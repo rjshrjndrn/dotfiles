@@ -1,0 +1,24 @@
+add_newline = false
+
+[kubernetes]
+symbol = "⛵ "
+style = "dim yellow"
+disabled = false
+
+[aws]
+disabled = true
+
+[git_branch]
+symbol = "🌱 "
+
+[git_status]
+conflicted = "🎏"
+ahead = "🏎💨"
+behind = "😰"
+diverged = "😵"
+untracked = "🤷‍"
+stashed = "📦"
+modified = "📝"
+staged = '[++\($count\)](green)'
+renamed = "👅"
+deleted = "🗑" 

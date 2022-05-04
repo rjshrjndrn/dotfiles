@@ -30,10 +30,10 @@ nix-env -iA \
         nixpkgs.kubectl
 
 # stow dotfiles
-stow tmux
-stow zsh
-stow kitty
-stow nvim
+configs=(tmux zsh kitty nvim starship)
+for config in ${configs[*]};do
+    stow $config
+done
 
 # Install tmux plugin
 git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
