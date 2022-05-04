@@ -8,6 +8,8 @@
         zsh
         git
         hub
+        kube3d
+        eksctl
         antibody
         aria
         tree
