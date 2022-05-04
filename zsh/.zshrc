@@ -1,5 +1,8 @@
 if [ -e ~/.nix-profile/etc/profile.d/nix.sh ]; then . ~/.nix-profile/etc/profile.d/nix.sh; fi # added by Nix installer
 
+autoload -Uz compinit
+compinit
+
 HISTFILE=~/.histfile
 HISTSIZE=10000
 SAVEHIST=10000
