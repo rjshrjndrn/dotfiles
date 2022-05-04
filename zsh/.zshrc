@@ -4,8 +4,7 @@ HISTFILE=~/.histfile
 HISTSIZE=10000
 SAVEHIST=10000
 setopt appendhistory
-autoload -Uz compinit
-compinit
+setopt completealiases
 
 source ~/aliases
 source ~/.antigen_plugins.sh
