@@ -83,6 +83,12 @@ alias ga='git add'
 alias gs='git status'
 alias gc='git checkout'
 alias gpl='git pull --rebase'
+function gclh() {
+    git clone https://github.com/$@
+}
+function gcls() {
+    git clone git@github.com:$@
+}
 function getRemoteBranch() {
     git status -sb 2> /dev/null | cut -d '/' -f2 
 }
