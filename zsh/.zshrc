@@ -1,6 +1,11 @@
 if [ -e ~/.nix-profile/etc/profile.d/nix.sh ]; then . ~/.nix-profile/etc/profile.d/nix.sh; fi # added by Nix installer
 export ZSH="$HOME/.oh-my-zsh"
 
+HISTFILE=~/.histfile
+HISTSIZE=10000
+SAVEHIST=10000
+setopt appendhistory
+
 plugins=(
     git
     vi-mode
