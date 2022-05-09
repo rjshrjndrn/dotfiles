@@ -10,6 +10,8 @@
         curl
         hub
         kube3d
+        unixtools.netstat
+        jq
         eksctl
         antibody
         aria
