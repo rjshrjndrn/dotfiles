@@ -1,5 +1,5 @@
-#!/bin/sh
+#!/bin/bash
 git clone https://github.com/rjshrjndrn/dotfiles $IN_ARGS
 cd dotfiles
-sh install.sh
+bash install.sh
 
