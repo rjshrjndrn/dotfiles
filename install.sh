@@ -12,7 +12,7 @@ nix-env -iA nixpkgs.stow
 # stow dotfiles
 configs=(tmux zsh kitty nvim starship nix)
 for config in ${configs[*]};do
-    stow $config
+    stow $config -t ~/
 done
 
 # Installing nix packages
