@@ -26,6 +26,7 @@ source $ZSH/oh-my-zsh.sh
 source ~/aliases
 source ~/.completions.sh
 source ~/.key_bindings.sh
+source ~/.exports.sh
 eval "$(starship init zsh)"
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
