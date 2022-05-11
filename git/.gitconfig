@@ -1,0 +1,7 @@
+[user]
+	name = rjshrjndrn
+	email = rjshrjndrn@gmail.com
+[rebase]
+	autoStash = true
+[init]
+	defaultBranch = main
