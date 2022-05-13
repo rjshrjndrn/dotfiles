@@ -31,6 +31,8 @@
         stern
         kubernetes-helm
         kubectl
+        aws-iam-authenticator
+        xclip
       ];
       pathsToLink = [ "/share/man" "/share/doc" "/bin" ];
       extraOutputsToInstall = [ "man" "doc" ];
