@@ -5,7 +5,9 @@ HISTFILE=~/.histfile
 HISTSIZE=10000
 SAVEHIST=10000
 setopt appendhistory
-setopt completealiases
+# Fix alias completion
+# Ref: https://unix.stackexchange.com/questions/335145/using-zsh-autocompletion-for-alias
+unsetopt completealiases
 
 plugins=(
     git
