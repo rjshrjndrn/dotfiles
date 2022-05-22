@@ -36,6 +36,8 @@
         # Encryption tool
         # Ref: https://github.com/FiloSottile/age
         age
+        # Ref: https://github.com/mozilla/sops#encrypting-using-age
+        sops
       ];
       pathsToLink = [ "/share/man" "/share/doc" "/bin" ];
       extraOutputsToInstall = [ "man" "doc" ];
