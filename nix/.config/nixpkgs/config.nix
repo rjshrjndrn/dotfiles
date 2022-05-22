@@ -17,8 +17,8 @@
         aria
         tree
         curlie
-        neovim
-        kitty
+        # neovim
+        # kitty
         tmux
         # nixUnstable
         fzf
@@ -33,6 +33,9 @@
         kubectl
         aws-iam-authenticator
         xclip
+        # Encryption tool
+        # Ref: https://github.com/FiloSottile/age
+        age
       ];
       pathsToLink = [ "/share/man" "/share/doc" "/bin" ];
       extraOutputsToInstall = [ "man" "doc" ];
