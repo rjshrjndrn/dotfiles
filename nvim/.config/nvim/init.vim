@@ -22,6 +22,13 @@ Plug 'gruvbox-community/gruvbox'
 Plug 'tmux-plugins/vim-tmux-focus-events'
 Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
+Plug 'scrooloose/nerdtree', { 'on': ['NERDTreeFind', 'NERDTreeToggle'] }
+"{{{
+"NERDTreefind
+nnoremap <silent> ff :NERDTreeFind <Enter>
+"NERDTree toggle
+nnoremap <silent> <C-n> :NERDTreeToggle<CR>
+"}}}
 Plug 'scrooloose/nerdcommenter'
 "{{{
 " Add spaces after comment delimiters by default
