@@ -12,6 +12,7 @@
         kube3d
         unixtools.netstat
         jq
+        silver-searcher
         eksctl
         antibody
         aria
