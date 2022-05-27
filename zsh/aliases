@@ -170,6 +170,8 @@ alias kn='kubens'
 alias knc='kubens -c'
 alias kc='kubectl create'
 alias curl=curlie
+alias cat="bat"
+alias less="bat --paging=always"
 
 alias hi='helm upgrade --install'
 alias civo="docker run -it --rm -v ${HOME}/.cred/civo/civo.json:/.civo.json civo/cli:latest"
