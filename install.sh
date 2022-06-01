@@ -30,7 +30,9 @@ nix-env -iA nixpkgs.myPackages
 sudo chsh -s $(which zsh) $USER
 
 # Installing ohmyzsh
-git clone https://github.com/ohmyzsh/ohmyzsh ~/.oh-my-zsh
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended --skip-chsh --keep-zshrc
+source ~/.zshrc
+
 # Install zsh-autosuggestions plugin
 git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
 
