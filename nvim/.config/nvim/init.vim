@@ -16,6 +16,33 @@ Plug 'junegunn/fzf.vim'
 Plug 'tpope/vim-unimpaired'
 Plug 'tpope/vim-surround'
 Plug 'tpope/vim-repeat'
+Plug 'tpope/vim-fugitive'
+"fugitive vim
+"{{{
+nnoremap gw :Gwrite<Enter>
+nnoremap gs :Git<Enter>
+" nnoremap gc :Git commit --gpg-sign -s <Enter>
+nnoremap gc :Git commit -s <Enter>
+nnoremap gp :lcd %:h \| Dispatch git push
+nnoremap gpf :lcd %:h \| Dispatch git push --force
+" nnoremap gca :Git commit --gpg-sign -S --amend
+nnoremap gca :Git commit -s --amend
+nnoremap gpl :Dispatch git pull --rebase
+" Commenting for fugitive commit session
+" will take branch name as #Issue-number
+" Ref: https://github.com/tpope/vim-fugitive/commit/d4bcc75ef6449c0e5592513fb1e0a42b017db9ca
+let @w='5G$vByggIIssue #000 feat: <CR><CR><ESC>pggA'
+let @e='ggIIssue #000 feat: '
+let @r='ggIIssue #000 fix: '
+
+" " Enabling async :Gpush and :Gpull
+" command! -bang -bar -nargs=* Gpush execute 'Dispatch<bang> -dir=' .
+"       \ fnameescape(FugitiveGitDir()) 'git push' <q-args>
+" command! -bang -bar -nargs=* Gfetch execute 'Dispatch<bang> -dir=' .
+"       \ fnameescape(FugitiveGitDir()) 'git fetch' <q-args>
+"}}}
+Plug 'tpope/vim-dispatch'
+Plug 'radenling/vim-dispatch-neovim'
 
 Plug 'christoomey/vim-tmux-navigator'
 Plug 'gruvbox-community/gruvbox'
