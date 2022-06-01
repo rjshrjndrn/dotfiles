@@ -110,7 +110,7 @@ alias hn='hugo new'
 
 # hub alias
 # Sourcing hub for git
-eval "$(hub alias -s)"
+# eval "$(hub alias -s)"
 alias at='docker run --rm -it -v $(pwd):/work -w /work -urajeshr ansible_ubuntu:16.04 bash'
 # simpl3 git todo
 gt() {
