@@ -11,7 +11,7 @@ plugins=(git
     zsh-autosuggestions
     )
 source $ZSH/oh-my-zsh.sh
-source ~/aliases
+source ~/.aliases
 source ~/.completions.sh
 source ~/.key_bindings.sh
 source ~/.exports.sh
