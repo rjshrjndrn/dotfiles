@@ -8,6 +8,7 @@
         zsh
         git
         curl
+        pre-commit
         hub
         kube3d
         unixtools.netstat
