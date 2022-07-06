@@ -170,7 +170,7 @@ alias kn='kubens'
 alias knc='kubens -c'
 alias kc='kubectl create'
 alias curl=curlie
-alias cat="bat"
+alias cat="bat --style=plain,header --paging=never"
 alias less="bat --paging=always"
 
 alias hi='helm upgrade --install'
