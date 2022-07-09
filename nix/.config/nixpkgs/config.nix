@@ -33,6 +33,8 @@
         stern
         kubernetes-helm
         kubectl
+        # Cloud
+        awscli2
         aws-iam-authenticator
         xclip
         # Encryption tool
