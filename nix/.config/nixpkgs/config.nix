@@ -42,6 +42,8 @@
         age
         # Ref: https://github.com/mozilla/sops#encrypting-using-age
         sops
+        # Security
+        trivy
       ];
       pathsToLink = [ "/share/man" "/share/doc" "/bin" ];
       extraOutputsToInstall = [ "man" "doc" ];
