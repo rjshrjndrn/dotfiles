@@ -13,6 +13,7 @@
         kube3d
         unixtools.netstat
         jq
+        yq-go
         silver-searcher
         eksctl
         antibody
@@ -33,6 +34,7 @@
         stern
         kubernetes-helm
         kubectl
+        cilium-cli
         # Cloud
         awscli2
         aws-iam-authenticator
