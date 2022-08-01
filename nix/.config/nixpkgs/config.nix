@@ -46,6 +46,8 @@
         sops
         # Security
         trivy
+        terraform
+        terragrunt
       ];
       pathsToLink = [ "/share/man" "/share/doc" "/bin" ];
       extraOutputsToInstall = [ "man" "doc" ];
