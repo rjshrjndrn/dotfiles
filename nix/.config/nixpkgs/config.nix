@@ -51,6 +51,10 @@
         trivy
         terraform
         terragrunt
+        ## Node
+        nodePackages.prettier
+        ## Python
+        black
       ];
       pathsToLink = [ "/share/man" "/share/doc" "/bin" ];
       extraOutputsToInstall = [ "man" "doc" ];
