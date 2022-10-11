@@ -6,7 +6,10 @@
       paths = [
         nox
         zsh
+        # Git
         git
+        # git diff pager
+        delta
         curl
         pre-commit
         hub
