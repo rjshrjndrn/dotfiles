@@ -53,6 +53,8 @@
         terraform
         terragrunt
         ## Node
+        nodejs
+        nodePackages.npm
         nodePackages.prettier
         ## Python
         black
