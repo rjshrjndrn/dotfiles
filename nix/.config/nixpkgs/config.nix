@@ -52,6 +52,8 @@
         trivy
         terraform
         terragrunt
+        ## Go
+        go_1_18
         ## Node
         nodejs
         nodePackages.npm
