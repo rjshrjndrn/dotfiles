@@ -6,6 +6,7 @@
       paths = [
         nox
         zsh
+        unzip
         # Git
         git
         # git diff pager
