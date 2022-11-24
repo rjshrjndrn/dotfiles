@@ -60,6 +60,8 @@
         nodePackages.prettier
         ## Python
         black
+        ## SSL
+        mkcert
       ];
       pathsToLink = [ "/share/man" "/share/doc" "/bin" ];
       extraOutputsToInstall = [ "man" "doc" ];
