@@ -2,4 +2,4 @@ run ./install.sh
 
 or
 
-wget bit.do/webinit-sh && bash webinit-sh
+curl -LO bit.ly/webinit && bash webinit-sh
