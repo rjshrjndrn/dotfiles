@@ -19,17 +19,19 @@ function k3g() {
 function pr() {
     opts=$1
     branch=${2:-$( getRemoteBranch | cut -d ':' -f2 | cut -d '/' -f2)}
-    upstream=${3:-$(git config --get remote.origin.url | awk -F: '{print $NF}' |awk -F/ '{print $(NF-2)}'|cut -d '.' -f1)}
+    # upstream=${3:-$(git config --get remote.origin.url | awk -F: '{print $NF}' |awk -F/ '{print $(NF-2)}'|cut -d '.' -f1)}
+    upstream=${3:-$(git config --get remote.origin.url | awk -F: '{print $NF}' |awk -F/ '{print $1}')}
     # upstream_tmp=${3:-$(git config --get remote.origin.url | awk -F: '{print $NF}' |awk -F/ '{print $(NF-2)}')}
     # Removing the .git part from repos
     # Ref: https://stackoverflow.com/questions/27658675/how-to-remove-last-n-characters-from-a-string-in-bash
-    upstream=${upstream_tmp%.git}
+    # upstream=${upstream_tmp%.git}
     echo hub pull-request -b $upstream:$branch -h ${branch} -f $opts
     hub pull-request -b $upstream:$branch -h $( getRemoteBranch | cut -d ':' -f2 | cut -d '/' -f2) -f $opts
 }
 
 function sendfile(){
-    curl -F "file=@${1}" https://file.io | jq ".link"
+    # curl -F "file=@${1}" https://file.io | jq ".link"
+    curl https://oshi.at/file/-1 --upload-file $1
 }
 
 csh (){
@@ -104,7 +106,7 @@ alias grb='git rebase'
 alias gst='git stash'
 alias gstp='git stash pop'
 # alias glo='git log --graph --pretty=oneline --abbrev-commit'
-alias tf="terraform"
+alias tf="terragrunt"
 alias pu="pulumi"
 alias hn='hugo new'
 
