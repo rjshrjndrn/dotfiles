@@ -11,6 +11,8 @@
         git
         # git diff pager
         delta
+        # Shell
+        direnv
         curl
         pre-commit
         hub
