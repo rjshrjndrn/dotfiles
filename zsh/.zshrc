@@ -16,4 +16,8 @@ source ~/.key_bindings.sh
 source ~/.exports.sh
 source ~/.completions.sh
 eval "$(starship init zsh)"
+eval "$(direnv hook zsh)"
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+autoload -U +X bashcompinit && bashcompinit
+complete -o nospace -C /nix/store/5a172whd5rlxni2nm4dfd7d3yj42n7zr-vault-1.12.0/bin/.vault-wrapped vault
