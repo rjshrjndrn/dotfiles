@@ -44,6 +44,7 @@
         # Cloud
         awscli2
         aws-iam-authenticator
+        azure-cli
         xclip
         # Encryption tool
         # Ref: https://github.com/FiloSottile/age
@@ -64,6 +65,8 @@
         black
         ## SSL
         mkcert
+        #CICD
+        fluxcd
       ];
       pathsToLink = [ "/share/man" "/share/doc" "/bin" ];
       extraOutputsToInstall = [ "man" "doc" ];
