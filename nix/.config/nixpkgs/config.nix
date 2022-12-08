@@ -26,6 +26,8 @@
         aria
         tree
         curlie
+        # Personal info dashboard
+        wtf
         # neovim
         # kitty
         tmux
@@ -41,10 +43,11 @@
         kubernetes-helm
         kubectl
         cilium-cli
+        cosign
         # Cloud
         awscli2
         aws-iam-authenticator
-        azure-cli
+        # azure-cli
         xclip
         # Encryption tool
         # Ref: https://github.com/FiloSottile/age
