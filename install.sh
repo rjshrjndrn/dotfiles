@@ -15,6 +15,8 @@ for config in ${configs[*]};do
     stow $config -t ~/
 done
 
+sudo stow keyd -t /
+
 # Installing nix packages
 nix-env -iA nixpkgs.myPackages
 
