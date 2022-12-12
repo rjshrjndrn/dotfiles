@@ -9,6 +9,7 @@
         unzip
         # Git
         git
+        gitsign
         # git diff pager
         delta
         # Shell
@@ -43,6 +44,7 @@
         kubernetes-helm
         kubectl
         cilium-cli
+        hubble
         cosign
         # Cloud
         awscli2
