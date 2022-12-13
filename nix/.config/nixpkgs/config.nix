@@ -72,6 +72,8 @@
         mkcert
         #CICD
         fluxcd
+        # Password
+        gopass
       ];
       pathsToLink = [ "/share/man" "/share/doc" "/bin" ];
       extraOutputsToInstall = [ "man" "doc" ];
