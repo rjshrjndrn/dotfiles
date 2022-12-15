@@ -43,6 +43,7 @@
         stern
         kubernetes-helm
         kubectl
+        krew
         cilium-cli
         hubble
         cosign
