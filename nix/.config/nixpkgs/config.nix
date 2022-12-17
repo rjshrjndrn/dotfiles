@@ -47,6 +47,7 @@
         cilium-cli
         hubble
         cosign
+        jsonnet
         # Cloud
         awscli2
         aws-iam-authenticator
