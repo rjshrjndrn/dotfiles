@@ -5,7 +5,7 @@
       name = "my-packages";
       paths = [
         nox
-        zsh
+        #zsh
         unzip
         # Git
         git
@@ -29,7 +29,7 @@
         curlie
         # Personal info dashboard
         wtf
-        # neovim
+        neovim
         # kitty
         tmux
         # nixUnstable
@@ -51,6 +51,7 @@
         # Cloud
         awscli2
         aws-iam-authenticator
+        google-cloud-sdk
         # azure-cli
         xclip
         # Encryption tool
