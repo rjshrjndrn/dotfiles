@@ -1,5 +1,7 @@
 # Ref: https://nixos.org/manual/nixpkgs/stable/#sec-getting-documentation
 {
+  allowUnfree = true;
+  qtWrapperArgs = [ ''--set QT_XCB_GL_INTEGRATION none'' ];
   packageOverrides = pkgs: with pkgs; {
     myPackages = pkgs.buildEnv {
       name = "my-packages";
@@ -77,8 +79,16 @@
         fluxcd
         # Password
         gopass
+
+        # UI apps
+        # Ref: https://github.com/NixOS/nixpkgs/issues/82959#issuecomment-657306112
+        zoom-us
       ];
-      pathsToLink = [ "/share/man" "/share/doc" "/bin" ];
+      # Ref: https://nixos.org/manual/nixpkgs/stable/#sec-getting-documentation
+      # pathsToLink tells Nixpkgs to only link the paths listed which gets rid of the extra stuff in the profile.
+      # /bin and /share are good defaults for a user environment, getting rid of the clutter.
+      # If you are running on Nix on MacOS, you may want to add another path as well, /Applications, that makes GUI apps available. 
+      pathsToLink = [ "/share" "/share" "/bin" ];
       extraOutputsToInstall = [ "man" "doc" ];
     };
   };
