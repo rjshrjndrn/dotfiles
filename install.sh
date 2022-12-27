@@ -15,7 +15,10 @@ for config in ${configs[*]};do
     stow $config -t ~/
 done
 
-sudo stow keyd -t /
+root_configs=(keyd stubby dnsmasq)
+for config in ${root_configs[*]};do
+    sudo `which stow` $config -t /
+done
 
 # Installing nix packages
 nix-env -iA nixpkgs.myPackages

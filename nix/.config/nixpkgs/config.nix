@@ -2,6 +2,9 @@
 {
   allowUnfree = true;
   qtWrapperArgs = [ ''--set QT_XCB_GL_INTEGRATION none'' ];
+  xdg.enable=true;
+  xdg.mime.enable=true;
+  targets.genericLinux.enable=true;
   packageOverrides = pkgs: with pkgs; {
     myPackages = pkgs.buildEnv {
       name = "my-packages";
@@ -82,7 +85,8 @@
 
         # UI apps
         # Ref: https://github.com/NixOS/nixpkgs/issues/82959#issuecomment-657306112
-        zoom-us
+        # zoom-us
+        megasync
       ];
       # Ref: https://nixos.org/manual/nixpkgs/stable/#sec-getting-documentation
       # pathsToLink tells Nixpkgs to only link the paths listed which gets rid of the extra stuff in the profile.
