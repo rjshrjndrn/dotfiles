@@ -10,7 +10,7 @@
 nix-env -iA nixpkgs.stow
 
 # stow dotfiles
-configs=(tmux zsh kitty nvim starship nix git)
+configs=(tmux zsh kitty nvim starship nix git eget)
 for config in ${configs[*]};do
     stow $config -t ~/
 done

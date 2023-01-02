@@ -1,0 +1,16 @@
+[global]
+  quiet = false
+  show_hash = false
+  upgrade_only = true
+  target = "~/apps/bin/"
+
+["stern/stern"]
+["kubeshark/kubeshark"]
+  asset_filters = [ ".tar.gz", "amd64" ]
+["derailed/k9s"]
+["mikefarah/yq"]
+  asset_filters = [ ".tar.gz", "amd64" ]
+  file = "yq_*"
+  target = "~/apps/bin/yq"
+["zyedidia/eget"]
+["linkerd/linkerd2"]
