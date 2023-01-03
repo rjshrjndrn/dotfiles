@@ -34,7 +34,7 @@
         curlie
         # Personal info dashboard
         wtf
-        neovim
+        # neovim
         # kitty
         tmux
         # nixUnstable
@@ -78,6 +78,7 @@
         black
         ## SSL
         mkcert
+        step-cli
         #CICD
         fluxcd
         # Password
@@ -86,7 +87,7 @@
         # UI apps
         # Ref: https://github.com/NixOS/nixpkgs/issues/82959#issuecomment-657306112
         # zoom-us
-        megasync
+        # megasync
       ];
       # Ref: https://nixos.org/manual/nixpkgs/stable/#sec-getting-documentation
       # pathsToLink tells Nixpkgs to only link the paths listed which gets rid of the extra stuff in the profile.
