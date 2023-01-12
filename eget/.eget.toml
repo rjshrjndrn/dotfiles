@@ -14,3 +14,5 @@
   target = "~/apps/bin/yq"
 ["zyedidia/eget"]
 ["linkerd/linkerd2"]
+  target = "~/apps/bin/linkerd"
+["grafana/grizzly"]
