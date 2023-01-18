@@ -19,6 +19,7 @@
         delta
         # Shell
         direnv
+        shellcheck
         curl
         pre-commit
         hub
