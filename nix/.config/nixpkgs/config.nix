@@ -15,6 +15,7 @@
         # Git
         git
         gitsign
+        eget
         # git diff pager
         delta
         # Shell
