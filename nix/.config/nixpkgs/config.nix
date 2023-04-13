@@ -29,12 +29,9 @@
         yq-go
         silver-searcher
         eksctl
-        antibody
         aria
         tree
         curlie
-        # Personal info dashboard
-        wtf
         # neovim
         # kitty
         tmux
@@ -52,6 +49,7 @@
         krew
         cilium-cli
         hubble
+        pluto
         cosign
         jsonnet
         # Cloud
@@ -67,8 +65,10 @@
         sops
         # Security
         trivy
+        tfsec
         terraform
         terragrunt
+        packer
         ## Go
         go_1_18
         ## Node
