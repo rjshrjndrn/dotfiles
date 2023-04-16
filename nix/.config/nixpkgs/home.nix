@@ -34,8 +34,8 @@ in {
   home.packages = [
     pkgs.fira-code
     pkgs.fira-code-symbols
-    pkgs.nerdfonts
-    pkgs.noto-fonts-emoji
+    # pkgs.nerdfonts
+    # pkgs.noto-fonts-emoji
     pkgs.rofi
     pkgs.cargo
 
@@ -45,10 +45,11 @@ in {
     (nixGLWrap pkgs.inkscape)
     (nixGLWrap pkgs.slack)
     # (nixGLWrap pkgs.zoom-us)
-    (nixGLWrap pkgs.notion-app-enhanced)
-    (nixGLWrap pkgs.tdesktop)
-    (nixGLWrap pkgs.signal-desktop)
+    # (nixGLWrap pkgs.notion-app-enhanced)
+    # (nixGLWrap pkgs.tdesktop)
+    # (nixGLWrap pkgs.signal-desktop)
     # (nixGLWrap pkgs.vlc)
+    # (nixGLWrap pkgs.teams)
 
     
    # ...

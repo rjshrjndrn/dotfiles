@@ -16,3 +16,5 @@
 ["linkerd/linkerd2"]
   target = "~/apps/bin/linkerd"
 ["grafana/grizzly"]
+["localsend/localsend"]
+["iann0036/iamlive"]
