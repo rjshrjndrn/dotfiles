@@ -54,10 +54,11 @@
         cosign
         jsonnet
         # Cloud
+        scaleway-cli
         awscli2
         aws-iam-authenticator
         google-cloud-sdk
-        # azure-cli
+        azure-cli
         xclip
         # Encryption tool
         # Ref: https://github.com/FiloSottile/age
