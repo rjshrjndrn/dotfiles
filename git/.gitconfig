@@ -25,3 +25,5 @@
 
 [diff]
     colorMoved = default
+[include]
+	path = ~/.gitaliases

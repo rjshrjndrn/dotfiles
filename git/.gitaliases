@@ -1,0 +1,37 @@
+# ref: https://github.com/GitAlias/gitalias/blob/main/gitalias.txt
+[alias]
+
+  ##
+  # Short aliases for frequent commands.
+  #
+  # Guidelines: these aliases do not use options, because we want
+  # these aliases to be easy to compose and use in many ways.
+  ##
+
+  a = add
+  b = branch
+  c = commit
+  d = diff
+  f = fetch
+  g = grep
+  l = log
+  m = merge
+  o = checkout
+  p = pull
+  s = status
+
+  w = whatchanged
+  plo = "!git pull --rebase origin heads/$(git rev-parse --abbrev-ref HEAD | rev | cut -d / -f1 | rev)"
+  po = "!git push origin $(git rev-parse --abbrev-ref HEAD)"
+
+  log-list = log --graph --topo-order --date=short --abbrev-commit --decorate --all --boundary --pretty=format:'%Cblue%ad %C(auto)%h%Creset -%C(auto)%d%Creset %s %Cblue[%an]%Creset %Cblue%G?%Creset'
+  ll = log-list
+  log-list-long = log --graph --topo-order --date=iso8601-strict --no-abbrev-commit --decorate --all --boundary --pretty=format:'%Cblue%ad %C(auto)%h%Creset -%C(auto)%d%Creset %s %Cblue[%cn <%ce>]%Creset %Cblue%G?%Creset'
+  lll = log-list-long
+  log-my = !git log --author $(git config user.email)
+  lm = log-my 
+  log-1-hour  = log --since=1-hour-ago
+  log-1-day   = log --since=1-day-ago
+  log-1-week  = log --since=1-week-ago
+  log-1-month = log --since=1-month-ago
+  log-1-year  = log --since=1-year-ago

@@ -10,15 +10,15 @@
 nix-env -iA nixpkgs.stow
 
 # stow dotfiles
-configs=(tmux zsh kitty nvim starship nix git eget)
+configs=(tmux zsh kitty nvim starship nix git eget wezterm)
 for config in ${configs[*]};do
     stow $config -t ~/
 done
 
-root_configs=(keyd stubby dnsmasq)
-for config in ${root_configs[*]};do
-    sudo `which stow` $config -t /
-done
+#root_configs=(keyd stubby dnsmasq)
+#for config in ${root_configs[*]};do
+#    sudo `which stow` $config -t /
+#done
 
 # Installing nix packages
 nix-env -iA nixpkgs.myPackages
