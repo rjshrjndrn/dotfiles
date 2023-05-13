@@ -13,12 +13,14 @@
   c = commit
   d = diff
   f = fetch
+  fot = fetch origin --tags
   g = grep
   l = log
   m = merge
   o = checkout
   p = pull
   s = status
+  pf = push --force-with-lease
 
   w = whatchanged
   plo = "!git pull --rebase origin heads/$(git rev-parse --abbrev-ref HEAD | rev | cut -d / -f1 | rev)"
