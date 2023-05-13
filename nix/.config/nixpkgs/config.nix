@@ -34,6 +34,7 @@
         aria
         tree
         curlie
+        atuin
         # neovim
         # kitty
         tmux
@@ -48,10 +49,13 @@
         stern
         kubernetes-helm
         kubectl
+        kubectx
         krew
         cilium-cli
         hubble
         pluto
+        # kubernetes packet sniffer
+        kubeshark
         cosign
         jsonnet
         # Cloud
@@ -87,6 +91,8 @@
         fluxcd
         # Password
         gopass
+        # Blog
+        hugo
 
         # UI apps
         # Ref: https://github.com/NixOS/nixpkgs/issues/82959#issuecomment-657306112
