@@ -97,7 +97,7 @@
         gopass
         # Blog
         hugo
-
+        ngrok
         # UI apps
         # Ref: https://github.com/NixOS/nixpkgs/issues/82959#issuecomment-657306112
         # zoom-us
