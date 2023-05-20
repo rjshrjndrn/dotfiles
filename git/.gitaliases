@@ -21,6 +21,8 @@
   p = pull
   s = status
   pf = push --force-with-lease
+  fm = format-patch
+  cm = commit
 
   w = whatchanged
   plo = "!git pull --rebase origin heads/$(git rev-parse --abbrev-ref HEAD | rev | cut -d / -f1 | rev)"

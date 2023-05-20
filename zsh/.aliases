@@ -61,6 +61,7 @@ alias ovpl="gps lvpn; docker run -it --rm -e JENKINS_ADDR=27.0.0.11:8080 --privi
 alias vn='nvim -u ~/.essential.vim -N'
 # alias vim='/usr/bin/nvim -u ~/.config/nvim/minimal.vim'
 alias vim='nvim'
+alias vi='nvim'
 alias scratch='/usr/bin/nvim -u ~/.config/nvim/minimal.vim -c Scratch'
 alias gvim='neovide -u ~/.config/nvim/minimal.vim'
 alias sv='cat | vim'
