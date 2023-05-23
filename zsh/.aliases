@@ -97,7 +97,16 @@ function getRemoteBranch() {
 }
 alias gplo='git pull --rebase origin heads/$(git rev-parse --abbrev-ref HEAD | rev | cut -d '/' -f1 | rev)'
 alias gplr='git pull --rebase rjshrjndrn $(git rev-parse --abbrev-ref HEAD)'
-alias gpo='git push origin $(git rev-parse --abbrev-ref HEAD)'
+function gpo(){
+  args=""
+  args="$@"
+  if [[ $args != "" ]]; then
+    # Eval to expand variables with space. Else entire string will be taken as single string
+    eval git push origin $args
+  else
+    git push origin $(git rev-parse --abbrev-ref HEAD)
+  fi
+}
 alias gpr='git push rjshrjndrn $(git rev-parse --abbrev-ref HEAD)'
 alias gpso='git push --set-upstream origin $(git rev-parse --abbrev-ref HEAD)'
 alias gpsr='git push --set-upstream rjshrjndrn HEAD:$(git rev-parse --abbrev-ref HEAD)'
