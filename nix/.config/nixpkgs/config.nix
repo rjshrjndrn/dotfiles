@@ -35,6 +35,7 @@
         tree
         curlie
         atuin
+        caddy
         # neovim
         # kitty
         tmux
@@ -93,6 +94,7 @@
         step-cli
         #CICD
         fluxcd
+        argocd
         # Password
         gopass
         # Blog
