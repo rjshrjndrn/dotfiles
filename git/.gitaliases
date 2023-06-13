@@ -25,7 +25,7 @@
   cm = commit
 
   w = whatchanged
-  plo = "!git pull --rebase origin heads/$(git rev-parse --abbrev-ref HEAD | rev | cut -d / -f1 | rev)"
+  plo = "! f() { git pull --rebase origin ${1:-heads/$(git rev-parse --abbrev-ref HEAD | rev | cut -d / -f1 | rev)}; }; f " # must have ; before func close }
   po = "!git push origin $(git rev-parse --abbrev-ref HEAD)"
 
   log-list = log --graph --topo-order --date=short --abbrev-commit --decorate --all --boundary --pretty=format:'%Cblue%ad %C(auto)%h%Creset -%C(auto)%d%Creset %s %Cblue[%an]%Creset %Cblue%G?%Creset'
