@@ -78,8 +78,11 @@
         # Security
         trivy
         tfsec
+        # IAC
         terraform
         terragrunt
+        # terraform-docs markdown --output Readme.md ./components/iam
+        terraform-docs
         packer
         ## Go
         go_1_18
