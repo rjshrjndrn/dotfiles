@@ -1,39 +1,39 @@
-# install nix
-[[ -x "$(command -v nix-env)" ]] || {
-    curl -L https://nixos.org/nix/install | sh
-}
-
-# source nix
-. ~/.nix-profile/etc/profile.d/nix.sh
-
-# Installing nix packages
-nix-env -iA nixpkgs.stow
-
-# stow dotfiles
-configs=(tmux zsh kitty nvim starship nix git eget wezterm)
-for config in ${configs[*]};do
-    stow $config -t ~/
-done
-
-#root_configs=(keyd stubby dnsmasq)
-#for config in ${root_configs[*]};do
-#    sudo `which stow` $config -t /
+## install nix
+#[[ -x "$(command -v nix-env)" ]] || {
+#    curl -L https://nixos.org/nix/install | sh
+#}
+#
+## source nix
+##. ~/.nix-profile/etc/profile.d/nix.sh
+#
+## Installing nix packages
+#nix-env -iA nixpkgs.stow
+#
+## stow dotfiles
+#configs=(tmux zsh kitty nvim starship nix git eget wezterm)
+#for config in ${configs[*]};do
+#    stow $config -t ~/
 #done
-
-# Installing nix packages
-nix-env -iA nixpkgs.myPackages
-
-# Install tmux plugin
-[[ -d ~/.tmux/plugins/tpm ]] || {
-    git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
-}
-
-# add zsh as a login shell
-# command -v zsh | sudo tee -a /etc/shells
-
-# use zsh as default shell
-sudo chsh -s $(which zsh) $USER
-
+#
+##root_configs=(keyd stubby dnsmasq)
+##for config in ${root_configs[*]};do
+##    sudo `which stow` $config -t /
+##done
+#
+## Installing nix packages
+#nix-env -iA nixpkgs.myPackages
+#
+## Install tmux plugin
+#[[ -d ~/.tmux/plugins/tpm ]] || {
+#    git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+#}
+#
+## add zsh as a login shell
+## command -v zsh | sudo tee -a /etc/shells
+#
+## use zsh as default shell
+#sudo chsh -s $(which zsh) $USER
+#
 # Installing ohmyzsh
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended --skip-chsh --keep-zshrc
 source ~/.zshrc

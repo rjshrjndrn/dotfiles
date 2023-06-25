@@ -27,6 +27,8 @@
         hub
         kube3d
         unixtools.netstat
+        distrobox
+        dig
         jq
         yq-go
         silver-searcher
@@ -39,6 +41,7 @@
         # neovim
         # kitty
         tmux
+        rofi
         # nixUnstable
         fzf
         ripgrep
