@@ -1,0 +1,4 @@
+# This is to enable nix-direnv
+# you can add `echo echo "use flake" >> .envrc && direnv allow` in the project dir which contains the flake.nix
+# Ref: https://github.com/nix-community/nix-direnv#via-configurationnix-in-nixos
+[[ -f /run/current-system/sw/share/nix-direnv/direnvrc ]] && source /run/current-system/sw/share/nix-direnv/direnvrc
