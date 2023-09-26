@@ -16,6 +16,7 @@
         git
         gitsign
         git-extras
+        ggshield
         eget
         # git diff pager
         delta
@@ -91,7 +92,7 @@
         terraform-docs
         packer
         ## Go
-        go_1_18
+        go_1_19
         ## Node
         nodejs
         nodePackages.npm
