@@ -75,6 +75,7 @@
             google-cloud-sdk.components.gke-gcloud-auth-plugin
           ]
         )
+        ssm-session-manager-plugin
         azure-cli
         xclip
         # Encryption tool
