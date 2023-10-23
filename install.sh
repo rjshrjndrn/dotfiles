@@ -4,7 +4,7 @@
 }
 
 # source nix
-#. ~/.nix-profile/etc/profile.d/nix.sh
+. ~/.nix-profile/etc/profile.d/nix.sh
 
 # Installing nix packages
 nix-env -iA nixpkgs.stow
