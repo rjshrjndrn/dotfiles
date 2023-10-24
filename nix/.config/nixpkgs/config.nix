@@ -40,6 +40,7 @@
         atuin
         caddy
         # neovim
+        nodePackages_latest.bash-language-server
         # kitty
         tmux
         rofi
