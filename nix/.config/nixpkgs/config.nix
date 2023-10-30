@@ -41,6 +41,7 @@
         caddy
         # neovim
         nodePackages_latest.bash-language-server
+        nodePackages_latest.yaml-language-server
         # kitty
         tmux
         rofi
