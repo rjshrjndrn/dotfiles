@@ -68,6 +68,7 @@
         kubeshark
         cosign
         jsonnet
+        vcluster # Create virtual clusters
         # Cloud
         scaleway-cli
         awscli2
