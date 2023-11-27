@@ -58,6 +58,7 @@
         kubernetes-helm
         kubectl
         kubectx
+        kubectl-node-shell
         krew
         cilium-cli
         hubble
