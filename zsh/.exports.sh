@@ -1,6 +1,6 @@
 export EDITOR=nvim
 # export TERM=screen-256color
-export PATH=$PATH:~/apps/bin:${HOME}/.krew/bin:${HOME}/.local/bin:${HOME}/go/bin:/var/lib/flatpak/exports/bin/
+export PATH=$PATH:~/apps/bin:${HOME}/.krew/bin:${HOME}/.local/bin:${HOME}/go/bin:/var/lib/flatpak/exports/bin/:~/apps/flutter/bin:~/apps/android-studio/bin
 export FZF_COMPLETION_TRIGGER="cc"
 # export XDG_DATA_DIRS=${HOME}/.nix-profile/share:$XDG_DATA_DIRS
 # This is for nix gui packages. Especially zoom

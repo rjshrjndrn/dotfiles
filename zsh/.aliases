@@ -186,6 +186,7 @@ alias cat="bat --style=plain,header --paging=never"
 alias less="bat --paging=always"
 
 alias hi='helm upgrade --install'
+alias ht='helm template'
 alias civo="docker run -it --rm -v ${HOME}/.cred/civo/civo.json:/.civo.json civo/cli:latest"
 
 alias db=distrobox

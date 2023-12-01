@@ -56,6 +56,7 @@
         stern
         # Kubernetes
         kubernetes-helm
+        helm-ls
         kubectl
         kubectx
         kubectl-node-shell
