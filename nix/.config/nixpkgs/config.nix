@@ -16,7 +16,7 @@
         git
         gitsign
         git-extras
-        ggshield
+        # ggshield
         eget
         # git diff pager
         delta
@@ -60,6 +60,7 @@
         kubectl
         kubectx
         kubectl-node-shell
+        kubeval
         krew
         cilium-cli
         hubble
