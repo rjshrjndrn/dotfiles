@@ -60,7 +60,7 @@
         kubectl
         kubectx
         kubectl-node-shell
-        kubeval
+        kubeconform
         krew
         cilium-cli
         hubble
