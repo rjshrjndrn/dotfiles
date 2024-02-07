@@ -17,17 +17,24 @@ function k3g() {
 }
 
 function pr() {
-    opts=$1
-    branch=${2:-$( getRemoteBranch | cut -d ':' -f2 | cut -d '/' -f2)}
-    # upstream=${3:-$(git config --get remote.origin.url | awk -F: '{print $NF}' |awk -F/ '{print $(NF-2)}'|cut -d '.' -f1)}
-    upstream=${3:-$(git config --get remote.origin.url | awk -F: '{print $NF}' |awk -F/ '{print $1}')}
-    # upstream_tmp=${3:-$(git config --get remote.origin.url | awk -F: '{print $NF}' |awk -F/ '{print $(NF-2)}')}
-    # Removing the .git part from repos
-    # Ref: https://stackoverflow.com/questions/27658675/how-to-remove-last-n-characters-from-a-string-in-bash
-    # upstream=${upstream_tmp%.git}
-    echo hub pull-request -b $upstream:$branch -h ${branch} -f $opts
-    hub pull-request -b $upstream:$branch -h $( getRemoteBranch | cut -d ':' -f2 | cut -d '/' -f2) -f $opts
+    # Get current working branch
+    local currentBranch=$(git branch --show-current)
+
+    # Default branch to 'main' if no argument provided
+    local targetBranch="${1:-$currentBranch}"
+
+    # Extract organization and repository from the git remote origin URL
+    local originUrl=$(git remote get-url origin)
+    local repo=$(basename -s .git "${originUrl}")
+    local org=$(basename $(dirname "${originUrl}"))
+
+    # Clean up the URLs for SSH and HTTP formats
+    org=$(echo "${org}" | sed -e 's/.*://' -e 's/.com\/\(.*\)/\1/')
+
+    # Run hub pull-request command
+    hub pull-request -b "${org}/${repo}:${targetBranch}" -h "${currentBranch}" -f
 }
+
 
 function sendfile(){
     # curl -F "file=@${1}" https://file.io | jq ".link"
