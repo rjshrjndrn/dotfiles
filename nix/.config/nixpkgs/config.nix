@@ -82,6 +82,7 @@
           ]
         )
         ssm-session-manager-plugin
+        localstack # emulat aws infra locally
         azure-cli
         xclip
         # Encryption tool
