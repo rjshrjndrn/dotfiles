@@ -16,7 +16,7 @@
         git
         gitsign
         git-extras
-        # ggshield
+        "ggshield"
         eget
         # git diff pager
         delta
@@ -82,7 +82,8 @@
           ]
         )
         ssm-session-manager-plugin
-        localstack # emulat aws infra locally
+        # emulate aws infra locally
+        "localstack"
         azure-cli
         xclip
         # Encryption tool
@@ -100,7 +101,7 @@
         terraform-docs
         packer
         ## Go
-        go_1_19
+        "go_1_19"
         ## Node
         nodejs
         nodePackages.npm
