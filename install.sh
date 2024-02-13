@@ -1,6 +1,6 @@
 # install nix
 [[ -x "$(command -v nix-env)" ]] || {
-   curl -L https://nixos.org/nix/install | sh
+    curl -L https://nixos.org/nix/install | sh
 }
 
 # source nix
@@ -10,9 +10,9 @@
 nix-env -iA nixpkgs.stow
 
 # stow dotfiles
-configs=(tmux zsh kitty nvim starship nix git eget wezterm apps)
-for config in ${configs[*]};do
-   stow $config -t ~/
+configs=(tmux zsh kitty nvim starship nix git eget wezterm apps k9s)
+for config in ${configs[*]}; do
+    stow $config -t ~/
 done
 
 #root_configs=(keyd stubby dnsmasq)
@@ -25,7 +25,7 @@ nix-env -iA nixpkgs.myPackages
 
 # Install tmux plugin
 [[ -d ~/.tmux/plugins/tpm ]] || {
-   git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+    git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 }
 
 # add zsh as a login shell
