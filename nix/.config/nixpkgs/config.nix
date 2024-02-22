@@ -82,8 +82,6 @@
           ]
         )
         ssm-session-manager-plugin
-        # emulate aws infra locally
-        "localstack"
         azure-cli
         xclip
         # Encryption tool
@@ -101,11 +99,12 @@
         terraform-docs
         packer
         ## Go
-        "go_1_19"
+        go_1_22
         ## Node
         nodejs
         nodePackages.npm
         nodePackages.prettier
+        nodePackages.localtunnel
         ## Python
         black
         ## SSL
