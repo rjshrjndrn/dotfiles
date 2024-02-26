@@ -1,4 +1,6 @@
 add_newline = false
+# Get editor completions based on the config schema
+"$schema" = 'https://starship.rs/config-schema.json'
 
 [kubernetes]
 symbol = "⛵ "

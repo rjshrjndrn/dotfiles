@@ -1,5 +1,7 @@
 # :vim: ft=bash
 #!/bin/bash
 
-notion=`which notion`
-systemd-run --scope --user --unit=notion.scope -p CPUWeight=20 -p CPUQuota=75% notion-app-enhanced
+# notion=`which notion-app-enhanced`
+# echo $notion
+# systemd-run --scope --user --unit=notion.scope -p CPUWeight=20 -p CPUQuota=85% notion-app-enhanced --no-sandbox
+notion-app-enhanced --no-sandbox

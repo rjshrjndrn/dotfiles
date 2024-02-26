@@ -16,7 +16,7 @@
         git
         gitsign
         git-extras
-        "ggshield"
+        ggshield
         eget
         # git diff pager
         delta
