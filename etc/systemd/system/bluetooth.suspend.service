@@ -1,0 +1,13 @@
+[Unit]
+Description=Disable/Enable Bluetooth on suspend/resume
+Before=sleep.target
+After=suspend.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/rfkill block bluetooth
+ExecStop=/usr/bin/rfkill unblock bluetooth
+
+[Install]
+WantedBy=sleep.target
