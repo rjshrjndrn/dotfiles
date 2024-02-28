@@ -10,6 +10,7 @@
 # https://github.com/dandavison/delta
 [core]
     pager = delta
+	excludesfile = /home/rajesh/.gitignore_global
 
 [interactive]
     diffFilter = delta --color-only
