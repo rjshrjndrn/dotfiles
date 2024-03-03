@@ -2,7 +2,7 @@
 {config, pkgs, lib, ...}:
 
 let
-  user = "tuxedo";
+  user = "rajesh";
   nixgl = import <nixgl> {} ;
   nixGLWrap = pkg: pkgs.runCommand "${pkg.name}-nixgl-wrapper" {} ''
     mkdir $out
@@ -26,26 +26,26 @@ in {
   # ...
   home.username = user;
   home.homeDirectory = "/home/"+user;
-  home.stateVersion = "22.11";
+  home.stateVersion = "24.05";
   programs.home-manager.enable = true;
   fonts.fontconfig.enable = true;
   targets.genericLinux.enable = true;
 
   home.packages = [
-    pkgs.fira-code
-    pkgs.fira-code-symbols
+    # pkgs.fira-code
+    # pkgs.fira-code-symbols
     # pkgs.nerdfonts
     # pkgs.noto-fonts-emoji
-    pkgs.rofi
-    pkgs.cargo
+    # pkgs.rofi
+    # pkgs.cargo
 
     # Run using graphics
     nixgl.auto.nixGLDefault
-    (nixGLWrap pkgs.wezterm)
+    # (nixGLWrap pkgs.wezterm)
     (nixGLWrap pkgs.inkscape)
-    (nixGLWrap pkgs.slack)
+    # (nixGLWrap pkgs.slack)
     # (nixGLWrap pkgs.zoom-us)
-    # (nixGLWrap pkgs.notion-app-enhanced)
+    (nixGLWrap pkgs.notion-app-enhanced)
     # (nixGLWrap pkgs.tdesktop)
     # (nixGLWrap pkgs.signal-desktop)
     # (nixGLWrap pkgs.vlc)

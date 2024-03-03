@@ -24,6 +24,7 @@ local config = {
 	-- text_background_opacity = .3,
 	-- Don't use keyboard interruption
 	use_ime = false,
+	font_size = 14,
 }
 
 config.keys = {}
@@ -36,5 +37,15 @@ for i = 1, 8 do
 		action = act.ActivateTab(i - 1),
 	})
 end
+
+config.font = wezterm.font_with_fallback({
+	{
+		family = "JetBrains Mono",
+		weight = "Medium",
+		harfbuzz_features = { "calt=0", "clig=0", "liga=0" },
+	},
+	{ family = "Terminus", weight = "Bold" },
+	"Noto Color Emoji",
+})
 
 return config

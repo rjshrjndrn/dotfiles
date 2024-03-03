@@ -100,6 +100,7 @@
         packer
         ## Go
         go_1_22
+        go-swag
         ## Node
         nodejs
         nodePackages.npm
