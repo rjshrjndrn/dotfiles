@@ -17,6 +17,7 @@
         gitsign
         git-extras
         ggshield
+        graphite-cli
         eget
         # git diff pager
         delta
