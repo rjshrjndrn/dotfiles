@@ -16,7 +16,7 @@
         git
         gitsign
         git-extras
-        ggshield
+        # ggshield
         graphite-cli
         eget
         # git diff pager
@@ -95,6 +95,7 @@
         tfsec
         # IAC
         terraform
+        opentofu
         terragrunt
         # terraform-docs markdown --output Readme.md ./components/iam
         terraform-docs
@@ -111,7 +112,7 @@
         black
         ## SSL
         mkcert
-        step-cli
+        # step-cli
         #CICD
         fluxcd
         argocd

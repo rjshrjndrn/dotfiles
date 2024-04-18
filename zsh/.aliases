@@ -132,9 +132,9 @@ alias hn='hugo new'
 # eval "$(hub alias -s)"
 alias at='docker run --rm -it -v $(pwd):/work -w /work -urajeshr ansible_ubuntu:16.04 bash'
 # simpl3 git todo
-gt() {
-  git commit --allow-empty -m "TODO: $*"
-}
+# gt() {
+#   git commit --allow-empty -m "TODO: $*"
+# }
 
 glt() {
   git log --grep=TODO: --oneline
@@ -188,6 +188,10 @@ alias kx='kubectx'
 alias kn='kubens'
 alias knc='kubens -c'
 alias kc='kubectl create'
+alias kubeconform='kubeconform -strict -verbose -schema-location default \
+-schema-location https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json \
+-schema-location https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/{{.NormalizedKubernetesVersion}}/{{.ResourceKind}}.json \
+-schema-location https://json.schemastore.org/{{.ResourceKind}}.json'
 # alias curl=curlie
 alias cat="bat --style=plain,header --paging=never"
 alias less="bat --paging=always"
