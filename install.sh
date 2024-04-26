@@ -40,6 +40,7 @@ source ~/.zshrc
 
 # Install zsh-autosuggestions plugin
 git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+git clone https://github.com/zsh-users/zsh-history-substring-search ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-history-substring-search
 
 # # Installing vim-plug
 # sh -c 'curl -fLo "${XDG_DATA_HOME:-$HOME/.local/share}"/nvim/site/autoload/plug.vim --create-dirs \
@@ -48,7 +49,7 @@ git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-m
 # Cloning the nvim repo
 # rm -rf ~/.config/nvim
 
-# git clone https://github.com/rjshrjndrn/nvim-basic-ide.git ~/.config/nvim
+git clone https://github.com/rjshrjndrn/nvim-basic-ide.git ~/.config/nvim
 
 # install neovim plugins
 nvim
