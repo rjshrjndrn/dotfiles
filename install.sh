@@ -10,7 +10,7 @@
 nix-env -iA nixpkgs.stow
 
 # stow dotfiles
-configs=(tmux zsh kitty nvim starship nix git eget wezterm apps k9s)
+configs=(tmux zsh kitty starship nix git eget wezterm apps k9s)
 for config in ${configs[*]}; do
     stow $config -t ~/
 done
@@ -41,13 +41,6 @@ source ~/.zshrc
 # Install zsh-autosuggestions plugin
 git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
 git clone https://github.com/zsh-users/zsh-history-substring-search ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-history-substring-search
-
-# # Installing vim-plug
-# sh -c 'curl -fLo "${XDG_DATA_HOME:-$HOME/.local/share}"/nvim/site/autoload/plug.vim --create-dirs \
-#        https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
-#
-# Cloning the nvim repo
-# rm -rf ~/.config/nvim
 
 git clone https://github.com/rjshrjndrn/nvim-basic-ide.git ~/.config/nvim
 
