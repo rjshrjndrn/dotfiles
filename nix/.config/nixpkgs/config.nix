@@ -40,7 +40,7 @@
         curlie
         atuin
         caddy
-        # neovim
+        neovim
         nodePackages_latest.bash-language-server
         nodePackages_latest.yaml-language-server
         # kitty
@@ -108,6 +108,7 @@
         nodePackages.npm
         nodePackages.prettier
         nodePackages.localtunnel
+        yarn
         ## Python
         black
         ## SSL

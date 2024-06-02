@@ -38,14 +38,4 @@ for i = 1, 8 do
 	})
 end
 
-config.font = wezterm.font_with_fallback({
-	{
-		family = "JetBrains Mono",
-		weight = "Medium",
-		harfbuzz_features = { "calt=0", "clig=0", "liga=0" },
-	},
-	{ family = "Terminus", weight = "Bold" },
-	"Noto Color Emoji",
-})
-
 return config

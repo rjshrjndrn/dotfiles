@@ -1,53 +1,51 @@
 # vim: set ft=bash:
 function sk() {
-    local org=${1:-curr}
-    eval $(ssh-agent -s) > /dev/null
-    find ~/.cred/${org} -maxdepth 1 -type f -iname "*.pem" -exec ssh-add {} &> /dev/null \;
+  local org=${1:-curr}
+  eval $(ssh-agent -s) >/dev/null
+  find ~/.cred/${org} -maxdepth 1 -type f -iname "*.pem" -exec ssh-add {} \; &>/dev/null
 }
 
 sk
 
 function k3c() {
-    k3d create cluster $1 --k3s-server-arg --no-deploy --k3s-server-arg traefik --network kubelocal --k3s-server-arg --no-deploy --k3s-server-arg local-storage --k3s-server-arg --kubelet-arg --k3s-server-arg containerd=/run/k3s/containerd/containerd.sock --api-port ${2:-16433}  --image rancher/k3s:v1.0.1
+  k3d create cluster $1 --k3s-server-arg --no-deploy --k3s-server-arg traefik --network kubelocal --k3s-server-arg --no-deploy --k3s-server-arg local-storage --k3s-server-arg --kubelet-arg --k3s-server-arg containerd=/run/k3s/containerd/containerd.sock --api-port ${2:-16433} --image rancher/k3s:v1.0.1
 }
 function k3g() {
-    k3d kubeconfig get $1 -o ~/.k3d/kube/$1
-    sleep .5
-    export KUBECONFIG=~/.k3d/kube/$1
+  k3d kubeconfig get $1 -o ~/.k3d/kube/$1
+  sleep .5
+  export KUBECONFIG=~/.k3d/kube/$1
 }
 
 function pr() {
-    # Get current working branch
-    local currentBranch=$(git branch --show-current)
+  # Get current working branch
+  local currentBranch=$(git branch --show-current)
 
-    # Default branch to 'main' if no argument provided
-    local targetBranch="${1:-$currentBranch}"
+  # Default branch to 'main' if no argument provided
+  local targetBranch="${1:-$currentBranch}"
 
-    # Extract organization and repository from the git remote origin URL
-    local originUrl=$(git remote get-url origin)
-    local repo=$(basename -s .git "${originUrl}")
-    local org=$(basename $(dirname "${originUrl}"))
+  # Extract organization and repository from the git remote origin URL
+  local originUrl=$(git remote get-url origin)
+  local repo=$(basename -s .git "${originUrl}")
+  local org=$(basename $(dirname "${originUrl}"))
 
-    # Clean up the URLs for SSH and HTTP formats
-    org=$(echo "${org}" | sed -e 's/.*://' -e 's/.com\/\(.*\)/\1/')
+  # Clean up the URLs for SSH and HTTP formats
+  org=$(echo "${org}" | sed -e 's/.*://' -e 's/.com\/\(.*\)/\1/')
 
-    # Run hub pull-request command
-    hub pull-request -b "${org}/${repo}:${targetBranch}" -h "${currentBranch}" -f
+  # Run hub pull-request command
+  hub pull-request -b "${org}/${repo}:${targetBranch}" -h "${currentBranch}" -f
 }
 
-
-function sendfile(){
-    # curl -F "file=@${1}" https://file.io | jq ".link"
-    curl https://oshi.at/file/-1 --upload-file $1
+function sendfile() {
+  # curl -F "file=@${1}" https://file.io | jq ".link"
+  curl https://oshi.at/file/-1 --upload-file $1
 }
 
-csh (){
-    curl cheat.sh/$1
+csh() {
+  curl cheat.sh/$1
 }
 
-
-gps(){
-    gopass otp -c $1 $(gopass $1) > /dev/null
+gps() {
+  gopass otp -c $1 $(gopass $1) >/dev/null
 }
 alias ek='export KUBECONFIG='
 alias m='mkdir'
@@ -94,17 +92,17 @@ alias gs='git status'
 alias gc='git checkout'
 alias gpl='git pull --rebase'
 function gclh() {
-    git clone https://github.com/$@
+  git clone https://github.com/$@
 }
 function gcls() {
-    git clone git@github.com:$@
+  git clone git@github.com:$@
 }
 function getRemoteBranch() {
-    git status -sb 2> /dev/null | cut -d '/' -f2 
+  git status -sb 2>/dev/null | cut -d '/' -f2
 }
 alias gplo='git pull --rebase origin heads/$(git rev-parse --abbrev-ref HEAD | rev | cut -d '/' -f1 | rev)'
 alias gplr='git pull --rebase rjshrjndrn $(git rev-parse --abbrev-ref HEAD)'
-function gpo(){
+function gpo() {
   args=""
   args="$@"
   if [[ $args != "" ]]; then
@@ -147,21 +145,21 @@ alias ssh='ssh -A'
 alias nssh='ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"'
 alias nscp='scp -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"'
 
-nmosh(){
-    mosh --ssh='ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"' -p 60001 $1
+nmosh() {
+  mosh --ssh='ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"' -p 60001 $1
 }
 
-jt(){
-    nvim $1**
+jt() {
+  nvim $1**
 }
-nsr(){
-    nssh rajeshr@$1
+nsr() {
+  nssh rajeshr@$1
 }
-nsu(){
-    nssh ubuntu@$1
+nsu() {
+  nssh ubuntu@$1
 }
-nso(){
-    nssh ops@$1
+nso() {
+  nssh ops@$1
 }
 # ansible aliases
 alias ap='ansible-playbook'
@@ -205,18 +203,21 @@ alias db=distrobox
 alias xc='xclip -sel clip'
 
 function uf() {
-    url=$(echo $1 | rev | cut -d'/' -f 1 | rev)
-    echo " curl --upload-file $url https://transfer.sh/$url -H 'Max-Downloads: 1' "
-    curl --upload-file $url https://transfer.sh/$url -H 'Max-Downloads: 1'
+  url=$(echo $1 | rev | cut -d'/' -f 1 | rev)
+  echo " curl --upload-file $url https://transfer.sh/$url -H 'Max-Downloads: 1' "
+  curl --upload-file $url https://transfer.sh/$url -H 'Max-Downloads: 1'
 }
 
-
-unalias z 2> /dev/null
+unalias z 2>/dev/null
 z() {
-    [ $# -gt 0 ] && zshz "$*" && return
-    cd "$(zshz -l 2>&1 | fzf --height 40% --nth 2.. --reverse --inline-info +s --tac --query "${*##-* }" | sed 's/^[0-9,.]* *//')"
-    # [ $# -gt 0 ] && _z "$*" && return
-    # cd "$(_z -l 2>&1 | fzf --height 40% --nth 2.. --reverse --inline-info +s --tac --query "${*##-* }" | sed 's/^[0-9,.]* *//')"
+  [ $# -gt 0 ] && zshz "$*" && return
+  cd "$(zshz -l 2>&1 | fzf --height 40% --nth 2.. --reverse --inline-info +s --tac --query "${*##-* }" | sed 's/^[0-9,.]* *//')"
+  # [ $# -gt 0 ] && _z "$*" && return
+  # cd "$(_z -l 2>&1 | fzf --height 40% --nth 2.. --reverse --inline-info +s --tac --query "${*##-* }" | sed 's/^[0-9,.]* *//')"
 }
 
 alias hc='atuin history -c'
+
+alias gps=gopass
+alias gpsc="gopass -c"
+alias gpsoc="gopass otp -c"
