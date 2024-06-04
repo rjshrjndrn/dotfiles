@@ -40,11 +40,11 @@ function sendfile() {
   curl https://oshi.at/file/-1 --upload-file $1
 }
 
-csh() {
+function csh() {
   curl cheat.sh/$1
 }
 
-gps() {
+function gps() {
   gopass otp -c $1 $(gopass $1) >/dev/null
 }
 alias ek='export KUBECONFIG='
@@ -91,6 +91,7 @@ alias ga='git add'
 alias gs='git status'
 alias gc='git checkout'
 alias gpl='git pull --rebase'
+alias lg="lazygit "
 function gclh() {
   git clone https://github.com/$@
 }
