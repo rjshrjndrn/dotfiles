@@ -44,7 +44,7 @@
         nodePackages_latest.bash-language-server
         nodePackages_latest.yaml-language-server
         # kitty
-        tmux
+        # tmux
         rofi
         # nixUnstable
         fzf
@@ -59,6 +59,7 @@
         kubernetes-helm
         helm-ls
         kubectl
+        kustomize
         kubectx
         kubectl-node-shell
         kubeconform
@@ -94,7 +95,7 @@
         trivy
         tfsec
         # IAC
-        terraform
+        # terraform
         opentofu
         terragrunt
         # terraform-docs markdown --output Readme.md ./components/iam
@@ -128,6 +129,7 @@
         # megasync
         # utils
         croc
+        heroku
       ];
       # Ref: https://nixos.org/manual/nixpkgs/stable/#sec-getting-documentation
       # pathsToLink tells Nixpkgs to only link the paths listed which gets rid of the extra stuff in the profile.
