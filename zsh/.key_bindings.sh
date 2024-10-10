@@ -6,3 +6,4 @@ bindkey -M viins '^t' transpose-chars    # t for transpose
 bindkey -M viins '\ec' capitalize-word   # c for capitalizae
 bindkey '^[[A' history-substring-search-up
 bindkey '^[[B' history-substring-search-down
+bindkey -M vicmd m edit-command-line
