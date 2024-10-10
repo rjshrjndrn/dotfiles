@@ -24,8 +24,23 @@ local config = {
 	-- text_background_opacity = .3,
 	-- Don't use keyboard interruption
 	use_ime = false,
-	font_size = 14,
+	font_size = 12,
 }
+
+-- wezterm ls-fonts --list-system | grep -i jet
+
+config.font = wezterm.font_with_fallback({
+	{
+		family = "JetBrainsMonoNL Nerd Font Propo",
+		-- weight = "Medium",
+		style = "Italic",
+		weight = "Medium",
+		stretch = "Normal",
+		italic = true,
+	},
+	{ family = "Terminus", weight = "Bold" },
+	"Noto Color Emoji",
+})
 
 config.keys = {}
 for i = 1, 8 do
