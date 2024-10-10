@@ -48,7 +48,7 @@ function gps() {
   gopass otp -c $1 $(gopass $1) >/dev/null
 }
 alias ek='export KUBECONFIG='
-alias m='mkdir'
+alias m='mkdir -p'
 alias clea='clear'
 alias sk=sk
 alias ll='ls -alF'
@@ -79,7 +79,7 @@ alias x='xdg-open'
 alias nvd='nvim -d'
 # Tmux alias
 alias t='tmux -u'
-alias ta='tmux -u attach -t $@'
+alias ta="tmux -u attach -t $@"
 alias tl='tmux -u ls'
 alias tc="tmux -u new -s $@"
 alias tk='tmux -u kill-session -t'
@@ -89,6 +89,7 @@ alias gb='git branch'
 alias gl='git log'
 alias ga='git add'
 alias gs='git status'
+alias gsn='git status --untracked-files=no'
 alias gc='git checkout'
 alias gpl='git pull --rebase'
 alias lg="lazygit "
@@ -178,6 +179,7 @@ alias kg='kubectl get'
 alias kga='kubectl get all'
 alias kgaa='kubectl get all --all-namespaces'
 alias ka='kubectl apply -f'
+alias kak='kubectl apply -k'
 alias kd='kubectl describe'
 alias kdl='kubectl delete'
 alias ke='kubectl edit'
@@ -187,7 +189,7 @@ alias kx='kubectx'
 alias kn='kubens'
 alias knc='kubens -c'
 alias kc='kubectl create'
-alias kubeconform='kubeconform -strict -verbose -schema-location default \
+alias kfm='kubeconform -strict -verbose -schema-location default \
 -schema-location https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json \
 -schema-location https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/{{.NormalizedKubernetesVersion}}/{{.ResourceKind}}.json \
 -schema-location https://json.schemastore.org/{{.ResourceKind}}.json'
@@ -222,3 +224,5 @@ alias hc='atuin history -c'
 alias gps=gopass
 alias gpsc="gopass -c"
 alias gpsoc="gopass otp -c"
+
+alias go_build="go build -ldflags "-s -w""
