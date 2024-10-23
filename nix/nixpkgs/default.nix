@@ -1,8 +1,11 @@
-# nix-env -f default.nix -iA myPackages --arg include '{ extra = true; }'
+#  nix-env -f default.nix -iA myPackages --arg includeFile ./environments/dev.nix
 
-{ include ? { } }:
+{ includeFile ? null }:
 
 let
+  # Import the include file if provided, otherwise default to an empty set
+  include = if includeFile != null then import includeFile { inherit pkgs; } else { };
+
   # Import nixpkgs with the necessary configurations
   pkgs = import <nixpkgs> {
     config = {
@@ -36,21 +39,19 @@ let
 
   # Function to determine if a package group should be included
   includeGroup = name: group:
-    group.alwaysInclude || (include.${name} or false);
+    if builtins.hasAttr name include && builtins.hasAttr "alwaysInclude" include.${name}
+    then include.${name}.alwaysInclude
+    else group.alwaysInclude;
 
   # Function to import packages from a package group
   importPackages = name: group:
     if includeGroup name group then
-      import group.file { inherit pkgs; }
+      import group.file { inherit pkgs; include = (include.${name} or {}); }
     else
       [];
 
   # Map over packageGroups to get the list of packages
   packagesList = builtins.concatLists (
-    # Uses builtins.mapAttrs to apply importPackages to each package group
-    #
-    # `builtins.mapAttrs importPackages packageGroups` applies importPackages to each attribute in packageGroups.
-    # This means for each name = group pair, it calls importPackages name group
     builtins.attrValues (builtins.mapAttrs importPackages packageGroups)
   );
 
