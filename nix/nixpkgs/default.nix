@@ -3,8 +3,9 @@
 { includeFile ? null }:
 
 let
+  lib = pkgs.lib;
   # Import the include file if provided, otherwise default to an empty set
-  include = if includeFile != null then import includeFile { inherit pkgs; } else { };
+  include = if includeFile != null then import includeFile { inherit pkgs lib; } else { };
 
   # Import nixpkgs with the necessary configurations
   pkgs = import <nixpkgs> {
