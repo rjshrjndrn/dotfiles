@@ -27,7 +27,11 @@ let
     };
     frontend = {
       file = ./packages/frontend.nix;
-      alwaysInclude = true;
+      alwaysInclude = false;
+    };
+    cloud = {
+      file = ./packages/cloud.nix;
+      alwaysInclude = false;
     };
     # Add more package groups here
     # For example:
