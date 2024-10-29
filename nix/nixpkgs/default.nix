@@ -34,6 +34,10 @@ let
       file = ./packages/cloud.nix;
       alwaysInclude = false;
     };
+    devops = {
+      file = ./packages/devops.nix;
+      alwaysInclude = false;
+    };
     # Add more package groups here
     # For example:
     # extra = {

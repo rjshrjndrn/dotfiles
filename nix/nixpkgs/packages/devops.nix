@@ -5,9 +5,9 @@ let
   packageOverrides = if include ? packageOverrides then include.packageOverrides else { };
   pkgsWithOverrides = pkgs // packageOverrides;
 in
-# avoid packageWithOverride.nox, ...unzip etc
 with pkgsWithOverrides;
 [
-  azure-cli
-  terraform
+  localstack
 ]
+
+

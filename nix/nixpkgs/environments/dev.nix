@@ -32,5 +32,8 @@
       }) {}).azure-cli;
     };
   };
+  devops = {
+    alwaysInclude = true;  # Include devops packages
+  };
 }
 
