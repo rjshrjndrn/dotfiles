@@ -28,7 +28,6 @@ with pkgsWithOverrides;
   hub
   kube3d
   unixtools.netstat
-  distrobox
   dig
   jq
   yq-go
@@ -44,7 +43,6 @@ with pkgsWithOverrides;
   nodePackages_latest.yaml-language-server
   # kitty
   # tmux
-  rofi
   # nixUnstable
   fzf
   ripgrep
@@ -60,7 +58,6 @@ with pkgsWithOverrides;
   kubectl
   kustomize
   kubectx
-  kubectl-node-shell
   kubeconform
   krew
   cilium-cli

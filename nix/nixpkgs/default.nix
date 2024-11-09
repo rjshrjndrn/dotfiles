@@ -26,6 +26,10 @@ let
       file = ./packages/basic.nix;
       alwaysInclude = true; # Basic packages are always included
     };
+    amd64 = {
+      file = ./packages/amd64.nix;
+      alwaysInclude = true; # Basic packages are always included
+    };
     frontend = {
       file = ./packages/frontend.nix;
       alwaysInclude = false;

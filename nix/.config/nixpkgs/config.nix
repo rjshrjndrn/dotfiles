@@ -29,9 +29,10 @@
         hub
         kube3d
         unixtools.netstat
-        distrobox
+        #distrobox
         dig
         jq
+        htop
         yq-go
         silver-searcher
         eksctl
@@ -44,7 +45,7 @@
         nodePackages_latest.bash-language-server
         nodePackages_latest.yaml-language-server
         # kitty
-        # tmux
+        tmux
         rofi
         # nixUnstable
         fzf
@@ -61,7 +62,6 @@
         kubectl
         kustomize
         kubectx
-        kubectl-node-shell
         kubeconform
         krew
         cilium-cli
