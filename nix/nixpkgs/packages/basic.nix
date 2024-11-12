@@ -8,6 +8,7 @@ in
 # avoid packageWithOverride.nox, ...unzip etc
 with pkgsWithOverrides;
  [
+  htop
   nox
   #zsh
   unzip
@@ -42,7 +43,7 @@ with pkgsWithOverrides;
   nodePackages_latest.bash-language-server
   nodePackages_latest.yaml-language-server
   # kitty
-  # tmux
+  tmux
   # nixUnstable
   fzf
   ripgrep
@@ -96,17 +97,6 @@ with pkgsWithOverrides;
   # terraform-docs markdown --output Readme.md ./components/iam
   terraform-docs
   packer
-  ## Go
-  go_1_22
-  go-swag
-  ## Node
-  nodejs
-  nodePackages.npm
-  nodePackages.prettier
-  nodePackages.localtunnel
-  yarn
-  ## Python
-  black
   ## SSL
   mkcert
   # step-cli
