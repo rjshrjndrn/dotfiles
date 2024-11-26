@@ -1,3 +1,5 @@
 **/kitchen
 **/depot.json
 **/main
+**/*.pem
+**/*.pub
