@@ -115,4 +115,5 @@ with pkgsWithOverrides;
   # utils
   croc
   heroku
+  atuin
 ]

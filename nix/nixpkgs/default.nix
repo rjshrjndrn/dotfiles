@@ -42,6 +42,14 @@ let
       file = ./packages/devops.nix;
       alwaysInclude = false;
     };
+    programming = {
+      file = ./packages/programming.nix;
+      alwaysInclude = true;
+    };
+    gui = {
+      file = ./packages/gui.nix;
+      alwaysInclude = false;
+    };
     # Add more package groups here
     # For example:
     # extra = {

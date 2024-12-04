@@ -35,5 +35,8 @@
   devops = {
     alwaysInclude = true;  # Include devops packages
   };
+ gui = {
+    alwaysInclude = true;
+  };
 }
 

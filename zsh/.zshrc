@@ -24,5 +24,3 @@ eval "$(direnv hook zsh)"
 autoload -U +X bashcompinit && bashcompinit
 # Bind ctrl-r but not up arrow
 eval "$(atuin init zsh --disable-up-arrow)"
-
-. "$HOME/.atuin/bin/env"

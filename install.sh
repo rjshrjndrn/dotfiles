@@ -21,7 +21,8 @@ done
 #done
 
 # Installing nix packages
-nix-env -iA nixpkgs.myPackages
+#nix-env -iA nixpkgs.myPackages
+nix-env -f ~/dotfiles/nix/nixpkgs/default.nix -iA myPackages --arg includeFile ~/dotfiles/nix/nixpkgs/environments/dev.nix
 
 # Install tmux plugin
 [[ -d ~/.tmux/plugins/tpm ]] || {
