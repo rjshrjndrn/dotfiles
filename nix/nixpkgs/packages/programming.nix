@@ -20,5 +20,6 @@ with pkgsWithOverrides;
   yarn
   ## Python
   black
+  pyenv
  ]
 
