@@ -21,5 +21,6 @@ with pkgsWithOverrides;
   ## Python
   black
   pyenv
+  pipenv
  ]
 

@@ -7,7 +7,7 @@ let
 in
 with pkgsWithOverrides;
 [
-  localstack
+  # localstack
 ########
   hey
 ]
