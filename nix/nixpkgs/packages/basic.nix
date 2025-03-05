@@ -10,6 +10,7 @@ with pkgsWithOverrides;
  [
   htop
   nox
+  fd
   #zsh
   unzip
   # Git
@@ -116,4 +117,8 @@ with pkgsWithOverrides;
   croc
   heroku
   atuin
+  yazi
+  lazygit
+  # remote access
+  upterm
 ]
