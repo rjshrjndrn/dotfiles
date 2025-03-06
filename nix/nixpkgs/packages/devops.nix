@@ -10,6 +10,7 @@ with pkgsWithOverrides;
   # localstack
 ########
   hey
+  gh
 ]
 
 
