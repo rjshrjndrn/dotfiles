@@ -1,0 +1,15 @@
+[Unit]
+Description=Toggle Tailscale on sleep/resume
+Documentation=https://tailscale.com/kb/
+Before=sleep.target
+StopWhenUnneeded=true
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/etc/default/tailscaled
+ExecStart=/usr/bin/systemctl stop tailscaled.service
+ExecStop=/usr/bin/systemctl start tailscaled.service
+
+[Install]
+WantedBy=sleep.target

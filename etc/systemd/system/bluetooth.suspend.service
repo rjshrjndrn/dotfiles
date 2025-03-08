@@ -1,7 +1,7 @@
 [Unit]
-Description=Disable/Enable Bluetooth on suspend/resume
+Description=Toggle Bluetooth on sleep/resume
 Before=sleep.target
-After=suspend.target
+StopWhenUnneeded=true
 
 [Service]
 Type=oneshot
