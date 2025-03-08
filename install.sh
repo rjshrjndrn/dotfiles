@@ -1,6 +1,6 @@
 # install nix
 [[ -x "$(command -v nix-env)" ]] || {
-    curl -L https://nixos.org/nix/install | sh
+    curl -fsSL https://install.determinate.systems/nix | sh -s -- install --determinate
 }
 
 # source nix
@@ -11,8 +11,8 @@ nix-env -iA nixpkgs.stow
 
 # stow dotfiles
 configs=(tmux zsh kitty starship nix git eget wezterm apps k9s)
-for config in ${configs[*]}; do
-    stow $config -t ~/
+for config in "${configs[@]}"; do
+    stow "$config" -t ~/
 done
 
 #root_configs=(keyd stubby dnsmasq)
@@ -33,7 +33,7 @@ nix-env -f ~/dotfiles/nix/nixpkgs/default.nix -iA myPackages --arg includeFile ~
 # command -v zsh | sudo tee -a /etc/shells
 
 # use zsh as default shell
-sudo chsh -s $(which zsh) $USER
+sudo chsh -s "$(which zsh)" "$USER"
 
 # Installing ohmyzsh
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended --skip-chsh --keep-zshrc
