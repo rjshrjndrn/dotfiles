@@ -10,3 +10,5 @@ export FZF_COMPLETION_TRIGGER="cc"
 # For nix locale
 # Ref: https://github.com/NixOS/nix/issues/599#issuecomment-130359048
 export LOCALE_ARCHIVE=/usr/lib/locale/locale-archive
+# Don't show the direnv variables
+export DIRENV_LOG_FORMAT=
