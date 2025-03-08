@@ -11,6 +11,8 @@ with pkgsWithOverrides;
 ########
   hey
   gh
+######
+  postgresql_17
 ]
 
 
