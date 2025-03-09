@@ -13,6 +13,8 @@ with pkgsWithOverrides;
   gh
 ######
   postgresql_17
+######
+  podman
 ]
 
 
