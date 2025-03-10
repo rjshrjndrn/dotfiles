@@ -34,7 +34,6 @@ with pkgsWithOverrides;
   jq
   yq-go
   silver-searcher
-  eksctl
   aria
   tree
   curlie
@@ -54,34 +53,7 @@ with pkgsWithOverrides;
   gcc
   k9s
   stern
-  # Kubernetes
-  kubernetes-helm
-  helm-ls
-  kubectl
-  kustomize
-  kubectx
-  kubeconform
-  krew
-  cilium-cli
-  hubble
-  # pluto detect-all-in-cluster -o wide --target-versions k8s=v1.24.0 --only-show-removed | tee -a removedapis.txt
-  pluto
-  nova
-  # kubernetes packet sniffer
-  kubeshark
-  cosign
   jsonnet
-  vcluster # Create virtual clusters
-  # Cloud
-  scaleway-cli
-  awscli2
-  aws-iam-authenticator
-  (
-    google-cloud-sdk.withExtraComponents [
-      google-cloud-sdk.components.gke-gcloud-auth-plugin
-    ]
-  )
-  ssm-session-manager-plugin
   xclip
   # Encryption tool
   # Ref: https://github.com/FiloSottile/age
@@ -91,19 +63,9 @@ with pkgsWithOverrides;
   # Security
   trivy
   tfsec
-  # IAC
-  # terraform
-  opentofu
-  terragrunt
-  # terraform-docs markdown --output Readme.md ./components/iam
-  terraform-docs
-  packer
   ## SSL
   mkcert
   # step-cli
-  #CICD
-  fluxcd
-  argocd
   # Password
   gopass
   # Blog

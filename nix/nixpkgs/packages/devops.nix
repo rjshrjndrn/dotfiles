@@ -15,6 +15,25 @@ with pkgsWithOverrides;
   postgresql_17
 ######
   podman
+  vcluster # Create virtual clusters
+  # Kubernetes
+  kubernetes-helm
+  helm-ls
+  kubectl
+  kustomize
+  kubectx
+  kubeconform
+  krew
+  cilium-cli
+  hubble
+  # pluto detect-all-in-cluster -o wide --target-versions k8s=v1.24.0 --only-show-removed | tee -a removedapis.txt
+  pluto
+  nova
+  # kubernetes packet sniffer
+  kubeshark
+  cosign
+  #CICD
+  fluxcd
+  argocd
+  eksctl
 ]
-
-
