@@ -31,3 +31,6 @@
 [push]
   # Ref: https://github.com/jesseduffield/lazygit/discussions/4068#discussioncomment-11336272
 	useForceIfIncludes = true
+	default = upstream
+[pull]
+	rebase = true
