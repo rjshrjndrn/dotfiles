@@ -194,7 +194,7 @@ alias kfm='kubeconform -strict -verbose -schema-location default \
 -schema-location https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/{{.NormalizedKubernetesVersion}}/{{.ResourceKind}}.json \
 -schema-location https://json.schemastore.org/{{.ResourceKind}}.json'
 # alias curl=curlie
-alias cat="bat --style=plain,header --paging=never"
+alias cat="bat --style=plain,header --paging=never --wrap=never"
 alias less="bat --paging=always"
 
 alias hi='helm upgrade --install'
