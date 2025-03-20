@@ -39,7 +39,7 @@ with pkgsWithOverrides;
   curlie
   atuin
   caddy
-  neovim
+  # neovim
   nodePackages_latest.bash-language-server
   nodePackages_latest.yaml-language-server
   # kitty

@@ -8,14 +8,12 @@ in
 # avoid packageWithOverride.nox, ...unzip etc
 with pkgsWithOverrides;
 [
-  azure-cli
-  # IAC
-  opentofu
-  terragrunt
-  terraform-docs
-  # Cloud
-  scaleway-cli
-  awscli2
-  aws-iam-authenticator
-  ssm-session-manager-plugin
+  terraform
+  packer
+  (
+    google-cloud-sdk.withExtraComponents [
+      google-cloud-sdk.components.gke-gcloud-auth-plugin
+    ]
+  )
 ]
+

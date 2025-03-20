@@ -50,6 +50,10 @@ let
       file = ./packages/gui.nix;
       alwaysInclude = false;
     };
+    nonFree = {
+      file = ./packages/non-free.nix;
+      alwaysInclude = false;
+    };
     # Add more package groups here
     # For example:
     # extra = {

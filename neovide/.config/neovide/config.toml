@@ -1,3 +1,4 @@
 frame = "none" # "full"
 mouse-cursor-icon = "i-beam"
+maximized = true
 # neovim-bin = "/opt/homebrew/bin/nvim" # in reality found dynamically on $PATH if unset

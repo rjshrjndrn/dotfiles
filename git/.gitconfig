@@ -11,6 +11,7 @@
 [core]
   pager = delta
 	excludesFile = ~/.gitignore_global
+	; sshCommand = ssh -i ~/.cred/git/git.pem -F /dev/null
 
 [interactive]
     diffFilter = delta --color-only
