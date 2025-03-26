@@ -36,4 +36,6 @@ with pkgsWithOverrides;
   fluxcd
   argocd
   eksctl
+  # Dev env
+  devbox
 ]
