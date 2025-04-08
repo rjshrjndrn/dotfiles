@@ -11,7 +11,7 @@ with pkgsWithOverrides;
   # Rust
   cargo
   ## Go
-  go_1_22
+  go_1_24
   ## Node
   nodejs
   nodePackages.npm
