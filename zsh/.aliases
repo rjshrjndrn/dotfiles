@@ -55,7 +55,7 @@ alias ll='ls -alF'
 alias la='ls -A'
 alias l='ls -CF'
 alias cx='chmod +x'
-alias p='python3'
+alias p='podman'
 alias sovp='gps svpn; sudo openvpn --config ~/.cred/sunbird-staging.ovpn --auth-user-pass ~/.cred/ntp/vpn'
 alias ovp="gps svpn; docker run -it --rm -e JENKINS_ADDR=10.20.0.9:8080 --privileged -p 8081:8080 -v ${HOME}/.cred/sunbird-staging.ovpn:/tmp/l.ovpn:ro -v ${HOME}/.cred/ntp/vpn:/tmp/vpn:ro rjshrjndrn/openvpn:latest /bin/sh -c '/tmp/socat.sh; /usr/sbin/openvpn --config /tmp/l.ovpn --auth-user-pass /tmp/vpn --ask-pass' "
 alias sovpd='gps dvpn; sudo openvpn --config ~/.cred/sunbird-dev.ovpn --auth-user-pass ~/.cred/ntp/vpn'
