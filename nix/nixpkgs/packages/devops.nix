@@ -39,4 +39,6 @@ with pkgsWithOverrides;
   act
   # load gen
   oha
+  # network
+  iperf
 ]
