@@ -43,4 +43,6 @@ with pkgsWithOverrides;
   oha
   # network
   iperf
+  # ignition for flatcar
+  butane
 ]
