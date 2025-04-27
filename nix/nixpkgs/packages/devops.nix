@@ -12,8 +12,6 @@ with pkgsWithOverrides;
   hey
   gh
 ######
-  postgresql_17
-######
   podman
   vcluster # Create virtual clusters
   # Kubernetes
@@ -38,4 +36,7 @@ with pkgsWithOverrides;
   eksctl
   # Dev env
   devbox
+  act
+  # load gen
+  oha
 ]
