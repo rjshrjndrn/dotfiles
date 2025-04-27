@@ -11,21 +11,32 @@
 [core]
   pager = delta
 	excludesFile = ~/.gitignore_global
-	; sshCommand = ssh -i ~/.cred/git/git.pem -F /dev/null
+	sshcommand = "ssh-add -D &>/dev/null; ssh -i ~/.cred/curr/git.pem"
+  compression = 9  # trade cpu for network
+  autocrlf = input  # keep newlines as in input
+  fsync = none
+
+[blame]
+  coloring = highlightRecent
+  date = relative
 
 [interactive]
-    diffFilter = delta --color-only
+  diffFilter = delta --color-only
 [add.interactive]
-    useBuiltin = false # required for git 2.37.0
+  useBuiltin = false # required for git 2.37.0
 
 [delta]
-    navigate = true    # use n and N to move between diff sections
+  navigate = true    # use n and N to move between diff sections
 
 [merge]
-    conflictstyle = diff3
+  conflictstyle = diff3
 
 [diff]
-    colorMoved = default
+  colorMoved = default
+  context = 3  # less context in diffs
+  renames = copies  # detect copies as renames in diffs
+  interHunkContext = 10  # merge near hunks in diffs
+
 [include]
 	path = ~/.gitaliases
 
@@ -33,5 +44,10 @@
   # Ref: https://github.com/jesseduffield/lazygit/discussions/4068#discussioncomment-11336272
 	useForceIfIncludes = true
 	default = upstream
+
 [pull]
 	rebase = true
+
+# URL shortcuts
+[url "git@github.com:"]
+  insteadOf = "gh:"

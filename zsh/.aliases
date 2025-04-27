@@ -31,6 +31,7 @@ function pr() {
   # Clean up the URLs for SSH and HTTP formats
   org=$(echo "${org}" | sed -e 's/.*://' -e 's/.com\/\(.*\)/\1/')
 
+  echo hub pull-request -b "${org}/${repo}:${targetBranch}" -h "${currentBranch}" -f
   # Run hub pull-request command
   hub pull-request -b "${org}/${repo}:${targetBranch}" -h "${currentBranch}" -f
 }
@@ -92,6 +93,8 @@ alias gs='git status'
 alias gsn='git status --untracked-files=no'
 alias gc='git checkout'
 alias gpl='git pull --rebase'
+alias gl='git log --graph --all --pretty=format:"%C(magenta)%h %C(white) %an  %ar%C(blue)  %D%n%s%n"'
+
 alias lg="lazygit "
 function gclh() {
   git clone https://github.com/$@
@@ -226,3 +229,5 @@ alias gpsc="gopass -c"
 alias gpsoc="gopass otp -c"
 
 alias go_build="go build -ldflags "-s -w""
+
+alias y=yazi
