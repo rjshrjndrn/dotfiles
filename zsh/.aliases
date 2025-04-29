@@ -172,7 +172,6 @@ alias apc='ansible-playbook -c local'
 alias apcc="ansible-playbook -i $2 $1 --syntax-check -e 'hosts=dummy'"
 alias apn='ansible-playbook -i ntp_preprod_inventory/env/ --vault-password-file=ntp_preprod_inventory/pass_file  -e ansible_ssh_user=rajeshr'
 
-alias c="setxkbmap -option caps:escape"
 alias yay="yay --sudoloop"
 # Docker
 alias d='docker'
@@ -197,6 +196,7 @@ alias kfm='kubeconform -strict -verbose -schema-location default \
 -schema-location https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/{{.NormalizedKubernetesVersion}}/{{.ResourceKind}}.json \
 -schema-location https://json.schemastore.org/{{.ResourceKind}}.json'
 # alias curl=curlie
+alias mcurl='curl -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0"'
 alias cat="bat --style=plain,header --paging=never --wrap=never"
 alias less="bat --paging=always"
 
@@ -231,3 +231,13 @@ alias gpsoc="gopass otp -c"
 alias go_build="go build -ldflags "-s -w""
 
 alias y=yazi
+
+alias or-unset-aws="unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_SECURITY_TOKEN"
+function or-aws() {
+  otp=$(gopass otp -o ora)
+  mfa "$otp"
+  echo "unsetting current session"
+  unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_SECURITY_TOKEN
+  export AWS_PROFILE=default-tmp
+}
+alias or-aws-manual="export AWS_PROFILE=default-tmp"

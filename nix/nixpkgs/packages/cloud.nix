@@ -11,7 +11,7 @@ with pkgsWithOverrides;
   azure-cli
   # IAC
   opentofu
-  terragrunt
+ # terragrunt
   terraform-docs
   # Cloud
   scaleway-cli

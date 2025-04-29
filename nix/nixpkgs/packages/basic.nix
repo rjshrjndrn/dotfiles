@@ -17,7 +17,7 @@ with pkgsWithOverrides;
   git
   gitsign
   git-extras
-  # ggshield
+  ggshield
   graphite-cli
   eget
   # git diff pager
@@ -64,8 +64,9 @@ with pkgsWithOverrides;
   trivy
   tfsec
   ## SSL
-  mkcert
-  # step-cli
+  # mkcert
+  step-cli
+  step-ca
   # Password
   gopass
   # Blog

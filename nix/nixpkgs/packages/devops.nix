@@ -24,6 +24,8 @@ with pkgsWithOverrides;
   krew
   cilium-cli
   hubble
+  # flatcar config gen
+  butane
   # pluto detect-all-in-cluster -o wide --target-versions k8s=v1.24.0 --only-show-removed | tee -a removedapis.txt
   pluto
   nova

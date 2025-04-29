@@ -5,14 +5,11 @@
 
 # source nix
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-nix-channel --add https://nixos.org/channels/nixpkgs-unstable
-nix-channel --update
 
 # Installing nix packages
-nix-env -iA nixpkgs.stow
 
 # stow dotfiles
-configs=(tmux zsh kitty starship nix git eget wezterm apps k9s containers)
+configs=(tmux zsh kitty starship nix git eget wezterm apps k9s containers k3d)
 for config in "${configs[@]}"; do
     stow "$config" -t ~/
 done
