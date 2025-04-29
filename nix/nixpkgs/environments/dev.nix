@@ -38,5 +38,8 @@
  gui = {
     alwaysInclude = false;
   };
+  nonFree = {
+    alwaysInclude = true;
+  };
 }
 
