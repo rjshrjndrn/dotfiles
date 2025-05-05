@@ -1,0 +1,17 @@
+# mkdir -p ~/.config/systemd/user/
+# systemctl --user daemon-reload
+# systemctl --user enable atuin.service
+# systemctl --user start atuin.service
+[Unit]
+Description=Atuin shell history sync daemon
+Documentation=https://github.com/ellie/atuin
+
+[Service]
+ExecStart=%h/.nix-profile/bin/atuin daemon
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
