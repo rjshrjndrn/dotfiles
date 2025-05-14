@@ -10,3 +10,5 @@ export FZF_COMPLETION_TRIGGER="cc"
 # For nix locale
 # Ref: https://github.com/NixOS/nix/issues/599#issuecomment-130359048
 export LOCALE_ARCHIVE=/usr/lib/locale/locale-archive
+# export SSH_AUTH_SOCK=~/.var/app/com.bitwarden.desktop/data/.bitwarden-ssh-agent.sock
+export MANPAGER="nvim +Man!"
