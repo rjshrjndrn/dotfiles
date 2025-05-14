@@ -67,6 +67,7 @@ alias vn='nvim -u ~/.essential.vim -N'
 # alias vim='/usr/bin/nvim -u ~/.config/nvim/minimal.vim'
 alias vim='nvim'
 alias vi='nvim'
+alias v=nvim
 alias scratch='/usr/bin/nvim -u ~/.config/nvim/minimal.vim -c Scratch'
 alias gvim='neovide -u ~/.config/nvim/minimal.vim'
 alias neovide='neovide --fork'
@@ -93,7 +94,7 @@ alias gs='git status'
 alias gsn='git status --untracked-files=no'
 alias gc='git checkout'
 alias gpl='git pull --rebase'
-alias gl='git log --graph --all --pretty=format:"%C(magenta)%h %C(white) %an  %ar%C(blue)  %D%n%s%n"'
+alias gl='git log --graph --pretty=format:"%C(magenta)%h %C(white) %an  %ar%C(blue)  %D%n%s%n"'
 
 alias lg="lazygit "
 function gclh() {
@@ -240,4 +241,8 @@ function or-aws() {
   unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_SECURITY_TOKEN
   export AWS_PROFILE=default-tmp
 }
-alias or-aws-manual="export AWS_PROFILE=default-tmp"
+function or-manual() {
+  echo "unsetting current session"
+  unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_SECURITY_TOKEN
+  export AWS_PROFILE=default-tmp
+}
