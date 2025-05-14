@@ -7,8 +7,13 @@ export FZF_COMPLETION_TRIGGER="cc"
 # This is for nix gui packages. Especially zoom
 # Ref: https://github.com/NixOS/nixpkgs/issues/82959#issuecomment-657306112
 # export QT_XCB_GL_INTEGRATION=none
+
 # For nix locale
 # Ref: https://github.com/NixOS/nix/issues/599#issuecomment-130359048
 export LOCALE_ARCHIVE=/usr/lib/locale/locale-archive
+
 # export SSH_AUTH_SOCK=~/.var/app/com.bitwarden.desktop/data/.bitwarden-ssh-agent.sock
 export MANPAGER="nvim +Man!"
+
+export LC_ALL=C.UTF-8
+# export LANG="en_US.UTF-8"
