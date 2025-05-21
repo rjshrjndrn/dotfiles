@@ -22,5 +22,6 @@ with pkgsWithOverrides;
   black
   pyenv
   pipenv
+  uv
  ]
 
