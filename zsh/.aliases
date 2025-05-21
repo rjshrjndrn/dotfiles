@@ -206,6 +206,9 @@ alias ht='helm template'
 alias civo="docker run -it --rm -v ${HOME}/.cred/civo/civo.json:/.civo.json civo/cli:latest"
 
 alias db=distrobox
+function dbx() {
+  distrobox enter "$@"
+}
 
 alias xc='xclip -sel clip'
 
