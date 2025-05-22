@@ -17,3 +17,7 @@ export MANPAGER="nvim +Man!"
 
 export LC_ALL=C.UTF-8
 # export LANG="en_US.UTF-8"
+
+export REGISTRY_AUTH_FILE=~/.docker/config.json
+# enable k9s node shell
+export K9S_FEATURE_GATE_NODE_SHELL=true
