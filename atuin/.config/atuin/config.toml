@@ -1,5 +1,6 @@
 auto_sync = true
 history_filter = [
+  "^llm",
   "^secret-cmd",
   "^innocuous-cmd .*--secret=.+",
   "^AWS_SECRET_ACCESS_KEY=.*",
