@@ -38,5 +38,11 @@
   devops = {
     alwaysInclude = true;  # Include devops packages
   };
+  arm64 = {
+    alwaysInclude = true;
+    };
+    nonFree = {
+      alwaysInclude = true;
+    };
 }
 
