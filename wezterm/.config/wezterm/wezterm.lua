@@ -15,16 +15,16 @@ local config = {
 		top = 0,
 		bottom = 0,
 	},
-	window_decorations = "NONE",
+	-- window_decorations = "NONE",
 	-- window_decorations = "RESIZE",
 	color_scheme = "Gogh (Gogh)",
 	-- color_scheme = "Darkside",
-	window_background_opacity = 0.95,
+	window_background_opacity = 1,
 	audible_bell = "Disabled",
 	-- text_background_opacity = .3,
 	-- Don't use keyboard interruption
 	use_ime = false,
-	font_size = 12,
+	font_size = 16,
 }
 
 -- wezterm ls-fonts --list-system | grep -i jet
@@ -32,6 +32,7 @@ local config = {
 config.font = wezterm.font_with_fallback({
 	{
 		family = "JetBrains Mono",
+		-- family = "Iosevka",
 		-- weight = "Medium",
 		style = "Italic",
 		weight = "Medium",
