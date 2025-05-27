@@ -98,16 +98,21 @@ alias gw='git worktree'
 alias gwl='git worktree list'
 # crate git worktree with optional local branch/remote branch
 function gwa() {
+  [[ -z "$1" ]] &&
+    echo "Usage: gwa [local_branch_name] [remote_branch_name] [folder_name]" &&
+    return
   local branch=$(echo "$1" | xargs)
   local remote=$(echo "$2" | xargs)
+  local folder=$3
   local toplevel
   toplevel=$(git rev-parse --show-toplevel &>/dev/null || readlink -f .)
   # Check if local branch exists
   local arg=""
   local command=""
-  if ! git show-ref --verify --quiet "refs/heads/$branch"; then
+  if ! git show-ref --verify --quiet "$branch"; then
     arg="-b $branch"
   fi
+  [[ -z $folder ]] || branch=$folder
   command="git worktree add $arg $toplevel/worktree/$branch $remote"
   echo "$command"
   eval "$command"
