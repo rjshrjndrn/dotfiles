@@ -94,7 +94,24 @@ alias gs='git status'
 alias gsn='git status --untracked-files=no'
 alias gc='git checkout'
 alias gpl='git pull --rebase'
-alias gl='git log --graph --pretty=format:"%C(magenta)%h %C(white) %an  %ar%C(blue)  %D%n%s%n"'
+alias gw='git worktree'
+alias gwl='git worktree list'
+# crate git worktree with optional local branch/remote branch
+function gwa() {
+  local branch=$(echo "$1" | xargs)
+  local remote=$(echo "$2" | xargs)
+  # Check if local branch exists
+  local arg=""
+  local command=""
+  if ! git show-ref --verify --quiet "refs/heads/$branch"; then
+    arg="-b $branch"
+  fi
+  command="git worktree add $arg $(git rev-parse --show-toplevel)/worktree/$branch $remote"
+  echo "$command"
+  eval "$command"
+}
+alias gwr='git worktree remove'
+# alias gl='git log --graph --pretty=format:"%C(magenta)%h %C(white) %an  %ar%C(blue)  %D%n%s%n"'
 
 alias lg="lazygit "
 function gclh() {
