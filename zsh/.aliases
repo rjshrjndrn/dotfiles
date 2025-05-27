@@ -100,13 +100,15 @@ alias gwl='git worktree list'
 function gwa() {
   local branch=$(echo "$1" | xargs)
   local remote=$(echo "$2" | xargs)
+  local toplevel
+  toplevel=$(git rev-parse --show-toplevel &>/dev/null || readlink -f .)
   # Check if local branch exists
   local arg=""
   local command=""
   if ! git show-ref --verify --quiet "refs/heads/$branch"; then
     arg="-b $branch"
   fi
-  command="git worktree add $arg $(git rev-parse --show-toplevel)/worktree/$branch $remote"
+  command="git worktree add $arg $toplevel/worktree/$branch $remote"
   echo "$command"
   eval "$command"
 }
