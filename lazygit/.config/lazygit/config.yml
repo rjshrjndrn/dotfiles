@@ -1,3 +1,12 @@
+gui:
+  mouseEvents: true
+  theme:
+    # Border color of focused window
+    activeBorderColor:
+      - red
+      - bold
+git:
+  fetchAll: false
 keybinding:
   universal:
     confirmInEditor: <c-y>
