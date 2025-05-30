@@ -98,6 +98,18 @@ alias gpl='git pull --rebase'
 alias gw='git worktree'
 alias gwl='git worktree list'
 
+#######################################
+# Clone a bare repo with repo name
+# Usage: gclb gh:user/repo
+#######################################
+function gclb() {
+  [[ $# -lt 1 ]] && echo "Usage: gclb [repo_url]" && return
+  readonly repo_url="$1"
+  shift
+  readonly repo_name=$(basename "$repo_url")
+  git clone --bare "$repo_url" "${repo_name}/.git" "$@"
+}
+
 # crate git worktree with optional local branch/remote branch
 function gwa() {
   [[ -z "$1" ]] &&
