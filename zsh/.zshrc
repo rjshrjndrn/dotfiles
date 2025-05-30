@@ -6,7 +6,8 @@ setopt HIST_IGNORE_ALL_DUPS
 setopt HIST_IGNORE_SPACE
 setopt appendhistory
 ZSH_THEME="robbyrussell"
-plugins=(git
+plugins=(
+    git
     history-substring-search
     z
     zsh-autosuggestions

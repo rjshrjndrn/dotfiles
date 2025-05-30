@@ -275,6 +275,74 @@ function or-manual() {
   export AWS_PROFILE=default-tmp
 }
 
+function aws-ssm() {
+  local command="sudo su - ubuntu"
+  local target=""
+  local region=""
+
+  # First argument is the target instance ID
+  if [[ $# -gt 0 && "$1" != --* ]]; then
+    target="$1"
+    shift
+  fi
+
+  # Parse remaining parameters
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+    # 1. **`--arg=value`** format (lines 292-295):
+    #    - Extracts the command after the `=` sign using parameter expansion `${1#*=}`
+    #    - Shifts to the next argument
+    #
+    # 2. **`--arg value`** format (lines 296-298):
+    #    - Takes the command from the next argument (`$2`)
+    #    - Shifts by 2 positions to skip both the option and its value
+    #
+    # This allows users to specify a custom command to run via AWS SSM in either format:
+    # - `aws-ssm instance-id --arg="ls -la"`
+    # - `aws-ssm instance-id --arg "ls -la"`
+    --arg=*)
+      command="${1#*=}"
+      shift
+      ;;
+    --arg)
+      command="$2"
+      shift 2
+      ;;
+    --region=*)
+      region="${1#*=}"
+      shift
+      ;;
+    --region)
+      region="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown option: $1"
+      local usage="Usage: aws-ssm <instance-id> [--region <region>] [--arg=\"<command>\"]"
+      echo "$usage"
+      return 1
+      ;;
+    esac
+  done
+
+  # Check if target is provided
+  if [[ -z "$target" ]]; then
+    echo "Error: Instance ID is required"
+    echo "Usage: aws-ssm <instance-id> [--region <region>] [--arg=\"<command>\"]"
+    return 1
+  fi
+
+  # Build the AWS SSM command
+  local aws_cmd="aws ssm start-session --target \"$target\" --parameters command=\"$command\" --document-name \"AWS-StartInteractiveCommand\""
+
+  # Add region if specified
+  if [[ -n "$region" ]]; then
+    aws_cmd="$aws_cmd --region \"$region\""
+  fi
+
+  eval "$aws_cmd"
+}
+
 alias ts=tailscale
 alias llm="llm -m github-copilot --system \"you're seasoned devops archtect. \
   Keep the coversation short and consise. Assume the user is well versed in devops. \
