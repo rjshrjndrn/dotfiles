@@ -92,8 +92,8 @@ alias gl='git log'
 alias ga='git add'
 alias gs='git status'
 alias gsn='git status --untracked-files=no'
-alias gc='git checkout'
 alias gcp='git cherry-pick'
+alias gc='git checkout'
 alias gpl='git pull --rebase'
 alias gw='git worktree'
 alias gwl='git worktree list'
@@ -146,6 +146,33 @@ function gwa() {
 alias gwr='git worktree remove'
 # alias gl='git log --graph --pretty=format:"%C(magenta)%h %C(white) %an  %ar%C(blue)  %D%n%s%n"'
 
+#######################################
+# git chekcout if not worktree, else cd to that dir
+#######################################
+function gwc() {
+  if [[ -z "$1" ]]; then
+    echo "Usage: gc <branch_name>"
+    return 1
+  fi
+
+  local branch="$1"
+  local worktree_path
+
+  # Check if the branch exists as a worktree
+  worktree_path=$(git worktree list | grep "$branch" | cut -d' ' -f1)
+
+  if [[ -n "$worktree_path" ]]; then
+    echo "Switching to worktree: $worktree_path"
+    cd "$worktree_path" || {
+      echo "Failed to change directory to $worktree_path"
+      return 1
+    }
+  else
+    echo "Checking out branch: $branch"
+    git checkout "$branch"
+  fi
+}
+
 alias lg="lazygit "
 function getRemoteBranch() {
   git status -sb 2>/dev/null | cut -d '/' -f2
@@ -192,7 +219,16 @@ alias cl='clear'
 alias ssh='ssh -A'
 # skiping knownkeys saving
 alias nssh='ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"'
-alias nscp='scp -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"'
+# alias nscp='scp -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"'
+
+function nscp() {
+  local user=$1
+  if [[ $# -eq 0 ]]; then
+    echo "Usage: nscp <source> <destination>"
+    return 1
+  fi
+  scp -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false" "${user}@${*}"
+}
 
 nmosh() {
   mosh --ssh='ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"' -p 60001 "$1"
