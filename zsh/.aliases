@@ -73,6 +73,10 @@ alias gvim='neovide -u ~/.config/nvim/minimal.vim'
 alias neovide='neovide --fork'
 alias sv='cat | vim'
 alias x='xdg-open'
+
+## Generic linux shortcuts
+alias rmf='rm -rf'
+
 # alias emacs='emacs --no-window-system'
 
 # function vim(){
