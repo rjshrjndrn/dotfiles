@@ -16,7 +16,6 @@ source $ZSH/oh-my-zsh.sh
 source ~/.aliases
 source ~/.key_bindings.sh
 source ~/.exports.sh
-source ~/.completions.sh
 eval "$(starship init zsh)"
 eval "$(direnv hook zsh)"
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
@@ -27,3 +26,6 @@ eval "$(atuin init zsh --disable-up-arrow)"
 
 # Scaleway CLI autocomplete initialization.
 eval "$(scw autocomplete script shell=zsh)"
+
+# manual completions
+source ~/.completions.sh

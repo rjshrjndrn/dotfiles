@@ -5,8 +5,6 @@ function sk() {
   find ~/.cred/${org} -maxdepth 1 -type f -iname "*.pem" -exec ssh-add {} \; &>/dev/null
 }
 
-sk
-
 function k3c() {
   k3d create cluster $1 --k3s-server-arg --no-deploy --k3s-server-arg traefik --network kubelocal --k3s-server-arg --no-deploy --k3s-server-arg local-storage --k3s-server-arg --kubelet-arg --k3s-server-arg containerd=/run/k3s/containerd/containerd.sock --api-port ${2:-16433} --image rancher/k3s:v1.0.1
 }
@@ -155,7 +153,7 @@ alias gwr='git worktree remove'
 #######################################
 function gwc() {
   if [[ -z "$1" ]]; then
-    echo "Usage: gc <branch_name>"
+    echo "Usage: gwc <branch_name>"
     return 1
   fi
 
@@ -176,15 +174,6 @@ function gwc() {
     git checkout "$branch"
   fi
 }
-# Tab completion for gwc function
-_gwc() {
-  local branches
-  branches=($(git branch -a --format='%(refname:short)' 2>/dev/null | sed 's|origin/||' | sort -u))
-  _describe 'branches' branches
-}
-
-# Register the completion function
-compdef _gwc gwc
 
 alias lg="lazygit "
 function getRemoteBranch() {
