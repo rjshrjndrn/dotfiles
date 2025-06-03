@@ -250,6 +250,22 @@ nsu() {
 nso() {
   nssh ops@$1
 }
+
+############################################
+# ssh in to dedicated server using tailscale
+# if arg given, it will ssh that as name
+# else list down all instances
+############################################
+function nsud() {
+  local name=$1
+  if [[ -n "$name" ]]; then
+    local ip
+    ip=$(ts status | grep "$1" | awk '{print $1}')
+    nsu "$ip"
+    return
+  fi
+  nsu "$(ts status | fzf | awk '{print $1}')" # login to dedicated
+}
 # ansible aliases
 alias ap='ansible-playbook'
 alias apc='ansible-playbook -c local'
