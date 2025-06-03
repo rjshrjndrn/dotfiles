@@ -176,6 +176,15 @@ function gwc() {
     git checkout "$branch"
   fi
 }
+# Tab completion for gwc function
+_gwc() {
+  local branches
+  branches=($(git branch -a --format='%(refname:short)' 2>/dev/null | sed 's|origin/||' | sort -u))
+  _describe 'branches' branches
+}
+
+# Register the completion function
+compdef _gwc gwc
 
 alias lg="lazygit "
 function getRemoteBranch() {
