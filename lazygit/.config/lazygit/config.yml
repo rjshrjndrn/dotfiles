@@ -10,3 +10,6 @@ git:
 keybinding:
   universal:
     confirmInEditor: <c-y>
+  commits:
+    moveUpCommit: "K"
+    moveDownCommit: "J"
