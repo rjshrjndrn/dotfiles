@@ -4,7 +4,7 @@
     alwaysInclude = false;  # Exclude amd64 packages
     };
   frontend = {
-    alwaysInclude = true;  # Exclude frontend packages
+    alwaysInclude = false;  # Exclude frontend packages
     # packageOverrides = {
     #   # You can override specific packages if needed
     #   # For example, override the version of packageA

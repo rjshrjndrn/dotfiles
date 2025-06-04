@@ -18,7 +18,6 @@ with pkgsWithOverrides;
   gitsign
   git-extras
   ggshield
-  graphite-cli
   eget
   # git diff pager
   delta
@@ -84,4 +83,5 @@ with pkgsWithOverrides;
   lazygit
   # remote access
   upterm
+  btop
 ]
