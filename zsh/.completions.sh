@@ -13,3 +13,15 @@ _gwc() {
 }
 # Register the completion function
 compdef _gwc gwc
+
+# Tab completion for gwa function
+_gwa() {
+    local branches worktrees
+    worktrees=($(git worktree list | awk 'NR>1 {print $3}' | sed 's/\[//g; s/\]//g'))
+    branches=($(git branch -a | sed 's/^[ *+]*//; s/remotes\///; s/origin\///' | awk '{print $1}' | grep -v -F -f <(printf '%s\n' "${worktrees[@]}")))
+    _describe 'branches' branches
+    _describe 'branches' branches
+}
+# Register the completion function
+compdef _gwc gwc
+compdef _gwa gwa
