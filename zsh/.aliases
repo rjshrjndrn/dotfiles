@@ -165,7 +165,7 @@ function gwc() {
   local worktree_path
 
   # Check if the branch exists as a worktree
-  worktree_path=$(git worktree list | grep "$branch" | cut -d' ' -f1)
+  worktree_path=$(git worktree list | grep "\[$branch\]" | cut -d' ' -f1)
 
   if [[ -n "$worktree_path" ]]; then
     echo "Switching to worktree: $worktree_path"
