@@ -8,7 +8,7 @@ source <(argocd completion zsh)
 # Tab completion for gwc function
 _gwc() {
     local branches worktrees
-    worktrees=($(git worktree list | awk '{print $1}'))
+    worktrees=($(git worktree list | awk '{print $3}' | sed 's/\[//g; s/\]//g'))
     _describe 'worktrees' worktrees
 }
 # Register the completion function
