@@ -124,7 +124,8 @@ function gwa() {
   local toplevel
 
   # Check if bare repo, then create worktree dir
-  if git rev-parse --is-bare-repository; then
+  if [[ $(git rev-parse --is-bare-repository) == "true" ]]; then
+    echo bare repo
     # If bare repo, use current directory unless you're inside 'worktree/' dir
     # I keep all the branches in worktree/ directory
     if [[ $(basename "$(pwd)") == "worktree" ]]; then
@@ -133,7 +134,10 @@ function gwa() {
       toplevel=$(readlink -f .)/worktree
     fi
   else
-    toplevel=$(git rev-parse --show-toplevel)/worktree
+    echo worktree
+    # Need to get to the worktree level.
+    # Current worktree will be the branch directory inside worktree
+    toplevel=$(readlink -f "$(git rev-parse --show-toplevel)/..")
   fi
   # Check if local branch exists
   if ! git show-ref --verify --quiet "$branch"; then
