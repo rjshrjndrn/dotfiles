@@ -3,6 +3,10 @@ command_timeout = 50 # terminate all commans before ms
 # Get editor completions based on the config schema
 "$schema" = 'https://starship.rs/config-schema.json'
 
+
+# If you want to show the custom first
+# format = "$custom$all"
+
 [kubernetes]
 symbol = "⛵ "
 style = "dim yellow"
@@ -35,3 +39,10 @@ behind = "⇣${count}"
 
 [gcloud]
 disabled = true
+
+# Show some random string
+# [custom.machine]
+# command = "echo 'home-machine'"
+# when = true
+# style = "bold blue"
+# format = "[$output]($style) "
