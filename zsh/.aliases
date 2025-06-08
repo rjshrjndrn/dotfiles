@@ -49,7 +49,6 @@ function gps() {
 alias ek='export KUBECONFIG='
 alias m='mkdir -p'
 alias clea='clear'
-alias sk=sk
 alias ll='ls -alF'
 alias la='ls -A'
 alias l='ls -CF'
@@ -128,19 +127,10 @@ function gwa() {
     echo bare repo
     # If bare repo, use current directory unless you're inside 'worktree/' dir
     # I keep all the branches in worktree/ directory
-    if [[ $(basename "$(pwd)") == "worktree" ]]; then
-      toplevel=$(readlink -f .)
-    else
-      toplevel=$(readlink -f .)/worktree
-    fi
-  else
-    echo worktree
-    # Need to get to the worktree level.
-    # Current worktree will be the branch directory inside worktree
-    toplevel=$(readlink -f "$(git rev-parse --show-toplevel)/..")
+    toplevel=$(readlink -f .)
   fi
   # Check if local branch exists
-  if ! git show-ref --verify --quiet "$branch"; then
+  if ! git branch | grep "$branch"; then
     readonly arg="-b $branch"
   fi
   [[ -z $folder ]] || branch=$folder
