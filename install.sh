@@ -1,3 +1,7 @@
+if ! stow --version &>/dev/null || ! zsh --version &>/dev/null; then
+    echo stow and zsh are required to run this script.
+fi
+
 # install nix
 [[ -x "$(command -v nix-env)" ]] || {
     curl -fsSL https://install.determinate.systems/nix | sh -s -- install --determinate
@@ -13,6 +17,11 @@ configs=(tmux zsh kitty starship nix git eget wezterm apps k9s containers k3d)
 for config in "${configs[@]}"; do
     stow "$config" -t ~/
 done
+
+# if linux, stow the flatpak
+if [[ "$(uname -s)" == "Linux" ]]; then
+    stow flatpak -t ~/ --no-folding
+fi
 
 #root_configs=(keyd stubby dnsmasq)
 #for config in ${root_configs[*]};do
