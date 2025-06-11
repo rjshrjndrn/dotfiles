@@ -21,6 +21,7 @@ done
 # if linux, stow the flatpak
 if [[ "$(uname -s)" == "Linux" ]]; then
     stow flatpak -t ~/ --no-folding
+    systemctl --user daemon-reload
 fi
 
 #root_configs=(keyd stubby dnsmasq)
