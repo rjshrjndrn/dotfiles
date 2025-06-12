@@ -317,6 +317,48 @@ z() {
   # cd "$(_z -l 2>&1 | fzf --height 40% --nth 2.. --reverse --inline-info +s --tac --query "${*##-* }" | sed 's/^[0-9,.]* *//')"
 }
 
+#######################################
+# Interactive fzf based directory switcher
+#######################################
+function zz() {
+  # Check if we're in a git repository
+  local git_root
+  git_root=$(git rev-parse --show-toplevel 2>/dev/null)
+
+  if [[ -z "$git_root" ]]; then
+    echo "Not in a git repository"
+    return 1
+  fi
+
+  local name="$1"
+  if [[ -n "$name" ]]; then
+    # If argument provided, try to find and cd to that directory
+    local target_dir
+    target_dir=$(find "$git_root" -type d -name "*$name*" | head -1)
+    if [[ -n "$target_dir" ]]; then
+      cd "$target_dir" || return 1
+      echo "Changed to: $target_dir"
+    else
+      echo "Directory matching '$name' not found"
+      return 1
+    fi
+    return
+  fi
+
+  # No argument - show fzf menu of all directories in git repo
+  local selected_dir
+  selected_dir=$(find "$git_root" -type d | sed "s|$git_root/||" | sed "s|^$git_root$|.|" | fzf --height 40% --reverse --header="Select directory in $(basename "$git_root")")
+
+  if [[ -n "$selected_dir" ]]; then
+    if [[ "$selected_dir" == "." ]]; then
+      cd "$git_root" || return 1
+    else
+      cd "$git_root/$selected_dir" || return 1
+    fi
+    echo "Changed to: $(pwd)"
+  fi
+}
+
 alias hc='atuin history -c'
 
 alias gps=gopass
