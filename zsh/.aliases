@@ -330,11 +330,31 @@ function zz() {
     return 1
   fi
 
-  local name="$1"
+  local include_git=false
+  local name=""
+
+  # Parse arguments
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+    --git)
+      include_git=true
+      shift
+      ;;
+    *)
+      name="$1"
+      shift
+      ;;
+    esac
+  done
+
   if [[ -n "$name" ]]; then
     # If argument provided, try to find and cd to that directory
     local target_dir
-    target_dir=$(find "$git_root" -type d -name "*$name*" | head -1)
+    if [[ "$include_git" == true ]]; then
+      target_dir=$(find "$git_root" -type d -name "*$name*" | head -1)
+    else
+      target_dir=$(find "$git_root" -type d -name "*$name*" -not -path "*/.git/*" -not -name ".git" | head -1)
+    fi
     if [[ -n "$target_dir" ]]; then
       cd "$target_dir" || return 1
       echo "Changed to: $target_dir"
@@ -347,7 +367,11 @@ function zz() {
 
   # No argument - show fzf menu of all directories in git repo
   local selected_dir
-  selected_dir=$(find "$git_root" -type d | sed "s|$git_root/||" | sed "s|^$git_root$|.|" | fzf --height 40% --reverse --header="Select directory in $(basename "$git_root")")
+  if [[ "$include_git" == true ]]; then
+    selected_dir=$(find "$git_root" -type d | sed "s|$git_root/||" | sed "s|^$git_root$|.|" | fzf --height 40% --reverse --header="Select directory in $(basename "$git_root")")
+  else
+    selected_dir=$(find "$git_root" -type d -not -path "*/.git/*" -not -name ".git" | sed "s|$git_root/||" | sed "s|^$git_root$|.|" | fzf --height 40% --reverse --header="Select directory in $(basename "$git_root")")
+  fi
 
   if [[ -n "$selected_dir" ]]; then
     if [[ "$selected_dir" == "." ]]; then
