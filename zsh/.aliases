@@ -317,9 +317,10 @@ z() {
   # cd "$(_z -l 2>&1 | fzf --height 40% --nth 2.. --reverse --inline-info +s --tac --query "${*##-* }" | sed 's/^[0-9,.]* *//')"
 }
 
-#######################################
+#############################################
 # Interactive fzf based directory switcher
-#######################################
+# pass --git to also show git repos in output
+#############################################
 function zz() {
   # Check if we're in a git repository
   local git_root
