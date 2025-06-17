@@ -128,6 +128,8 @@ function gwa() {
     # If bare repo, use current directory unless you're inside 'worktree/' dir
     # I keep all the branches in worktree/ directory
     toplevel=$(readlink -f .)
+  else
+    toplevel=$(git rev-parse --show-toplevel)/worktree
   fi
   # Check if local branch exists
   if ! git branch | grep "$branch"; then
@@ -137,6 +139,7 @@ function gwa() {
   readonly command="git worktree add $arg $toplevel/$branch $remote"
   echo "$command"
   eval "$command"
+  eval "gwc $branch" # Change to the new worktree directory
 }
 
 alias gwr='git worktree remove'
