@@ -6,8 +6,9 @@ source <(helm completion zsh)
 # source <(argocd completion zsh)
 
 # Tab completion for gwc function
+# Tab completion for gwc function
 _gwc() {
-    local branches worktrees
+    local worktrees
     worktrees=($(git worktree list | awk '{print $3}' | sed 's/\[//g; s/\]//g'))
     _describe 'worktrees' worktrees
 }
@@ -16,11 +17,10 @@ compdef _gwc gwc
 
 # Tab completion for gwa function
 _gwa() {
-    local branches worktrees
-    worktrees=($(git worktree list | awk 'NR>1 {print $3}' | sed 's/\[//g; s/\]//g'))
-    branches=($(git branch -a | sed 's/^[ *+]*//; s/remotes\///; s/origin\///' | awk '{print $1}' | grep -v -F -f <(printf '%s\n' "${worktrees[@]}")))
+    local -a branches worktrees
+    worktrees=($(git worktree list 2>/dev/null | awk '{print $3}' | sed 's/\[//g; s/\]//g'))
+    branches=($(git branch -a 2>/dev/null | sed 's/^[ *+]*//; s/remotes\///; s/origin\///' | awk '{print $1}' | grep -v -F -f <(printf '%s\n' "${worktrees[@]}") 2>/dev/null))
     _describe 'branches' branches
 }
 # Register the completion function
-compdef _gwc gwc
 compdef _gwa gwa
