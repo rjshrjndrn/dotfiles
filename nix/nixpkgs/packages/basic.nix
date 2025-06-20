@@ -21,6 +21,7 @@ with pkgsWithOverrides;
   eget
   # git diff pager
   git-lfs
+  git-filter-repo
   delta
   # Shell
   direnv
