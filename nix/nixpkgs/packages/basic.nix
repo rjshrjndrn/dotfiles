@@ -20,6 +20,7 @@ with pkgsWithOverrides;
   ggshield
   eget
   # git diff pager
+  git-lfs
   delta
   # Shell
   direnv
