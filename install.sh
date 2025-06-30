@@ -21,6 +21,8 @@ done
 # if linux, stow the flatpak
 if [[ "$(uname -s)" == "Linux" ]]; then
     stow flatpak -t ~/ --no-folding
+    sudo stow system/ -t / --no-folding
+    sudo cp -al system/etc/systemd/resolved.conf.d/openreplay.conf /etc/systemd/resolved.conf.d/
     systemctl --user daemon-reload
 fi
 
@@ -51,6 +53,7 @@ source ~/.zshrc
 # Install zsh-autosuggestions plugin
 git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
 git clone https://github.com/zsh-users/zsh-history-substring-search ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-history-substring-search
+git clone https://github.com/Aloxaf/fzf-tab ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/fzf-tab
 
 git clone https://github.com/rjshrjndrn/nvim-basic-ide.git ~/.config/nvim
 

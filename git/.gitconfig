@@ -51,6 +51,13 @@
 # URL shortcuts
 [url "git@github.com:"]
   insteadOf = "gh:"
+[url "git@github.com:rjshrjndrn/"]
+  insteadOf = "ghr:"
 
 [log]
 	date = local
+[filter "lfs"]
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
+	clean = git-lfs clean -- %f
