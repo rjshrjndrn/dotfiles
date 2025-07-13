@@ -54,6 +54,12 @@
 [url "git@github.com:rjshrjndrn/"]
   insteadOf = "ghr:"
 
+[url "git@github.com:rjshrjndrn/"]
+  insteadOf = "ghr:"
+
+[url "git@github.com:openreplay/"]
+  insteadOf = "gho:"
+
 [log]
 	date = local
 [filter "lfs"]
