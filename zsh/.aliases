@@ -336,12 +336,21 @@ function zz() {
 
   local include_git=false
   local name=""
+  local files
 
   # Parse arguments
   while [[ $# -gt 0 ]]; do
     case $1 in
+    --help | -h)
+      echo "zz [--git] [--files] [directory]"
+      return
+      ;;
     --git)
       include_git=true
+      shift
+      ;;
+    --files)
+      files=true
       shift
       ;;
     *)
@@ -352,40 +361,76 @@ function zz() {
   done
 
   if [[ -n "$name" ]]; then
-    # If argument provided, try to find and cd to that directory
+    # If argument provided, try to find and cd to that directory or file
     local target_dir
-    if [[ "$include_git" == true ]]; then
-      target_dir=$(find "$git_root" -type d -name "*$name*" | head -1)
+    if [[ "$files" == true ]]; then
+      # Search for files instead of directories
+      if [[ "$include_git" == true ]]; then
+        target_dir=$(find "$git_root" -type f -name "*$name*" | head -1)
+      else
+        target_dir=$(find "$git_root" -type f -name "*$name*" -not -path "*/.git/*" | head -1)
+      fi
+      if [[ -n "$target_dir" ]]; then
+        # For files, cd to the directory containing the file
+        cd "$(dirname "$target_dir")" || return 1
+        echo "Changed to directory of: $target_dir"
+      else
+        echo "File matching '$name' not found"
+        return 1
+      fi
     else
-      target_dir=$(find "$git_root" -type d -name "*$name*" -not -path "*/.git/*" -not -name ".git" | head -1)
-    fi
-    if [[ -n "$target_dir" ]]; then
-      cd "$target_dir" || return 1
-      echo "Changed to: $target_dir"
-    else
-      echo "Directory matching '$name' not found"
-      return 1
+      # Original directory search logic
+      if [[ "$include_git" == true ]]; then
+        target_dir=$(find "$git_root" -type d -name "*$name*" | head -1)
+      else
+        target_dir=$(find "$git_root" -type d -name "*$name*" -not -path "*/.git/*" -not -name ".git" | head -1)
+      fi
+      if [[ -n "$target_dir" ]]; then
+        cd "$target_dir" || return 1
+        echo "Changed to: $target_dir"
+      else
+        echo "Directory matching '$name' not found"
+        return 1
+      fi
     fi
     return
   fi
 
-  # No argument - show fzf menu of all directories in git repo
+  # No argument - show fzf menu
   local selected_dir
-  if [[ "$include_git" == true ]]; then
-    selected_dir=$(find "$git_root" -type d | sed "s|$git_root/||" | sed "s|^$git_root$|.|" | fzf --height 40% --reverse --header="Select directory in $(basename "$git_root")")
-  else
-    selected_dir=$(find "$git_root" -type d -not -path "*/.git/*" -not -name ".git" | sed "s|$git_root/||" | sed "s|^$git_root$|.|" | fzf --height 40% --reverse --header="Select directory in $(basename "$git_root")")
-  fi
-
-  if [[ -n "$selected_dir" ]]; then
-    if [[ "$selected_dir" == "." ]]; then
-      cd "$git_root" || return 1
+  if [[ "$files" == true ]]; then
+    # Show files instead of directories
+    if [[ "$include_git" == true ]]; then
+      selected_dir=$(find "$git_root" -type f | sed "s|$git_root/||" | fzf --height 40% --reverse --header="Select file in $(basename "$git_root")")
     else
-      cd "$git_root/$selected_dir" || return 1
+      selected_dir=$(find "$git_root" -type f -not -path "*/.git/*" | sed "s|$git_root/||" | fzf --height 40% --reverse --header="Select file in $(basename "$git_root")")
     fi
-    echo "Changed to: $(pwd)"
+
+    if [[ -n "$selected_dir" ]]; then
+      # For files, cd to the directory containing the file
+      cd "$(dirname "$git_root/$selected_dir")" || return 1
+      echo "Changed to directory of: $git_root/$selected_dir"
+    fi
+  else
+    # Original directory logic
+    if [[ "$include_git" == true ]]; then
+      selected_dir=$(find "$git_root" -type d | sed "s|$git_root/||" | sed "s|^$git_root$|.|" | fzf --height 40% --reverse --header="Select directory in $(basename "$git_root")")
+    else
+      selected_dir=$(find "$git_root" -type d -not -path "*/.git/*" -not -name ".git" | sed "s|$git_root/||" | sed "s|^$git_root$|.|" | fzf --height 40% --reverse --header="Select directory in $(basename "$git_root")")
+    fi
+
+    if [[ -n "$selected_dir" ]]; then
+      if [[ "$selected_dir" == "." ]]; then
+        cd "$git_root" || return 1
+      else
+        cd "$git_root/$selected_dir" || return 1
+      fi
+      echo "Changed to: $(pwd)"
+    fi
   fi
 }
+
+alias zzf='zz --files'
 
 alias hc='atuin history -c'
 
