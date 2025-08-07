@@ -13,6 +13,7 @@ with pkgsWithOverrides;
   gh
 ######
   podman
+  skopeo # inspect remote container images, without downloading
   vcluster # Create virtual clusters
   # Kubernetes
   kubernetes-helm
