@@ -105,10 +105,8 @@
         go_1_22
         go-swag
         ## Node
-        nodejs
         nodePackages.npm
         nodePackages.prettier
-        nodePackages.localtunnel
         yarn
         ## Python
         black
