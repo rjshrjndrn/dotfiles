@@ -14,9 +14,7 @@ with pkgsWithOverrides;
   go_1_24
   ## Node
   nodejs
-  nodePackages.npm
-  nodePackages.prettier
-  nodePackages.localtunnel
+  pnpm
   yarn
   ## Python
   black

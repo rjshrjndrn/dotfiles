@@ -17,7 +17,7 @@ with pkgsWithOverrides;
   git
   gitsign
   git-extras
-  ggshield
+  # ggshield
   eget
   # git diff pager
   git-lfs
