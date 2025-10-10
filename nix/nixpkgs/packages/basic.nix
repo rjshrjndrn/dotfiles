@@ -41,6 +41,7 @@ with pkgsWithOverrides;
   atuin
   caddy
   # neovim
+  ast-grep # Need for syntax aware greping. Vim Grug Far
   nodePackages_latest.bash-language-server
   nodePackages_latest.yaml-language-server
   # kitty
