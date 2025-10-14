@@ -1,4 +1,7 @@
-{ pkgs, include ? { } }:
+{
+  pkgs,
+  include ? { },
+}:
 
 let
   # Apply package overrides if any
@@ -7,7 +10,7 @@ let
 in
 # avoid packageWithOverride.nox, ...unzip etc
 with pkgsWithOverrides;
- [
+[
   htop
   nox
   fd
@@ -73,7 +76,6 @@ with pkgsWithOverrides;
   gopass
   # Blog
   hugo
-  ngrok
   # UI apps
   # Ref: https://github.com/NixOS/nixpkgs/issues/82959#issuecomment-657306112
   # zoom-us
