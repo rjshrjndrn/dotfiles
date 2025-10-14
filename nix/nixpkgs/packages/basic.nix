@@ -58,7 +58,6 @@ with pkgsWithOverrides;
   gcc
   k9s
   stern
-  jsonnet
   xclip
   # Encryption tool
   # Ref: https://github.com/FiloSottile/age
