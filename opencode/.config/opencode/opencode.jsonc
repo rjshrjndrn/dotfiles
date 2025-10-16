@@ -11,14 +11,14 @@
     }
   },
   "mcp": {
-    "financial-datasets": {
-      "type": "local",
-      "command": [
-        "sh",
-        "-c",
-        "exec uv --directory ~/Documents/projects/stocks/mcp-servers/financial-datasets run server.py"
-      ]
-    },
+    // "financial-datasets": {
+    //   "type": "local",
+    //   "command": [
+    //     "sh",
+    //     "-c",
+    //     "exec uv --directory ~/Documents/projects/stocks/mcp-servers/financial-datasets run server.py"
+    //   ]
+    // },
     "yahoo-datasets": {
       "type": "local",
       "command": [
