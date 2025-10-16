@@ -1,5 +1,15 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "stock": {
+      "description": "Description of the agent",
+      "prompt": "Be detailed in calculations.",
+      "tools": {
+        "write": true,
+        "bash": false
+      }
+    }
+  },
   "mcp": {
     "financial-datasets": {
       "type": "local",
