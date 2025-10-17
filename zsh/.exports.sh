@@ -25,5 +25,7 @@ export REGISTRY_AUTH_FILE=~/.docker/config.json
 # enable k9s node shell
 export K9S_FEATURE_GATE_NODE_SHELL=true
 
+source "${HOME}/.shell.sh"
+
 # apps/bin is priority
 export PATH=~/apps/bin:$PATH
