@@ -21,5 +21,7 @@ with pkgsWithOverrides;
   pyenv
   pipenv
   uv
+  ## ai agent
+  claude-code
  ]
 

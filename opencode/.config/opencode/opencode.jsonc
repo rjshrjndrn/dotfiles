@@ -10,6 +10,7 @@
       }
     }
   },
+  // https://mcpmarket.com: to see mcps
   "mcp": {
     // "financial-datasets": {
     //   "type": "local",
@@ -25,6 +26,17 @@
         "sh",
         "-c",
         "exec uv --directory ~/Documents/projects/stocks/mcp-servers/yahoo-finance-mcp run server.py"
+      ]
+    },
+    "exa-web-search": {
+      "type": "local",
+      // "environment": {
+      //   "EXA_API_KEY": ""
+      // },
+      "command": [
+        "sh",
+        "-c",
+        "exec npx ~/Documents/projects/stocks/mcp-servers/exa-mcp-server/.smithery/stdio/index.cjs"
       ]
     }
   }
