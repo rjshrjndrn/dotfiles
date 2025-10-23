@@ -22,6 +22,6 @@ with pkgsWithOverrides;
   pipenv
   uv
   ## ai agent
-  claude-code
+  # claude-code
  ]
 
