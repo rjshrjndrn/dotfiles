@@ -1,0 +1,80 @@
+prSections:
+- title: My Pull Requests
+  filters: is:open author:@me
+  type: null
+- title: renovate openreplay
+  filters: is:open repo:openreplay/openreplay author:app/renovate
+  type: null
+- title: Needs My Review
+  filters: is:open review-requested:@me
+  type: null
+- title: Involved
+  filters: is:open involves:@me -author:@me
+  type: null
+issuesSections:
+- title: My Issues
+  filters: is:open author:@me
+- title: Assigned
+  filters: is:open assignee:@me
+- title: Involved
+  filters: is:open involves:@me -author:@me
+defaults:
+  preview:
+    open: true
+    width: 50
+  prsLimit: 20
+  prApproveComment: LGTM
+  issuesLimit: 20
+  view: prs
+  layout:
+    prs:
+      updatedAt:
+        width: 5
+      createdAt:
+        width: 5
+      repo:
+        width: 20
+      author:
+        width: 15
+      authorIcon:
+        hidden: false
+      assignees:
+        width: 20
+        hidden: true
+      base:
+        width: 15
+        hidden: true
+      lines:
+        width: 15
+    issues:
+      updatedAt:
+        width: 5
+      createdAt:
+        width: 5
+      repo:
+        width: 15
+      creator:
+        width: 10
+      creatorIcon:
+        hidden: false
+      assignees:
+        width: 20
+        hidden: true
+  refetchIntervalMinutes: 30
+keybindings:
+  issues: []
+  prs:
+    - key: M
+      command: gh pr merge --auto --rebase --delete-branch --repo {{.RepoName}} {{.PrNumber}}
+      description: Merge and delete branch
+repoPaths: {}
+theme:
+  ui:
+    sectionsShowCount: true
+    table:
+      showSeparator: true
+      compact: false
+pager:
+   diff: "delta"
+showAuthorIcons: true
+smartFilteringAtLaunch: true
