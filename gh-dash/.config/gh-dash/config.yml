@@ -60,12 +60,15 @@ defaults:
       assignees:
         width: 20
         hidden: true
-  refetchIntervalMinutes: 30
+repo:
+  branchesRefetchIntervalSeconds: 30
+  prsRefetchIntervalSeconds: 60
 keybindings:
-  issues: []
   prs:
     - key: M
-      command: gh pr merge --auto --rebase --delete-branch --repo {{.RepoName}} {{.PrNumber}}
+      command: |
+        echo {{.RepoName}} {{.PrNumber}} > /tmp/gh-dash.log
+        gh pr merge --auto --rebase --delete-branch --repo {{.RepoName}} {{.PrNumber}} &>> /tmp/gh-dash.log
       description: Merge and delete branch
 repoPaths: {}
 theme:
