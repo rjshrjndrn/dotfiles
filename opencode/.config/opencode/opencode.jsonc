@@ -38,9 +38,10 @@
       //   "EXA_API_KEY": ""
       // },
       "command": [
-        "sh",
-        "-c",
-        "exec npx ~/Documents/projects/stocks/mcp-servers/exa-mcp-server/.smithery/stdio/index.cjs"
+        "npx",
+        "-y",
+        "mcp-remote",
+        "https://mcp.exa.ai/mcp"
       ]
     }
   }
