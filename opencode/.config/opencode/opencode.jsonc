@@ -33,16 +33,11 @@
       ]
     },
     "exa-web-search": {
-      "type": "local",
+      "type": "remote",
       // "environment": {
       //   "EXA_API_KEY": ""
       // },
-      "command": [
-        "npx",
-        "-y",
-        "mcp-remote",
-        "https://mcp.exa.ai/mcp"
-      ]
+      "url": "https://mcp.exa.ai/mcp"
     }
   }
 }
