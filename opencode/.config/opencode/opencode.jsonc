@@ -39,7 +39,9 @@
       // },
       "url": "https://mcp.exa.ai/mcp"
     },
-    "context7": {
+    // context7 library docs
+    // do this, that etc. use cc
+    "cc": {
       "type": "remote",
       "url": "https://mcp.context7.com/mcp",
       "headers": {
