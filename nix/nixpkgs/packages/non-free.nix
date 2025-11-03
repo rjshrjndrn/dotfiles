@@ -1,4 +1,4 @@
-{ pkgs, include ? { } }:
+{ pkgs, pkgsStable, include ? { } }:
 
 let
   # Apply package overrides if any
@@ -8,8 +8,8 @@ in
 # avoid packageWithOverride.nox, ...unzip etc
 with pkgsWithOverrides;
 [
-  # terraform
-  # packer
+  terraform
+  packer
   # (
   #   google-cloud-sdk.withExtraComponents [
   #     google-cloud-sdk.components.gke-gcloud-auth-plugin

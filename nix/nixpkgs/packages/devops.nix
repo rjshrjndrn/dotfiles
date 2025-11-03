@@ -1,4 +1,4 @@
-{ pkgs, include ? { } }:
+{ pkgs, pkgsStable, include ? { } }:
 
 let
   # Apply package overrides if any
@@ -33,7 +33,8 @@ with pkgsWithOverrides;
   nova
   # kubernetes packet sniffer
   kubeshark
-  cosign
+  # Use stable version for better cache coverage
+  pkgsStable.cosign
   #CICD
   fluxcd
   argocd

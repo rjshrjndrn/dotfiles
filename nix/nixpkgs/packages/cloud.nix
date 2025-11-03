@@ -1,4 +1,4 @@
-{ pkgs, include ? { } }:
+{ pkgs, pkgsStable, include ? { } }:
 
 let
   # Apply package overrides if any

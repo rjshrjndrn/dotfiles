@@ -3,10 +3,6 @@
 { includeFile ? null }:
 
 let
-  lib = pkgs.lib;
-  # Import the include file if provided, otherwise default to an empty set
-  include = if includeFile != null then import includeFile { inherit pkgs lib; } else { };
-
   # Import nixpkgs with the necessary configurations
   pkgs = import <nixpkgs> {
     config = {
@@ -19,6 +15,17 @@ let
       targets.genericLinux.enable = true;
     };
   };
+
+  # Import stable nixpkgs for packages that need better cache coverage
+  pkgsStable = import (fetchTarball {
+    url = "https://github.com/NixOS/nixpkgs/archive/nixos-24.11.tar.gz";
+  }) {
+    config = pkgs.config;
+  };
+
+  lib = pkgs.lib;
+  # Import the include file if provided, otherwise default to an empty set
+  include = if includeFile != null then import includeFile { inherit pkgs pkgsStable lib; } else { };
 
   # Define an attribute set mapping group names to their package files
   packageGroups = {
@@ -71,7 +78,7 @@ let
   # Function to import packages from a package group
   importPackages = name: group:
     if includeGroup name group then
-      import group.file { inherit pkgs; include = (include.${name} or {}); }
+      import group.file { inherit pkgs pkgsStable; include = (include.${name} or {}); }
     else
       [];
 

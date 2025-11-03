@@ -1,4 +1,4 @@
-{ pkgs, lib }:
+{ pkgs, pkgsStable, lib }:
 {
   amd64 = {
     alwaysInclude = false;  # Exclude amd64 packages

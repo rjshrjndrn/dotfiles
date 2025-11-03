@@ -1,4 +1,4 @@
-{ pkgs, lib }:
+{ pkgs, pkgsStable, lib }:
 {
   frontend = {
     alwaysInclude = true;  # Exclude frontend packages
