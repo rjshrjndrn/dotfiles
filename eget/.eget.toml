@@ -5,16 +5,14 @@
   target = "~/apps/bin/"
 
 ["stern/stern"]
-["kubeshark/kubeshark"]
-  asset_filters = [ ".tar.gz", "amd64" ]
 ["derailed/k9s"]
 ["mikefarah/yq"]
-  asset_filters = [ ".tar.gz", "amd64" ]
-  file = "yq_*"
-  target = "~/apps/bin/yq"
+  asset_filters = [ "yq_{{.OS}}_{{.Arch}}" ]
 ["zyedidia/eget"]
 ["linkerd/linkerd2"]
   target = "~/apps/bin/linkerd"
 ["grafana/grizzly"]
 ["localsend/localsend"]
 ["iann0036/iamlive"]
+["sst/opencode"]
+  asset_filters = ["opencode-{{.OS}}-{{.Arch}}.zip"]
