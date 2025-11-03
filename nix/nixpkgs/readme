@@ -51,6 +51,36 @@ sudo systemctl restart nix-daemon
 
 This speeds up installation by downloading pre-built binaries instead of building from source.
 
+## Checking Binary Cache Availability
+
+Use the provided script to check if a package is available in binary caches:
+
+```bash
+# Check if package is in cache.nixos.org (default)
+~/dotfiles/nix/check-cache.sh hello
+
+# Check if package is in nix-community.cachix.org
+~/dotfiles/nix/check-cache.sh cosign https://nix-community.cachix.org
+
+# Check any package
+~/dotfiles/nix/check-cache.sh terraform
+```
+
+**Output interpretation:**
+- ✅ "will be fetched" = Package IS in cache (fast download)
+- ❌ "will be built" = Package NOT in cache (slow build from source)
+
+**Manual methods:**
+```bash
+# Method 1: Dry-run (quickest)
+nix-build '<nixpkgs>' -A PACKAGE --dry-run
+
+# Method 2: Check narinfo URL directly
+HASH=$(nix-build '<nixpkgs>' -A PACKAGE --no-out-link | sed 's|/nix/store/||')
+curl -sI "https://cache.nixos.org/${HASH}.narinfo"
+# HTTP 200 = cached, HTTP 404 = not cached
+```
+
 ## References
 
 https://github.com/yrashk/nix-home/blob/master/home.nix
