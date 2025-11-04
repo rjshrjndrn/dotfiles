@@ -33,13 +33,13 @@ with pkgsWithOverrides;
   curl
   pre-commit
   hub
-  kube3d
+  k3d
   unixtools.netstat
   dig
   jq
   yq-go
   silver-searcher
-  aria
+  aria2
   tree
   curlie
   atuin
