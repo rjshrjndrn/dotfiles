@@ -4,16 +4,6 @@
     // https://github.com/numman-ali/opencode-openai-codex-auth
     "opencode-openai-codex-auth"
   ],
-  "agent": {
-    "stock": {
-      "description": "Description of the agent",
-      "prompt": "Be detailed in calculations.",
-      "tools": {
-        "write": true,
-        "bash": false
-      }
-    }
-  },
   // https://mcpmarket.com: to see mcps
   "mcp": {
     // "financial-datasets": {
