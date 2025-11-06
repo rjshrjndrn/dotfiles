@@ -293,7 +293,7 @@ alias kfm='kubeconform -strict -verbose -schema-location default \
 -schema-location https://json.schemastore.org/{{.ResourceKind}}.json'
 # alias curl=curlie
 alias mcurl='curl -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0"'
-alias cat="bat --style=plain,header --paging=never --wrap=never"
+alias cat="bat --style=plain --paging=never --wrap=never"
 alias less="bat --paging=always"
 
 alias hi='helm upgrade --install'
