@@ -5,7 +5,7 @@ model: anthropic/claude-sonnet-4-5
 tools:
   write: true
   edit: true
-  bash: ask
+  bash: true
 ---
 
 You are a full-stack developer and seasoned devops focused on writing clean, efficient code.
