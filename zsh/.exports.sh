@@ -19,6 +19,7 @@ export LOCALE_ARCHIVE=/usr/lib/locale/locale-archive
 export MANPAGER="nvim +Man!"
 
 export LC_ALL=C.UTF-8
+export LANG=C.UTF-8
 # export LANG="en_US.UTF-8"
 
 export REGISTRY_AUTH_FILE=~/.docker/config.json
