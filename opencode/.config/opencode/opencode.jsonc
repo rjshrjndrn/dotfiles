@@ -1,5 +1,18 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "coder": {},
+    // Disabling else, this will be the first agent on lauch
+    "build": {
+      "disable": true
+    },
+    "plan": {
+      "disable": true
+    },
+  },
+  // "tui": {
+  //   "scroll_speed": 10
+  // },
   "permission": {
     "bash": "ask"
   },
