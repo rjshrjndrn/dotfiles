@@ -1,7 +1,15 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
-    "coder": {},
+    "coder": {
+      "permission": {
+        "bash": {
+          "*": "ask",
+          "grep*": "allow"
+        }
+      }
+    },
+    "fetch": {},
     // Disabling else, this will be the first agent on lauch
     "build": {
       "disable": true
@@ -43,7 +51,10 @@
       // "environment": {
       //   "EXA_API_KEY": ""
       // },
-      "url": "https://mcp.exa.ai/mcp"
+      "url": "https://mcp.exa.ai/mcp",
+      "headers": {
+        "x-api-key": "{env:EXA_API_KEY}"
+      }
     },
     // context7 library docs
     // do this, that etc. use cc
