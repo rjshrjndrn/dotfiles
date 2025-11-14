@@ -5,7 +5,56 @@
       "permission": {
         "bash": {
           "*": "ask",
-          "grep*": "allow"
+          "find*-delete*": "ask",
+          "find*-exec*rm*": "ask",
+          "find*-exec*mv*": "ask",
+          "find*-exec*chmod*": "ask",
+          "find*-exec*chown*": "ask",
+          "find*|*rm*": "ask",
+          "find*|*mv*": "ask",
+          "find*|*xargs*rm*": "ask",
+          "find*|*xargs*mv*": "ask",
+          "rm*-rf*": "ask",
+          "rm*-r*": "ask",
+          "chmod*-R*777*": "ask",
+          "sudo*": "ask",
+          "curl*|*bash*": "ask",
+          "wget*|*bash*": "ask",
+          "grep*": "allow",
+          "rg*": "allow",
+          "pwd*": "allow",
+          "ls*": "allow",
+          "cat*": "allow",
+          "head*": "allow",
+          "tail*": "allow",
+          "find*": "allow",
+          "wc*": "allow",
+          "awk*": "allow",
+          "sed*": "allow",
+          "sort*": "allow",
+          "uniq*": "allow",
+          "cut*": "allow",
+          "tr*": "allow",
+          "file*": "allow",
+          "stat*": "allow",
+          "tree*": "allow",
+          "which*": "allow",
+          "whereis*": "allow",
+          "echo*": "allow",
+          "printf*": "allow",
+          "basename*": "allow",
+          "dirname*": "allow",
+          "realpath*": "allow",
+          "readlink*": "allow",
+          "git status*": "allow",
+          "git log*": "allow",
+          "git diff*": "allow",
+          "git show*": "allow",
+          "git branch*": "allow",
+          "git rev-parse*": "allow",
+          "git ls-files*": "allow",
+          "git ls-tree*": "allow",
+          "git config --get*": "allow"
         }
       }
     },
@@ -64,6 +113,15 @@
       "headers": {
         "CONTEXT7_API_KEY": "{env:CONTEXT7_API_KEY}"
       }
+    },
+    "linear": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "mcp-remote",
+        "https://mcp.linear.app/sse"
+      ]
     }
   }
 }
