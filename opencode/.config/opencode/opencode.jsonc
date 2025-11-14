@@ -1,5 +1,9 @@
+// vim: set foldlevel=4:
 {
   "$schema": "https://opencode.ai/config.json",
+  "tools": {
+    "linear*": false
+  },
   "agent": {
     "coder": {
       "permission": {
@@ -63,6 +67,13 @@
     "build": {
       "disable": true
     },
+    "linear": {
+      "mode": "subagent",
+      "prompt": "Never use emojis. If you are asked to create linear tasks. Only create issue description not solution, and keep it short and concise. Keep the status in todo, if you're creating the task ",
+      "tools": {
+        "linear*": true
+      }
+    },
     "plan": {
       "disable": true
     },
@@ -79,14 +90,15 @@
   ],
   // https://mcpmarket.com: to see mcps
   "mcp": {
-    // "financial-datasets": {
-    //   "type": "local",
-    //   "command": [
-    //     "sh",
-    //     "-c",
-    //     "exec uv --directory ~/Documents/projects/stocks/mcp-servers/financial-datasets run server.py"
-    //   ]
-    // },
+    "financial-datasets": {
+      "enabled": false,
+      "type": "local",
+      "command": [
+        "sh",
+        "-c",
+        "exec uv --directory ~/Documents/projects/stocks/mcp-servers/financial-datasets run server.py"
+      ]
+    },
     "yahoo-datasets": {
       "type": "local",
       "command": [
@@ -97,9 +109,6 @@
     },
     "exa-web-search": {
       "type": "remote",
-      // "environment": {
-      //   "EXA_API_KEY": ""
-      // },
       "url": "https://mcp.exa.ai/mcp",
       "headers": {
         "x-api-key": "{env:EXA_API_KEY}"
@@ -114,7 +123,9 @@
         "CONTEXT7_API_KEY": "{env:CONTEXT7_API_KEY}"
       }
     },
+    // only enabled for linear agent
     "linear": {
+      // "enabled": false,
       "type": "local",
       "command": [
         "npx",
