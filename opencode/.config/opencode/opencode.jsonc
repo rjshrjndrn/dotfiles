@@ -25,6 +25,8 @@
           "curl*|*bash*": "ask",
           "wget*|*bash*": "ask",
           "grep*": "allow",
+          "cd*": "allow",
+          "cd*|*": "ask",
           "rg*": "allow",
           "pwd*": "allow",
           "ls*": "allow",
