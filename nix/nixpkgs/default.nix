@@ -3,23 +3,38 @@
 { includeFile ? null }:
 
 let
-  # Import stable nixpkgs for better binary cache coverage
-  pkgs = import (fetchTarball {
-    url = "https://github.com/NixOS/nixpkgs/archive/nixos-24.11.tar.gz";
-  }) {
-    config = {
-      allowUnfree = true;
-      qtWrapperArgs = [ "--set" "QT_XCB_GL_INTEGRATION" "none" ];
-      xdg = {
-        enable = true;
-        mime.enable = true;
-      };
-      targets.genericLinux.enable = true;
+  nixConfig = {
+    allowUnfree = true;
+    qtWrapperArgs = [ "--set" "QT_XCB_GL_INTEGRATION" "none" ];
+    xdg = {
+      enable = true;
+      mime.enable = true;
     };
+    targets.genericLinux.enable = true;
   };
 
-  # Use the same as pkgsStable for consistency
-  pkgsStable = pkgs;
+  # Import unstable nixpkgs (preferred for latest packages)
+  pkgsUnstable = import (fetchTarball {
+    url = "https://github.com/NixOS/nixpkgs/archive/nixpkgs-unstable.tar.gz";
+  }) {
+    config = nixConfig;
+  };
+
+  # Import stable nixpkgs for better binary cache coverage
+  pkgsStable = import (fetchTarball {
+    url = "https://github.com/NixOS/nixpkgs/archive/nixos-24.11.tar.gz";
+  }) {
+    config = nixConfig;
+  };
+
+  # Hybrid pkgs: unstable by default, but override specific packages with stable versions
+  # when they're not cached in unstable (to avoid building from source)
+  pkgs = pkgsUnstable // {
+    # Override these packages to use stable versions for better cache availability
+    fish = pkgsStable.fish;
+    direnv = pkgsStable.direnv;
+    packer = pkgsStable.packer;
+  };
 
   lib = pkgs.lib;
   # Import the include file if provided, otherwise default to an empty set
