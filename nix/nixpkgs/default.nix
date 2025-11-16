@@ -3,8 +3,10 @@
 { includeFile ? null }:
 
 let
-  # Import nixpkgs with the necessary configurations
-  pkgs = import <nixpkgs> {
+  # Import stable nixpkgs for better binary cache coverage
+  pkgs = import (fetchTarball {
+    url = "https://github.com/NixOS/nixpkgs/archive/nixos-24.11.tar.gz";
+  }) {
     config = {
       allowUnfree = true;
       qtWrapperArgs = [ "--set" "QT_XCB_GL_INTEGRATION" "none" ];
@@ -16,12 +18,8 @@ let
     };
   };
 
-  # Import stable nixpkgs for packages that need better cache coverage
-  pkgsStable = import (fetchTarball {
-    url = "https://github.com/NixOS/nixpkgs/archive/nixos-24.11.tar.gz";
-  }) {
-    config = pkgs.config;
-  };
+  # Use the same as pkgsStable for consistency
+  pkgsStable = pkgs;
 
   lib = pkgs.lib;
   # Import the include file if provided, otherwise default to an empty set

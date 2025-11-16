@@ -42,7 +42,6 @@ with pkgsWithOverrides;
   aria2
   tree
   curlie
-  atuin
   caddy
   # neovim
   ast-grep # Need for syntax aware greping. Vim Grug Far
