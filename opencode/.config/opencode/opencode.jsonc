@@ -4,6 +4,10 @@
   "tools": {
     "linear*": false
   },
+  "keybinds": {
+    "leader": "ctrl+s",
+    "editor_open": "<leader>e",
+  },
   "agent": {
     "coder": {
       "permission": {
