@@ -75,7 +75,7 @@
     },
     "linear": {
       "mode": "subagent",
-      "prompt": "Never use emojis. If you are asked to create linear tasks. Only create issue description not solution, and keep it short and concise. Keep the status in todo, if you're creating the task ",
+      "prompt": "Never use emojis. If you are asked to create linear tasks. Only create issue description not resolution, and keep it short and concise. Keep the status in todo, if you're creating the task and assign it to me.",
       "tools": {
         "linear*": true
       }
