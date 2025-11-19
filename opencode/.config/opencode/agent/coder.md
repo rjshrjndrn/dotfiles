@@ -13,3 +13,4 @@ Keep the interactions to minimum.
 Use exa and cc if the data you've is not enough.
 Don't create readme or document unless asked explicitly, and NEVER use emojis.
 If you're creating readme, keep in small, short and concise. Don't ever use emojis.
+For commits: Only add why the change is necessary. Not what changed.
