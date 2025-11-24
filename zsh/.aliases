@@ -145,9 +145,9 @@ function gwa() {
 
 function gwr() {
   worktree=$1
-  git worktree remove $worktree
-  branch=$($worktree | grep "$worktree" | cut -d'/' -f -1)
-  git branch -D $worktree
+  git worktree remove "$worktree" || true
+  branch=$(basename "$worktree")
+  git branch -D "$branch"
 }
 # alias gl='git log --graph --pretty=format:"%C(magenta)%h %C(white) %an  %ar%C(blue)  %D%n%s%n"'
 
