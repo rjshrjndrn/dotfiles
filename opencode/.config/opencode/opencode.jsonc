@@ -1,6 +1,7 @@
 // vim: set foldlevel=4:
 {
   "$schema": "https://opencode.ai/config.json",
+  "theme": "everforest",
   "tools": {
     "linear*": false
   },
@@ -13,6 +14,8 @@
       "permission": {
         "bash": {
           "*": "ask",
+          "podman*|*": "ask",
+          "podman*": "allow",
           "find*-delete*": "ask",
           "find*-exec*rm*": "ask",
           "find*-exec*mv*": "ask",
