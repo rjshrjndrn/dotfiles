@@ -12,6 +12,7 @@
     "messages_page_down": "ctrl+d",
   },
   "agent": {
+    "thinker": {},
     "coder": {
       "permission": {
         "bash": {
