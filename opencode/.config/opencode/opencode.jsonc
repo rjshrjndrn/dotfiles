@@ -8,6 +8,8 @@
   "keybinds": {
     "leader": "ctrl+s",
     "editor_open": "<leader>e",
+    "messages_page_up": "ctrl+u",
+    "messages_page_down": "ctrl+d",
   },
   "agent": {
     "coder": {
