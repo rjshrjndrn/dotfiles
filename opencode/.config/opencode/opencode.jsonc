@@ -6,7 +6,7 @@
     "linear*": false
   },
   "keybinds": {
-    "leader": "ctrl+s",
+    "leader": "ctrl+space",
     "editor_open": "<leader>e",
     "messages_page_up": "ctrl+u",
     "messages_page_down": "ctrl+d",
