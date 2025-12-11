@@ -1,3 +1,4 @@
+---
 apiVersion: k3d.io/v1alpha5
 image: rancher/k3s:v1.25.6-k3s1
 kind: Simple
@@ -5,24 +6,27 @@ kubeAPI:
   hostIP: 0.0.0.0
   hostPort: "16443"
 metadata:
-  name: my-cluster
+  name: argo-agent
 options:
   kubeconfig:
     updateDefaultKubeconfig: false    # Update default kubeconfig with new cluster details
     switchCurrentContext: false       # Set the new cluster as the current context
   k3d:
-    disableImageVolume: false
+    wait: true
+    timeout: "60s"             # wait timeout before aborting; same as `--timeout 60s`
     disableLoadbalancer: false
+    disableImageVolume: false
     disableRollback: false
     loadbalancer: {}
-    timeout: 60000000000
-    wait: true
   k3s:
     extraArgs:
-    - arg: --disable=traefik
-      nodeFilters:
-      - server:*
+      - arg: "--disable=traefik"
+        nodeFilters:
+          - server:*
+      # - arg: "--tls-san=51.15.227.31"
+      #   nodeFilters:
+      #     - server:*
   runtime:
-    HostPidMode: false
+    hostPidMode: false
 registries: {}
 servers: 1
