@@ -15,6 +15,12 @@
     "thinker": {},
     "coder": {
       "permission": {
+        // "bash": {
+        //   "*": "allow",
+        //   "*sudo*": "ask",
+        //   "*rm *": "ask",
+        //   "*rmdir *": "ask"
+        // }
         "bash": {
           "*": "ask",
           "podman*|*": "ask",
@@ -119,7 +125,7 @@
         "exec uv --directory ~/Documents/projects/stocks/mcp-servers/yahoo-finance-mcp run server.py"
       ]
     },
-    "exa-web-search": {
+    "exa": {
       "type": "remote",
       "url": "https://mcp.exa.ai/mcp",
       "headers": {
