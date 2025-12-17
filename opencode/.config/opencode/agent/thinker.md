@@ -1,7 +1,7 @@
 ---
 description: Brainstorm buddy
 mode: primary
-model: github-copilot/gpt-5.1
+model: github-copilot/gpt-5.2
 tools:
   write: true
   edit: true
