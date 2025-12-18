@@ -64,6 +64,7 @@ alias vn='nvim -u ~/.essential.vim -N'
 # alias vim='/usr/bin/nvim -u ~/.config/nvim/minimal.vim'
 alias vim='nvim'
 alias vimm='nvim Makefile'
+# alias vim='NVIM_APPNAME=nvim-lazytest nvim'
 alias vi='nvim'
 alias v=nvim
 alias scratch='/usr/bin/nvim -u ~/.config/nvim/minimal.vim -c Scratch'
@@ -133,11 +134,21 @@ function gwa() {
     toplevel=$(git rev-parse --show-toplevel)/worktree
   fi
   # Check if local branch exists
-  if ! git branch | grep "$branch"; then
+  if git show-ref --verify --quiet "refs/heads/$branch"; then
+    # Local branch exists, use it directly
+    readonly commitish="$branch"
+    readonly arg=""
+  elif git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+    # Remote branch exists, create local tracking branch
     readonly arg="-b $branch"
+    readonly commitish="${remote:-origin/$branch}"
+  else
+    # Branch doesn't exist anywhere, create new branch from current HEAD
+    readonly arg="-b $branch"
+    readonly commitish="${remote:-HEAD}"
   fi
   [[ -z $folder ]] || branch=$folder
-  readonly command="git worktree add $arg $toplevel/$branch $remote"
+  readonly command="git worktree add $arg $toplevel/$branch $commitish"
   echo "$command"
   eval "$command"
   eval "gwc $branch" # Change to the new worktree directory
