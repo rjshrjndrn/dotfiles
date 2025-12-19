@@ -101,6 +101,9 @@ alias gpl='git pull --rebase'
 alias gw='git worktree'
 alias gwl='git worktree list'
 
+## CLOUD TOOLS
+alias sis="scw instance server"
+
 #######################################
 # Clone a bare repo with repo name
 # Usage: gclb gh:user/repo
