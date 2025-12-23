@@ -211,6 +211,7 @@ function gpo() {
     git push origin $(git rev-parse --abbrev-ref HEAD)
   fi
 }
+alias gpof="gpo --force-with-lease"
 alias gpr='git push rjshrjndrn $(git rev-parse --abbrev-ref HEAD)'
 alias gpso='git push --set-upstream origin $(git rev-parse --abbrev-ref HEAD)'
 alias gpsr='git push --set-upstream rjshrjndrn HEAD:$(git rev-parse --abbrev-ref HEAD)'
