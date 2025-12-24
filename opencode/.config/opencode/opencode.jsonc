@@ -76,7 +76,8 @@
           "git rev-parse*": "allow",
           "git ls-files*": "allow",
           "git ls-tree*": "allow",
-          "git config --get*": "allow"
+          "git config --get*": "allow",
+          "*git push*": "ask"
         }
       }
     },
