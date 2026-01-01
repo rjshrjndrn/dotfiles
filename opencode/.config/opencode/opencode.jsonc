@@ -68,15 +68,8 @@
           "dirname*": "allow",
           "realpath*": "allow",
           "readlink*": "allow",
-          "git status*": "allow",
-          "git log*": "allow",
-          "git diff*": "allow",
-          "git show*": "allow",
-          "git branch*": "allow",
-          "git rev-parse*": "allow",
-          "git ls-files*": "allow",
-          "git ls-tree*": "allow",
-          "git config --get*": "allow",
+          // git
+          "git *": "allow",
           "*git push*": "ask"
         }
       }
