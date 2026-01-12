@@ -34,10 +34,14 @@ function pr() {
   hub pull-request -b "${org}/${repo}:${targetBranch}" -h "${currentBranch}" -f
 }
 
+## Utilities
+
 function sendfile() {
   # curl -F "file=@${1}" https://file.io | jq ".link"
   curl https://oshi.at/file/-1 --upload-file $1
 }
+
+alias cno='curl https://naas.isalman.dev/no'
 
 function csh() {
   curl cheat.sh/$1
@@ -120,42 +124,63 @@ function gclb() {
 # crate git worktree with optional local branch/remote branch
 function gwa() {
   [[ -z "$1" ]] &&
-    echo "Usage: gwa [local_branch_name] [remote_branch_name] [folder_name]" &&
+    echo "Usage: gwa [local_branch_or_tag] [remote_name] [folder_name]" &&
     return
 
-  local branch=$1
-  local remote=$2
-  local folder=$3
+  local name="$1"   # branch OR tag
+  local remote="$2" # remote name (default: origin)
+  local folder="$3" # folder name override
   local toplevel
 
   # Check if bare repo, then create worktree dir
   if [[ $(git rev-parse --is-bare-repository) == "true" ]]; then
-    echo bare repo
-    # If bare repo, use current directory unless you're inside 'worktree/' dir
-    # I keep all the branches in worktree/ directory
+    # If bare repo, use current directory
     toplevel=$(readlink -f .)
   else
     toplevel=$(git rev-parse --show-toplevel)/worktree
   fi
-  # Check if local branch exists
-  if git show-ref --verify --quiet "refs/heads/$branch"; then
-    # Local branch exists, use it directly
-    readonly commitish="$branch"
-    readonly arg=""
-  elif git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
-    # Remote branch exists, create local tracking branch
-    readonly arg="-b $branch"
-    readonly commitish="${remote:-origin/$branch}"
+
+  # If a worktree already exists for this branch name, just cd to it.
+  # (This is what triggers: "fatal: '<name>' is already used by worktree ...")
+  local existing_worktree
+  existing_worktree=$(git worktree list 2>/dev/null | awk -v b="$name" '$0 ~ "\\["b"\\]" {print $1; exit}')
+  if [[ -n "$existing_worktree" ]]; then
+    gwc "$name"
+    return
+  fi
+
+  local dir_name="${folder:-$name}"
+
+  local commitish
+  local -a args
+
+  # If it's a tag, create a detached worktree at that tag.
+  if git show-ref --tags --verify --quiet "refs/tags/$name"; then
+    commitish="refs/tags/$name"
+    args=(--detach)
+  # If local branch exists, use it directly.
+  elif git show-ref --verify --quiet "refs/heads/$name"; then
+    commitish="$name"
+    args=()
+  # If remote branch exists, create local tracking branch from the remote.
+  elif git show-ref --verify --quiet "refs/remotes/${remote:-origin}/$name"; then
+    commitish="${remote:-origin}/$name"
+    args=(-b "$name")
   else
     # Branch doesn't exist anywhere, create new branch from current HEAD
-    readonly arg="-b $branch"
-    readonly commitish="${remote:-HEAD}"
+    commitish="HEAD"
+    args=(-b "$name")
   fi
-  [[ -z $folder ]] || branch=$folder
-  readonly command="git worktree add $arg $toplevel/$branch $commitish"
-  echo "$command"
-  eval "$command"
-  eval "gwc $branch" # Change to the new worktree directory
+
+  echo "git worktree add ${args[*]} $toplevel/$dir_name $commitish"
+  git worktree add "${args[@]}" "$toplevel/$dir_name" "$commitish" || return
+
+  # Change to the new worktree directory (by folder name if provided)
+  if [[ -n "$folder" ]]; then
+    cd "$toplevel/$dir_name" || return
+  else
+    gwc "$name"
+  fi
 }
 
 function gwr() {
