@@ -1,8 +1,7 @@
 ---
 description: Full-stack development with all tools enabled
 mode: primary
-#model: anthropic/claude-sonnet-4-5
-model: github-copilot/gpt-5.2
+model: github-copilot/claude-opus-4.5
 tools:
   write: true
   edit: true
