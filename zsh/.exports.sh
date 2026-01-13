@@ -1,6 +1,6 @@
 export EDITOR=nvim
 # export TERM=screen-256color
-export PATH=/opt/homebrew/bin:$PATH:~/apps/bin:${HOME}/.krew/bin:${HOME}/.local/bin:${HOME}/go/bin:/var/lib/flatpak/exports/bin/:~/apps/flutter/bin:~/apps/android-studio/bin:~/go/bin/
+export PATH=/opt/homebrew/bin:$PATH:~/apps/bin:${HOME}/.krew/bin:${HOME}/.local/bin:${HOME}/go/bin:/var/lib/flatpak/exports/bin/:~/apps/flutter/bin:~/apps/android-studio/bin:~/go/bin/:$HOME/.bun/bin
 [[ $(command -v brew) ]] && {
     export PATH="$(brew --prefix)/opt/gnu-tar/libexec/gnubin:$PATH"
 }
