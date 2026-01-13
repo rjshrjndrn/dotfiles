@@ -1,0 +1,46 @@
+{
+  "$schema": "https://raw.githubusercontent.com/code-yeongyu/oh-my-opencode/master/assets/oh-my-opencode.schema.json",
+  "google_auth": false,
+  "agents": {
+    //Sisyphus (anthropic/claude-opus-4-5): The default agent. A powerful AI orchestrator for OpenCode.
+    //Plans, delegates, and executes complex tasks using specialized subagents with aggressive parallel execution.
+    //Emphasizes background task delegation and todo-driven workflow.
+    //Uses Claude Opus 4.5 with extended thinking (32k budget) for maximum reasoning capability.
+    "Sisyphus": {
+      "model": "github-copilot/claude-opus-4.5"
+    },
+    //librarian (opencode/glm-4.7-free): Multi-repo analysis, doc lookup, implementation examples.
+    //Uses GLM-4.7 Free for deep codebase understanding and GitHub research with evidence-based answers.
+    //Inspired by AmpCode.
+    "librarian": {
+      "model": "github-copilot/gpt-4.1"
+    },
+    //explore (opencode/grok-code, google/gemini-3-flash, or anthropic/claude-haiku-4-5): Fast codebase exploration and pattern matching.
+    //Uses Gemini 3 Flash when Antigravity auth is configured, Haiku when Claude max20 is available, otherwise Grok.
+    //Inspired by Claude Code.
+    "explore": {
+      "model": "github-copilot/gpt-4.1"
+    },
+    // oracle (openai/gpt-5.2): Architecture, code review, strategy.
+    // Uses GPT-5.2 for its stellar logical reasoning and deep analysis. Inspired by AmpCode.
+    "oracle": {
+      "model": "github-copilot/claude-opus-4-5"
+    },
+    //frontend-ui-ux-engineer (google/gemini-3-pro-preview): A designer turned developer.
+    //Builds gorgeous UIs.
+    //Gemini excels at creative, beautiful UI code.
+    "frontend-ui-ux-engineer": {
+      "model": "github-copilot/gemini-3-pro-preview"
+    },
+    //document-writer (google/gemini-3-flash): Technical writing expert.
+    //Gemini is a wordsmith—writes prose that flows.
+    "document-writer": {
+      "model": "github-copilot/gpt-5.2"
+    },
+    //multimodal-looker (google/gemini-3-flash): Visual content specialist.
+    //Analyzes PDFs, images, diagrams to extract information.
+    "multimodal-looker": {
+      "model": "github-copilot/gemini-3-flash-preview"
+    }
+  }
+}
