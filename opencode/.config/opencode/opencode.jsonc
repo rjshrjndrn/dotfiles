@@ -8,8 +8,10 @@
     "leader": "ctrl+space",
     "editor_open": "<leader>e",
     "messages_page_up": "ctrl+u",
+    "agent_cycle": "ctrl+a",
     "messages_page_down": "ctrl+d"
   },
+  "default_agent": "thinker",
   "agent": {
     "thinker": {},
     "coder": {
@@ -86,7 +88,7 @@
   },
   "plugin": [
     // "opencode-openai-codex-auth",
-    "oh-my-opencode",
+    // "oh-my-opencode",
     // "opencode-antigravity-auth@1.2.8"
   ],
   "mcp": {
