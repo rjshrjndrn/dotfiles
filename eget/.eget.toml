@@ -14,5 +14,5 @@
 ["grafana/grizzly"]
 ["localsend/localsend"]
 ["iann0036/iamlive"]
-["sst/opencode"]
-  asset_filters = ["opencode-{{.OS}}-{{.Arch}}.zip"]
+# ["sst/opencode"]
+#   asset_filters = ["opencode-{{.OS}}-{{.Arch}}.zip"]

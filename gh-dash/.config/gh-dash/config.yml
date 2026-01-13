@@ -18,6 +18,9 @@ issuesSections:
   filters: is:open assignee:@me
 - title: Involved
   filters: is:open involves:@me -author:@me
+repo:
+  branchesRefetchIntervalSeconds: 30
+  prsRefetchIntervalSeconds: 60
 defaults:
   preview:
     open: true
@@ -60,16 +63,11 @@ defaults:
       assignees:
         width: 20
         hidden: true
-repo:
-  branchesRefetchIntervalSeconds: 30
-  prsRefetchIntervalSeconds: 60
 keybindings:
   prs:
     - key: M
-      command: |
         echo {{.RepoName}} {{.PrNumber}} > /tmp/gh-dash.log
         gh pr merge --auto --rebase --delete-branch --repo {{.RepoName}} {{.PrNumber}} &>> /tmp/gh-dash.log
-      description: Merge and delete branch
 repoPaths: {}
 theme:
   ui:
@@ -79,5 +77,6 @@ theme:
       compact: false
 pager:
    diff: "delta"
+confirmQuit: false
 showAuthorIcons: true
 smartFilteringAtLaunch: true
