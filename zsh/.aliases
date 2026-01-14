@@ -580,5 +580,7 @@ alias llm="llm -m github-copilot --system \"you're seasoned devops archtect. \
   Keep the coversation short and consise. Assume the user is well versed in devops. \
   So skip basic howto, unless asked and give direct answers.\""
 alias oc="opencode"
+alias ocs="opencode serve --port 4096"
+alias occ="opencode attach http://localhost:4096"
 
 alias clear='clear -x'
