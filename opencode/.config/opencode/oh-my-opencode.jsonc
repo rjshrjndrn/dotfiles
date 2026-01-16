@@ -12,6 +12,7 @@
       "permission": {
         "bash": {
           "*": "ask",
+          "make*": "allow",
           "podman*|*": "ask",
           "podman*": "allow",
           "find*-delete*": "ask",
