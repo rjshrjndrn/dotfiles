@@ -14,3 +14,4 @@ keybinding:
   commits:
     moveUpCommit: "K"
     moveDownCommit: "J"
+    openInBrowser: "o"

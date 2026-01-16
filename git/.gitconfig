@@ -30,12 +30,17 @@
 
 [merge]
   conflictstyle = diff3
+    tool = vimdiff
 
 [diff]
   colorMoved = default
   context = 3  # less context in diffs
   renames = copies  # detect copies as renames in diffs
   interHunkContext = 10  # merge near hunks in diffs
+    tool = vimdiff
+[difftool]
+    prompt = false
+
 
 [include]
 	path = ~/.gitaliases
@@ -67,3 +72,6 @@
 	process = git-lfs filter-process
 	required = true
 	clean = git-lfs clean -- %f
+[credential]
+	helper = !aws codecommit credential-helper $@
+	UseHttpPath = true

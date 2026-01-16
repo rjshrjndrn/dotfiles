@@ -30,3 +30,10 @@ eval "$(scw autocomplete script shell=zsh)"
 
 # manual completions
 source ~/.completions.sh
+
+# bun completions
+[ -s "/home/skyline/.bun/_bun" ] && source "/home/skyline/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
