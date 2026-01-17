@@ -1,0 +1,4 @@
+[tools]
+k9s = "latest"
+opencode = "latest"
+python = "3"
