@@ -9,7 +9,10 @@
 neovim = "https://github.com/richin13/asdf-neovim"
 
 [tools]
+# Cloud
 aws = { version = "latest", symlink_bins = "true" }
+
+# Tools
 "github:BurntSushi/ripgrep" = "latest"
 "github:zyedidia/eget" = "latest"
 "github:rjshrjndrn/templater" = "latest"
