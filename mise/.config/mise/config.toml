@@ -1,4 +1,7 @@
 [tools]
+"github:BurntSushi/ripgrep" = "latest"
+"github:zyedidia/eget" = "latest"
 k9s = "latest"
 opencode = "latest"
+opentofu = "latest"
 python = "3"

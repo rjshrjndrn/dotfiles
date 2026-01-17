@@ -27,6 +27,7 @@ eval "$(atuin init zsh --disable-up-arrow)"
 
 # Scaleway CLI autocomplete initialization.
 eval "$(scw autocomplete script shell=zsh)"
+eval "$(mise activate zsh)"
 
 # manual completions
 source ~/.completions.sh
