@@ -1,4 +1,5 @@
 [tools]
+aws = { version = "latest", symlink_bins = "true" }
 "github:BurntSushi/ripgrep" = "latest"
 "github:zyedidia/eget" = "latest"
 k9s = "latest"
