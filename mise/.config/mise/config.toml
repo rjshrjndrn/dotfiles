@@ -1,5 +1,13 @@
+# mise doctor
+# mise plugins ls-remote
+# mise plugins ls
+# mise ls
+# mise ls-remote java # to see the versions
+# mise use java@21
+# mise use k9s
 [plugins]
 neovim = "https://github.com/richin13/asdf-neovim"
+
 [tools]
 aws = { version = "latest", symlink_bins = "true" }
 "github:BurntSushi/ripgrep" = "latest"
@@ -14,3 +22,4 @@ stern = "latest"
 kubectl = "latest"
 neovim = "nightly"
 k3d = "latest"
+go = "latest"
