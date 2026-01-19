@@ -8,7 +8,7 @@
     //Uses Claude Opus 4.5 with extended thinking (32k budget) for maximum reasoning capability.
     "Sisyphus": {
       // "model": "github-copilot/claude-opus-4.5"
-      "model": "anthropic/claude-opus-4.5",
+      "model": "github-copilot/claude-opus-4.5",
       "permission": {
         "bash": {
           "*": "ask",
