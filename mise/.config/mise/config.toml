@@ -6,6 +6,7 @@
 # mise ls-remote java # to see the versions
 # mise use java@21
 # mise use k9s
+# mise prune
 [plugins]
 neovim = "https://github.com/richin13/asdf-neovim"
 
@@ -26,7 +27,7 @@ python = "3"
 starship = "latest"
 stern = "latest"
 kubectl = "latest"
-neovim = "nightly"
+"asdf:neovim" = "nightly"
 k3d = "latest"
 go = "latest"
 "aqua:schollz/croc" = "latest"
