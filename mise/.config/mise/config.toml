@@ -24,7 +24,6 @@ k9s = "latest"
 opencode = "latest"
 opentofu = "latest"
 podman = "latest"
-python = "3"
 starship = "latest"
 stern = "latest"
 kubectl = "latest"
@@ -32,10 +31,20 @@ kubectl = "latest"
 k3d = "latest"
 go = "latest"
 "aqua:schollz/croc" = "latest"
-uv = "latest"
 jq = "latest"
 yq = "latest"
 fzf = "latest"
 lazygit = "latest"
 lima = "latest"
 btop = "latest"
+
+###############
+# Python items
+###############
+
+# llm install llm-github-copilot
+# llm github_copilot auth login
+"pipx:llm" = "latest"
+
+uv = "latest"
+python = "3"
