@@ -25,22 +25,35 @@ azure-cli = "latest"
 "github:zyedidia/eget" = "latest"
 "github:rjshrjndrn/templater" = "latest"
 "github:jdx/mise" = "latest"
-k9s = "latest"
 opencode = "latest"
-podman = {version = "latest", rename_exe = "podman"}
 starship = "latest"
-stern = "latest"
-kubectl = "latest"
 "asdf:neovim" = "nightly"
-k3d = "latest"
 go = "latest"
 "aqua:schollz/croc" = "latest"
 jq = "latest"
 yq = "latest"
 fzf = "latest"
 lazygit = "latest"
-lima = "latest"
 btop = "latest"
+
+###############
+# k8s
+###############
+k9s = "latest"
+stern = "latest"
+kubectl = "latest"
+k3d = "latest"
+
+###############
+# Container/VM
+###############
+lima = "latest"
+podman = {version = "latest", rename_exe = "podman"}
+
+###############
+# Security
+###############
+trivy = "latest"
 
 ###############
 # IAC
