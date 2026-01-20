@@ -1,4 +1,9 @@
-# Install Mise: curl https://mise.run | sh
+# Install Mise:
+# curl https://mise.run | sh
+# Activate: Put
+# eval "$(mise activate bash)" in ~/.$bashrc
+# eval "$(mise activate bash)" in ~/.$bashrc
+#
 # mise doctor
 # mise plugins ls-remote
 # mise plugins ls
