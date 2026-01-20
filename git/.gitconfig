@@ -3,6 +3,9 @@
 	email = rjshrjndrn@gmail.com
 [rebase]
 	autoStash = true
+  # For banch stacking
+  # https://youtu.be/M6S-9Y8peDY?t=341
+	updateRefs = true
 [init]
 	defaultBranch = main
 
