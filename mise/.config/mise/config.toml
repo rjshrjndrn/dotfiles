@@ -17,6 +17,14 @@
 neovim = "https://github.com/richin13/asdf-neovim"
 
 [tools]
+
+
+###############
+# mise
+###############
+usage = "latest" # To generate completions.
+"github:jdx/mise" = "latest"
+
 ###############
 # Cloud
 ###############
@@ -29,7 +37,6 @@ azure-cli = "latest"
 "github:BurntSushi/ripgrep" = "latest"
 "github:zyedidia/eget" = "latest"
 "github:rjshrjndrn/templater" = "latest"
-"github:jdx/mise" = "latest"
 opencode = "latest"
 starship = "latest"
 "asdf:neovim" = "nightly"

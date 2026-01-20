@@ -78,9 +78,9 @@ alias sv='cat | vim'
 alias x='xdg-open'
 
 alias mc="vim ~/.config/mise/config.toml"
-alias mu="mise up"
+alias muu="mise up"
 alias mug="mise use -g"
-alias muu="mise use"
+alias mu="mise use"
 
 ## Generic linux shortcuts
 alias rmf='rm -rf'
