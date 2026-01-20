@@ -58,4 +58,3 @@ terragrunt = "latest"
 "pipx:llm" = "latest"
 
 uv = "latest"
-python = "3"
