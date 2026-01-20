@@ -77,6 +77,11 @@ alias neovide='neovide --fork'
 alias sv='cat | vim'
 alias x='xdg-open'
 
+alias mc="vim ~/.config/mise/config.toml"
+alias mu="mise up"
+alias mug="mise use -g"
+alias muu="mise use"
+
 ## Generic linux shortcuts
 alias rmf='rm -rf'
 
