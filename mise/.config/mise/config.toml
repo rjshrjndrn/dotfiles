@@ -11,9 +11,12 @@
 neovim = "https://github.com/richin13/asdf-neovim"
 
 [tools]
+###############
 # Cloud
+###############
 aws = { version = "latest", symlink_bins = "true" }
 localstack = "latest"
+azure-cli = "latest"
 
 # Tools
 "github:BurntSushi/ripgrep" = "latest"
@@ -22,7 +25,6 @@ localstack = "latest"
 "github:jdx/mise" = "latest"
 k9s = "latest"
 opencode = "latest"
-opentofu = "latest"
 podman = "latest"
 starship = "latest"
 stern = "latest"
@@ -37,6 +39,14 @@ fzf = "latest"
 lazygit = "latest"
 lima = "latest"
 btop = "latest"
+
+###############
+# IAC
+###############
+opentofu = "latest"
+terraform = "latest"
+terragrunt = "latest"
+
 
 ###############
 # Python items
