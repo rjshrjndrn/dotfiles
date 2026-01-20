@@ -48,6 +48,8 @@ k9s = "latest"
 stern = "latest"
 kubectl = "latest"
 k3d = "latest"
+argo = "latest"
+flux2 = "latest"
 
 ###############
 # Container/VM
