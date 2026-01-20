@@ -7,6 +7,7 @@
 # mise use java@21
 # mise use k9s
 # mise prune
+# mise tool aws # check info about aws
 [plugins]
 neovim = "https://github.com/richin13/asdf-neovim"
 
