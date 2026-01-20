@@ -27,7 +27,7 @@ azure-cli = "latest"
 "github:jdx/mise" = "latest"
 k9s = "latest"
 opencode = "latest"
-podman = "latest"
+podman = {version = "latest", rename_exe = "podman"}
 starship = "latest"
 stern = "latest"
 kubectl = "latest"
