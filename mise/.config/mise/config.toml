@@ -17,6 +17,7 @@ neovim = "https://github.com/richin13/asdf-neovim"
 aws = { version = "latest", symlink_bins = "true" }
 localstack = "latest"
 azure-cli = "latest"
+"aqua:scaleway/scaleway-cli" = "latest"
 
 # Tools
 "github:BurntSushi/ripgrep" = "latest"
