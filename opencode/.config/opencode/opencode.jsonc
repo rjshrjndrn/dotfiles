@@ -12,17 +12,21 @@
     "messages_page_down": "ctrl+d"
   },
   "permission": {
-    "bash": {
-      "*": "ask",
-      "git*": "allow",
-      "ls*": "allow",
-      "find*": "allow",
-    }
+    "bash": "ask",
   },
   "default_agent": "thinker",
   "agent": {
     "thinker": {},
-    "coder": {},
+    "coder": {
+      "permission": {
+        "bash": {
+          "*": "ask",
+          "git*": "allow",
+          "ls*": "allow",
+          "find*": "allow",
+        }
+      },
+    },
     "fetch": {},
     "build": {
       "disable": true
