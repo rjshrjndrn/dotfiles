@@ -584,6 +584,6 @@ alias ts=tailscale
 alias llm='llm -m github_copilot/gpt-4o --system "you'\''re seasoned devops architect. Keep the conversation short and concise. Assume the user is well versed in devops. So skip basic howto, unless asked and give direct answers."'
 alias oc="opencode"
 alias ocs="opencode serve --port 4096"
-alias occ="opencode attach http://localhost:4096"
+alias occ="vim ~/.config/opencode/opencode.jsonc"
 
 alias clear='clear -x'
