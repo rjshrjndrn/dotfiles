@@ -11,14 +11,18 @@
     // "agent_cycle": "ctrl+a",
     "messages_page_down": "ctrl+d"
   },
+  "permission": {
+    "bash": {
+      "*": "ask",
+      "git*": "allow",
+      "ls*": "allow",
+      "find*": "allow",
+    }
+  },
   "default_agent": "thinker",
   "agent": {
     "thinker": {},
-    "coder": {
-      "permission": {
-        "bash": "ask"
-      }
-    },
+    "coder": {},
     "fetch": {},
     "build": {
       "disable": true
@@ -33,9 +37,6 @@
     "plan": {
       "disable": true
     }
-  },
-  "permission": {
-    "bash": "ask"
   },
   "plugin": [
     // "opencode-openai-codex-auth",
