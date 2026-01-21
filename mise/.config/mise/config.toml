@@ -75,6 +75,7 @@ trivy = "latest"
 opentofu = "latest"
 terraform = "latest"
 terragrunt = "latest"
+packer = "latest"
 
 
 ###############
