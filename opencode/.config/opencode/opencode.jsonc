@@ -24,6 +24,7 @@
         "bash": {
           "*": "ask",
           "git *": "allow",
+          "git push *": "ask",
           "ls *": "allow",
           "find *": "allow",
           "mkdir *": "allow",
