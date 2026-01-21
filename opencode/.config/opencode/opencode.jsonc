@@ -26,6 +26,7 @@
           "git *": "allow",
           "ls *": "allow",
           "find *": "allow",
+          "mkdir *": "allow",
           "* rm *": "ask", // find and other tools can embed rm like -exec
         }
       },
