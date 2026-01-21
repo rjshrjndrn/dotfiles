@@ -13,6 +13,11 @@
 # mise use k9s
 # mise prune
 # mise tool aws # check info about aws
+#
+# mise use -g <optional package else it'll show fuzzy all packages> # to globally install and add to this file
+# mise use <optional package else it'll show fuzzy all packages> # to install in the project to create config mise.toml
+#
+# mise up # Install all packages defined in the config
 [plugins]
 neovim = "https://github.com/richin13/asdf-neovim"
 
