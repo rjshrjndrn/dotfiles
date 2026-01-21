@@ -62,6 +62,8 @@ kubectl = "latest"
 k3d = "latest"
 argo = "latest"
 flux2 = "latest"
+helm = "latest"
+helm-diff = "latest"
 
 ###############
 # Container/VM
