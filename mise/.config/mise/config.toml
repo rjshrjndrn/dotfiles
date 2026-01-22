@@ -39,7 +39,7 @@ azure-cli = "latest"
 "aqua:scaleway/scaleway-cli" = "latest"
 
 # Tools
-"github:BurntSushi/ripgrep" = "latest"
+ripgrep = "latest"
 "github:zyedidia/eget" = "latest"
 "github:rjshrjndrn/templater" = "latest"
 opencode = "latest"
