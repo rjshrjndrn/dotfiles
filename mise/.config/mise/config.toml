@@ -41,14 +41,17 @@ azure-cli = "latest"
 # Tools
 "github:zyedidia/eget" = "latest"
 "github:rjshrjndrn/templater" = "latest"
+"aqua:schollz/croc" = "latest"
 opencode = "latest"
 "asdf:neovim" = "nightly"
 go = "latest"
-"aqua:schollz/croc" = "latest"
 jq = "latest"
 yq = "latest"
 ripgrep = "latest"
+ag = "latest"
+
 btop = { version = "latest", os = ["linux"] }
+
 lazygit = "latest"
 delta = "latest"
 github-cli = "latest"
