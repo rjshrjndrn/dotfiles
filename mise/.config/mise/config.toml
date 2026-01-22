@@ -49,6 +49,7 @@ jq = "latest"
 yq = "latest"
 ripgrep = "latest"
 lazygit = "latest"
+delta = "latest"
 btop = { version = "latest", os = ["linux"] }
 
 # terminal tools
