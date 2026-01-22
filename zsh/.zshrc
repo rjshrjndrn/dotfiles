@@ -5,6 +5,7 @@ SAVEHIST=10000
 setopt HIST_IGNORE_ALL_DUPS
 setopt HIST_IGNORE_SPACE
 setopt appendhistory
+eval "$(~/.local/bin/mise activate zsh)"
 ZSH_THEME="robbyrussell"
 plugins=(
     git
@@ -27,7 +28,6 @@ eval "$(atuin init zsh --disable-up-arrow)"
 
 # Scaleway CLI autocomplete initialization.
 eval "$(scw autocomplete script shell=zsh)"
-eval "$(mise activate zsh)"
 eval "$(mise completion zsh)"
 
 # manual completions
