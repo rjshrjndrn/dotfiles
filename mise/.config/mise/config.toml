@@ -81,6 +81,7 @@ podman = {version = "latest", rename_exe = "podman"}
 ###############
 trivy = "latest"
 age = "latest"
+gopass = "latest"
 
 ###############
 # IAC
