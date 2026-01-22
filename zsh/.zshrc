@@ -12,7 +12,6 @@ plugins=(
     history-substring-search
     z
     zsh-autosuggestions
-    fzf-tab
     )
 source $ZSH/oh-my-zsh.sh
 source ~/.aliases
