@@ -48,9 +48,10 @@ go = "latest"
 jq = "latest"
 yq = "latest"
 ripgrep = "latest"
+btop = { version = "latest", os = ["linux"] }
 lazygit = "latest"
 delta = "latest"
-btop = { version = "latest", os = ["linux"] }
+github-cli = "latest"
 
 # terminal tools
 direnv = "latest"
@@ -70,6 +71,7 @@ argo = "latest"
 flux2 = "latest"
 helm = "latest"
 helm-diff = "latest"
+kubeconform = "latest"
 
 ###############
 # Container/VM
