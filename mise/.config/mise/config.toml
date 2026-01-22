@@ -39,19 +39,24 @@ azure-cli = "latest"
 "aqua:scaleway/scaleway-cli" = "latest"
 
 # Tools
-ripgrep = "latest"
 "github:zyedidia/eget" = "latest"
 "github:rjshrjndrn/templater" = "latest"
 opencode = "latest"
-starship = "latest"
 "asdf:neovim" = "nightly"
 go = "latest"
 "aqua:schollz/croc" = "latest"
 jq = "latest"
 yq = "latest"
-fzf = "latest"
+ripgrep = "latest"
 lazygit = "latest"
 btop = { version = "latest", os = ["linux"] }
+
+# terminal tools
+direnv = "latest"
+atuin = "latest"
+tmux = "latest"
+starship = "latest"
+fzf = "latest"
 
 ###############
 # k8s
