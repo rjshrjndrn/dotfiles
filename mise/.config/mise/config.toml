@@ -28,7 +28,7 @@ neovim = "https://github.com/richin13/asdf-neovim"
 # mise
 ###############
 usage = "latest" # To generate completions.
-"github:jdx/mise" = "latest"
+"github:jdx/mise" = {version = "latest", exe = "~/.local/bin/mise"}
 
 ###############
 # Cloud
