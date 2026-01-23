@@ -21,9 +21,10 @@
 [plugins]
 neovim = "https://github.com/richin13/asdf-neovim"
 
+[settings]
+experimental = false
+
 [tools]
-
-
 ###############
 # mise
 ###############
@@ -48,7 +49,7 @@ go = "latest"
 jq = "latest"
 yq = "latest"
 ripgrep = "latest"
-ag = "latest"
+ag = {version = "latest", os = ["linux"]}
 
 btop = { version = "latest", os = ["linux"] }
 
