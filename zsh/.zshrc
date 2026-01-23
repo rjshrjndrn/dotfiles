@@ -10,6 +10,10 @@ setopt appendhistory
 # export PATH=~/.local/share/mise/shims:$PATH
 eval "$(~/.local/bin/mise activate zsh)"
 ZSH_THEME="robbyrussell"
+
+# Autosuggestion styling - must be set BEFORE plugin loads
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=240'
+
 plugins=(
     git
     history-substring-search
@@ -17,6 +21,7 @@ plugins=(
     zsh-autosuggestions
     )
 source $ZSH/oh-my-zsh.sh
+
 source ~/.aliases
 source ~/.key_bindings.sh
 source ~/.exports.sh
