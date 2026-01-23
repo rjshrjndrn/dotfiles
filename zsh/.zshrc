@@ -5,6 +5,9 @@ SAVEHIST=10000
 setopt HIST_IGNORE_ALL_DUPS
 setopt HIST_IGNORE_SPACE
 setopt appendhistory
+# eval "$(~/.local/bin/mise activate zsh)"  # Full activate with hooks
+# eval "$(~/.local/bin/mise activate zsh --shims)" # same as the following
+# export PATH=~/.local/share/mise/shims:$PATH
 eval "$(~/.local/bin/mise activate zsh)"
 ZSH_THEME="robbyrussell"
 plugins=(
