@@ -52,7 +52,6 @@ go = "latest"
 jq = "latest"
 yq = "latest"
 ripgrep = "latest"
-ag = {version = "latest", os = ["linux"]}
 
 btop = { version = "latest", os = ["linux"] }
 
