@@ -24,6 +24,9 @@ neovim = "https://github.com/richin13/asdf-neovim"
 [settings]
 experimental = false
 
+# Add latency to mac terminal
+disable_backends = ["vfox"]
+
 [tools]
 ###############
 # mise
