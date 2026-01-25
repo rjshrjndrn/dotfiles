@@ -53,16 +53,14 @@ jq = "latest"
 yq = "latest"
 ripgrep = "latest"
 
-btop = { version = "latest", os = ["linux"] }
-
 lazygit = "latest"
 delta = "latest"
 github-cli = "latest"
 
 # terminal tools
 direnv = "latest"
-atuin = "latest"
 tmux = "latest"
+atuin = "latest"
 starship = "latest"
 fzf = "latest"
 
@@ -78,6 +76,7 @@ flux2 = "latest"
 helm = "latest"
 helm-diff = "latest"
 kubeconform = "latest"
+cilium-cli = "latest"
 
 ###############
 # Container/VM
@@ -91,6 +90,8 @@ podman = {version = "latest", rename_exe = "podman"}
 trivy = "latest"
 age = "latest"
 gopass = "latest"
+vals = "latest"
+doppler = "latest"
 
 ###############
 # IAC
@@ -110,3 +111,5 @@ packer = "latest"
 "pipx:llm" = "latest"
 
 uv = "latest"
+node = "latest"
+pnpm = "latest"
