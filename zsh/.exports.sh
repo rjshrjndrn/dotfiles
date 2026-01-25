@@ -29,5 +29,7 @@ export K9S_FEATURE_GATE_NODE_SHELL=true
 
 source "${HOME}/.shell.sh"
 
-# apps/bin is priority
-export PATH=~/apps/bin:$PATH
+# tmux has ghostty issue
+if [[ "$TERM_PROGRAM" == "ghostty" ]]; then
+    export TERM=xterm-256color
+fi
