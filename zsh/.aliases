@@ -82,6 +82,9 @@ alias muu="mise up"
 alias mug="mise use -g"
 alias mu="mise use"
 
+## Virtualization
+alias lc='limactl'
+
 ## Generic linux shortcuts
 alias rmf='rm -rf'
 
