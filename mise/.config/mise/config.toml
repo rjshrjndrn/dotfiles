@@ -113,3 +113,9 @@ packer = "latest"
 uv = "latest"
 node = "latest"
 pnpm = "latest"
+
+###############
+# LLM
+###############
+
+ollama = {version="latest", os=["mac"]}
