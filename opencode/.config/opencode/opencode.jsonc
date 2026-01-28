@@ -25,14 +25,14 @@
       "permission": {
         "bash": {
           "*": "ask",
-          "git *": "allow",
           "git push *": "ask",
+          "* rm *": "ask", // find and other tools can embed rm like -exec
+          "git *": "allow",
           "ls *": "allow",
           "find *": "allow",
           "mkdir *": "allow",
           "grep *": "allow",
           "head *": "allow",
-          "* rm *": "ask", // find and other tools can embed rm like -exec
         }
       },
     },
