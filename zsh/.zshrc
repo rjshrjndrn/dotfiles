@@ -27,7 +27,7 @@ source ~/.key_bindings.sh
 source ~/.exports.sh
 eval "$(starship init zsh)"
 eval "$(direnv hook zsh)"
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+source <(fzf --zsh)
 
 autoload -U +X bashcompinit && bashcompinit
 # Bind ctrl-r but not up arrow
