@@ -52,6 +52,7 @@
     }
   },
   "plugin": [
+    "opencode-anthropic-auth@latest",
     // "opencode-openai-codex-auth",
     // "oh-my-opencode",
     // "opencode-antigravity-auth@1.2.8"
