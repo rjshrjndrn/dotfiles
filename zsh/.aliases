@@ -84,6 +84,9 @@ alias mu="mise use"
 
 ## Virtualization
 alias lc='limactl'
+alias lcs='limactl start'
+alias lcss='limactl stop'
+alias lcsh='limactl shell'
 
 ## Generic linux shortcuts
 alias rmf='rm -rf'
