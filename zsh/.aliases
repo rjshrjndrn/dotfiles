@@ -37,14 +37,18 @@ function pr() {
 ## Utilities
 
 function sendfile() {
-  token=$(openssl rand -hex 10)
   if [[ $# -eq 1 ]]; then
-    # echo sendfile /path/to/file
-    echo "curl https://send.rjsh.me/${token} >$1"
-    curl -X POST https://send.rjsh.me/${token} --data-binary @"$1"
+    token="$(openssl rand -hex 10)"
+    file="$1"
+  elif [[ $# -eq 2 ]]; then
+    file="$1"
+    token="$2"
   else
-    echo "Usage: sendfile <file>"
+    echo "Usage: sendfile <file> [token]"
+    return 1
   fi
+  echo "curl https://send.rjsh.me/${token} >$file"
+  curl -X POST https://send.rjsh.me/${token} --data-binary @"$file"
 }
 
 alias cno='curl https://naas.isalman.dev/no'
