@@ -1,0 +1,14 @@
+name = "sender"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+TIMEOUT_SECONDS = "10"
+
+[[durable_objects.bindings]]
+name = "RELAY"
+class_name = "StreamRelay"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["StreamRelay"]
