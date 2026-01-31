@@ -52,6 +52,7 @@ go = "latest"
 jq = "latest"
 yq = "latest"
 ripgrep = "latest"
+bat = "latest"
 
 lazygit = "latest"
 delta = "latest"
@@ -63,6 +64,11 @@ tmux = "latest"
 atuin = "latest"
 starship = "latest"
 fzf = "latest"
+
+###############
+# DBs
+###############
+duckdb = "latest"
 
 ###############
 # k8s
