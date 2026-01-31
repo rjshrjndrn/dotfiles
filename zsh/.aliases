@@ -37,8 +37,14 @@ function pr() {
 ## Utilities
 
 function sendfile() {
-  # curl -F "file=@${1}" https://file.io | jq ".link"
-  curl https://oshi.at/file/-1 --upload-file $1
+  token=$(openssl rand -hex 10)
+  if [[ $# -eq 1 ]]; then
+    # echo sendfile /path/to/file
+    echo curl https://send.rjsh.me/${token}
+    curl -X POST https://send.rjsh.me/${token} --data-binary @"$1"
+  else
+    echo "Usage: sendfile <file>"
+  fi
 }
 
 alias cno='curl https://naas.isalman.dev/no'
