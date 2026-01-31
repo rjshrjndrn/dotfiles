@@ -47,7 +47,7 @@ function sendfile() {
     echo "Usage: sendfile <file> [token]"
     return 1
   fi
-  echo "curl https://send.rjsh.me/${token} >$file"
+  echo "curl https://send.rjsh.me/${token} -o $(basename $file)"
   curl -X POST https://send.rjsh.me/${token} --data-binary @"$file"
 }
 
