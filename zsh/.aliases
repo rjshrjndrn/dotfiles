@@ -40,7 +40,7 @@ function sendfile() {
   token=$(openssl rand -hex 10)
   if [[ $# -eq 1 ]]; then
     # echo sendfile /path/to/file
-    echo curl https://send.rjsh.me/${token}
+    echo "curl https://send.rjsh.me/${token} >$1"
     curl -X POST https://send.rjsh.me/${token} --data-binary @"$1"
   else
     echo "Usage: sendfile <file>"
