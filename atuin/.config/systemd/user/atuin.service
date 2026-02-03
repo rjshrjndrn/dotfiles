@@ -7,7 +7,7 @@ Description=Atuin shell history sync daemon
 Documentation=https://github.com/ellie/atuin
 
 [Service]
-ExecStart=%h/.nix-profile/bin/atuin daemon
+ExecStart=%h/.local/share/mise/shims/atuin daemon
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
