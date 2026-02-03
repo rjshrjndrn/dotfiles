@@ -27,7 +27,8 @@
     "coder": {
       "permission": {
         "bash": {
-          "*": "ask",
+          "*": "allow",
+          "/tmp/*": "allow",
           "git *": "allow",
           "ls *": "allow",
           "find *": "allow",
@@ -57,6 +58,7 @@
   },
   "plugin": [
     "opencode-anthropic-auth@latest",
+    "opencode-antigravity-auth@latest"
     // "opencode-openai-codex-auth",
     // "oh-my-opencode",
     // "opencode-antigravity-auth@1.2.8"
