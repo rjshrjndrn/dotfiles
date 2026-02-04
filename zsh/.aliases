@@ -143,14 +143,37 @@ function gclb() {
 }
 
 # crate git worktree with optional local branch/remote branch
+# Usage: gwa <branch_or_tag> [folder_name] [-r remote_name]
 function gwa() {
   [[ -z "$1" ]] &&
-    echo "Usage: gwa [local_branch_or_tag] [remote_name] [folder_name]" &&
+    echo "Usage: gwa <branch_or_tag> [folder_name] [-r remote_name]" &&
     return
 
-  local name="$1"   # branch OR tag
-  local remote="$2" # remote name (default: origin)
-  local folder="$3" # folder name override
+  local name=""
+  local folder=""
+  local remote="origin"
+
+  # Parse args
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -r|--remote)
+        remote="$2"
+        shift 2
+        ;;
+      *)
+        # Positional: first is name, second is folder
+        if [[ -z "$name" ]]; then
+          name="$1"
+        elif [[ -z "$folder" ]]; then
+          folder="$1"
+        fi
+        shift
+        ;;
+    esac
+  done
+
+  [[ -z "$name" ]] && echo "Error: branch or tag name required" && return 1
+
   local toplevel
 
   # Check if bare repo, then create worktree dir
@@ -184,8 +207,8 @@ function gwa() {
     commitish="$name"
     args=()
   # If remote branch exists, create local tracking branch from the remote.
-  elif git show-ref --verify --quiet "refs/remotes/${remote:-origin}/$name"; then
-    commitish="${remote:-origin}/$name"
+  elif git show-ref --verify --quiet "refs/remotes/$remote/$name"; then
+    commitish="$remote/$name"
     args=(-b "$name")
   else
     # Branch doesn't exist anywhere, create new branch from current HEAD
@@ -196,12 +219,8 @@ function gwa() {
   echo "git worktree add ${args[*]} $toplevel/$dir_name $commitish"
   git worktree add "${args[@]}" "$toplevel/$dir_name" "$commitish" || return
 
-  # Change to the new worktree directory (by folder name if provided)
-  if [[ -n "$folder" ]]; then
-    cd "$toplevel/$dir_name" || return
-  else
-    gwc "$name"
-  fi
+  # Change to the new worktree directory
+  cd "$toplevel/$dir_name" || return
 }
 
 function gwr() {
