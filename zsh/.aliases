@@ -235,19 +235,30 @@ function gwr() {
 # alias gl='git log --graph --pretty=format:"%C(magenta)%h %C(white) %an  %ar%C(blue)  %D%n%s%n"'
 
 #######################################
-# git chekcout if not worktree, else cd to that dir
+# cd to worktree by branch name or folder name
+# 1. check if branch exists as worktree
+# 2. if not, check if folder name matches (for detached HEAD/tags)
+# 3. else error
 #######################################
 function gwc() {
   if [[ -z "$1" ]]; then
-    echo "Usage: gwc <branch_name>"
+    echo "Usage: gwc <branch_or_folder>"
     return 1
   fi
 
-  local branch="$1"
+  local name="$1"
   local worktree_path
 
-  # Check if the branch exists as a worktree
-  worktree_path=$(git worktree list | grep "\[$branch\]" | cut -d' ' -f1)
+  # check if branch exists as a worktree
+  worktree_path=$(git worktree list | grep "\[$name\]" | cut -d' ' -f1)
+
+  # if not found, check by folder name (for detached HEAD like tags)
+  if [[ -z "$worktree_path" ]]; then
+    worktree_path=$(git worktree list | awk -v name="$name" '{
+      n = split($1, parts, "/")
+      if (parts[n] == name) print $1
+    }')
+  fi
 
   if [[ -n "$worktree_path" ]]; then
     echo "Switching to worktree: $worktree_path"
@@ -256,8 +267,8 @@ function gwc() {
       return 1
     }
   else
-    echo "Checking out branch: $branch"
-    git checkout "$branch"
+    echo "Error: '$name' is not a worktree branch or folder"
+    return 1
   fi
 }
 
