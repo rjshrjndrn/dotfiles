@@ -144,6 +144,7 @@ yt_download() {
     --merge-output-format mp4 \
     --embed-thumbnail \
     --embed-metadata \
+    --parse-metadata "webpage_url:%(meta_comment)s" \
     --restrict-filenames \
     --no-mtime \
     --progress \
