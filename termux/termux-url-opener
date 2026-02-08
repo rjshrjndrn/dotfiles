@@ -68,18 +68,26 @@ extract_video_id() {
     url="${url%%\?feature=*}"
     url="${url%%&feature=*}"
 
+    # Regex patterns (variables avoid Bash quoting issues)
+    local re_short='youtu\.be/([a-zA-Z0-9_-]{11})'
+    local re_shorts='youtube\.com/shorts/([a-zA-Z0-9_-]{11})'
+    local re_watch='youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})'
+    local re_param='[?&]v=([a-zA-Z0-9_-]{11})'
+    local re_v='youtube\.com/v/([a-zA-Z0-9_-]{11})'
+    local re_embed='youtube\.com/embed/([a-zA-Z0-9_-]{11})'
+
     # Extract ID from various YouTube URL formats
-    if [[ "$url" =~ youtu\.be/([a-zA-Z0-9_-]{11}) ]]; then
+    if [[ "$url" =~ $re_short ]]; then
         video_id="${BASH_REMATCH[1]}"
-    elif [[ "$url" =~ youtube\.com/shorts/([a-zA-Z0-9_-]{11}) ]]; then
+    elif [[ "$url" =~ $re_shorts ]]; then
         video_id="${BASH_REMATCH[1]}"
-    elif [[ "$url" =~ youtube\.com/watch\?v=([a-zA-Z0-9_-]{11}) ]]; then
+    elif [[ "$url" =~ $re_watch ]]; then
         video_id="${BASH_REMATCH[1]}"
-    elif [[ "$url" =~ [?&]v=([a-zA-Z0-9_-]{11}) ]]; then
+    elif [[ "$url" =~ $re_param ]]; then
         video_id="${BASH_REMATCH[1]}"
-    elif [[ "$url" =~ youtube\.com/v/([a-zA-Z0-9_-]{11}) ]]; then
+    elif [[ "$url" =~ $re_v ]]; then
         video_id="${BASH_REMATCH[1]}"
-    elif [[ "$url" =~ youtube\.com/embed/([a-zA-Z0-9_-]{11}) ]]; then
+    elif [[ "$url" =~ $re_embed ]]; then
         video_id="${BASH_REMATCH[1]}"
     fi
 
@@ -90,15 +98,17 @@ extract_video_id() {
 is_short() {
     local url="$1"
     local video_id="$2"
+    local re_shorts='youtube\.com/shorts/'
+    local re_number='^[0-9]+(\.[0-9]+)?$'
 
     # Check URL pattern first (fastest)
-    [[ "$url" =~ youtube\.com/shorts/ ]] && return 0
+    [[ "$url" =~ $re_shorts ]] && return 0
 
     # Check duration via yt-dlp (shorts are <= 60s)
     local duration
     duration=$(yt-dlp --no-warnings --print duration "https://www.youtube.com/watch?v=$video_id" 2>/dev/null || echo "999")
 
-    [[ "$duration" =~ ^[0-9]+(\.[0-9]+)?$ ]] && [[ "${duration%.*}" -le 60 ]] && return 0
+    [[ "$duration" =~ $re_number ]] && [[ "${duration%.*}" -le 60 ]] && return 0
 
     return 1
 }
@@ -175,7 +185,8 @@ main() {
     log_info "URL: $url"
 
     # Check if it's a YouTube URL
-    if [[ ! "$url" =~ (youtube\.com|youtu\.be) ]]; then
+    local re_youtube='(youtube\.com|youtu\.be)'
+    if [[ ! "$url" =~ $re_youtube ]]; then
         log_error "Not a YouTube URL"
         read -p "Press Enter to exit..."
         exit 1
