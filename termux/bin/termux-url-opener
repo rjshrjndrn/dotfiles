@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # vim: set ft=bash:
 #
-# termux-url-opener - Receive shared YouTube URLs and download in max resolution
+# termux-url-opener - Handle shared URLs from various services
 #
 # Setup:
 #   pkg update && pkg install yt-dlp ffmpeg
@@ -10,7 +10,7 @@
 #   cp termux-url-opener ~/bin/
 #   chmod +x ~/bin/termux-url-opener
 #
-# Usage: Share any YouTube link to Termux from any app
+# Supported: YouTube, Tidal (more to come)
 #
 
 set -uo pipefail
@@ -23,191 +23,227 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Output directories
-BASE_DIR="$HOME/storage/shared/Download/termux/yt"
-SHORTS_DIR="$BASE_DIR/shorts"
-VIDEOS_DIR="$BASE_DIR/videos"
+DOWNLOAD_BASE="$HOME/storage/shared/Download/termux"
 
-log_info()    { echo -e "${BLUE}[*]${NC} $1"; }
+log_info() { echo -e "${BLUE}[*]${NC} $1"; }
 log_success() { echo -e "${GREEN}[+]${NC} $1"; }
-log_warn()    { echo -e "${YELLOW}[!]${NC} $1"; }
-log_error()   { echo -e "${RED}[-]${NC} $1" >&2; }
+log_warn() { echo -e "${YELLOW}[!]${NC} $1"; }
+log_error() { echo -e "${RED}[-]${NC} $1" >&2; }
 
-# Check dependencies
-check_deps() {
-    local missing=()
-    for cmd in yt-dlp ffmpeg; do
-        command -v "$cmd" &>/dev/null || missing+=("$cmd")
-    done
-
-    if [[ ${#missing[@]} -gt 0 ]]; then
-        log_error "Missing: ${missing[*]}"
-        log_info "Run: pkg install yt-dlp ffmpeg"
-        read -p "Press Enter to exit..."
-        exit 1
-    fi
-
-    if [[ ! -d "$HOME/storage/shared" ]]; then
-        log_error "Storage not accessible"
-        log_info "Run: termux-setup-storage"
-        read -p "Press Enter to exit..."
-        exit 1
-    fi
-
-    # Create output directories
-    mkdir -p "$SHORTS_DIR" "$VIDEOS_DIR"
+wait_exit() {
+  echo ""
+  read -rp "Press Enter to close..."
+  exit "${1:-1}"
 }
 
-# Clean URL and extract video ID
-extract_video_id() {
-    local url="$1"
-    local video_id=""
-
-    # Strip tracking params (?si=, &si=, ?feature=share, etc.)
-    url="${url%%\?si=*}"
-    url="${url%%&si=*}"
-    url="${url%%\?feature=*}"
-    url="${url%%&feature=*}"
-
-    # Regex patterns (variables avoid Bash quoting issues)
-    local re_short='youtu\.be/([a-zA-Z0-9_-]{11})'
-    local re_shorts='youtube\.com/shorts/([a-zA-Z0-9_-]{11})'
-    local re_watch='youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})'
-    local re_param='[?&]v=([a-zA-Z0-9_-]{11})'
-    local re_v='youtube\.com/v/([a-zA-Z0-9_-]{11})'
-    local re_embed='youtube\.com/embed/([a-zA-Z0-9_-]{11})'
-
-    # Extract ID from various YouTube URL formats
-    if [[ "$url" =~ $re_short ]]; then
-        video_id="${BASH_REMATCH[1]}"
-    elif [[ "$url" =~ $re_shorts ]]; then
-        video_id="${BASH_REMATCH[1]}"
-    elif [[ "$url" =~ $re_watch ]]; then
-        video_id="${BASH_REMATCH[1]}"
-    elif [[ "$url" =~ $re_param ]]; then
-        video_id="${BASH_REMATCH[1]}"
-    elif [[ "$url" =~ $re_v ]]; then
-        video_id="${BASH_REMATCH[1]}"
-    elif [[ "$url" =~ $re_embed ]]; then
-        video_id="${BASH_REMATCH[1]}"
-    fi
-
-    echo "$video_id"
+# Check if storage is accessible
+check_storage() {
+  if [[ ! -d "$HOME/storage/shared" ]]; then
+    log_error "Storage not accessible"
+    log_info "Run: termux-setup-storage"
+    wait_exit 1
+  fi
 }
 
-# Detect if URL is a YouTube Short
-is_short() {
-    local url="$1"
-    local video_id="$2"
-    local re_shorts='youtube\.com/shorts/'
-    local re_number='^[0-9]+(\.[0-9]+)?$'
-
-    # Check URL pattern first (fastest)
-    [[ "$url" =~ $re_shorts ]] && return 0
-
-    # Check duration via yt-dlp (shorts are <= 60s)
-    local duration
-    duration=$(yt-dlp --no-warnings --print duration "https://www.youtube.com/watch?v=$video_id" 2>/dev/null || echo "999")
-
-    [[ "$duration" =~ $re_number ]] && [[ "${duration%.*}" -le 60 ]] && return 0
-
-    return 1
+# Check if commands exist
+require_cmds() {
+  local missing=()
+  for cmd in "$@"; do
+    command -v "$cmd" &>/dev/null || missing+=("$cmd")
+  done
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    log_error "Missing: ${missing[*]}"
+    log_info "Run: pkg install ${missing[*]}"
+    wait_exit 1
+  fi
 }
 
-# Download video
-download() {
-    local video_id="$1"
-    local is_short="$2"
-    local output_dir
-    local yt_url="https://www.youtube.com/watch?v=$video_id"
+# ==============================================================================
+# YouTube
+# ==============================================================================
 
-    if [[ "$is_short" == "true" ]]; then
-        output_dir="$SHORTS_DIR"
-        log_info "Type: YouTube Short"
-    else
-        output_dir="$VIDEOS_DIR"
-        log_info "Type: Regular Video"
-    fi
+yt_extract_video_id() {
+  local url="$1"
+  local video_id=""
 
-    # Fetch title
-    local title
-    title=$(yt-dlp --no-warnings --print title "$yt_url" 2>/dev/null || echo "Unknown")
-    log_info "Title: $title"
+  # Strip tracking params
+  url="${url%%\?si=*}"
+  url="${url%%&si=*}"
+  url="${url%%\?feature=*}"
+  url="${url%%&feature=*}"
 
-    echo ""
-    log_info "Downloading in max resolution..."
-    echo ""
+  # Regex patterns (variables avoid Bash quoting issues)
+  local re_short='youtu\.be/([a-zA-Z0-9_-]{11})'
+  local re_shorts='youtube\.com/shorts/([a-zA-Z0-9_-]{11})'
+  local re_watch='youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})'
+  local re_param='[?&]v=([a-zA-Z0-9_-]{11})'
+  local re_v='youtube\.com/v/([a-zA-Z0-9_-]{11})'
+  local re_embed='youtube\.com/embed/([a-zA-Z0-9_-]{11})'
 
-    yt-dlp \
-        --no-playlist \
-        -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best" \
-        --merge-output-format mp4 \
-        --embed-thumbnail \
-        --embed-metadata \
-        --restrict-filenames \
-        --no-mtime \
-        --progress \
-        -o "$output_dir/%(title)s_[%(id)s].%(ext)s" \
-        "$yt_url"
+  if [[ "$url" =~ $re_short ]]; then
+    video_id="${BASH_REMATCH[1]}"
+  elif [[ "$url" =~ $re_shorts ]]; then
+    video_id="${BASH_REMATCH[1]}"
+  elif [[ "$url" =~ $re_watch ]]; then
+    video_id="${BASH_REMATCH[1]}"
+  elif [[ "$url" =~ $re_param ]]; then
+    video_id="${BASH_REMATCH[1]}"
+  elif [[ "$url" =~ $re_v ]]; then
+    video_id="${BASH_REMATCH[1]}"
+  elif [[ "$url" =~ $re_embed ]]; then
+    video_id="${BASH_REMATCH[1]}"
+  fi
 
-    local exit_code=$?
-
-    echo ""
-    if [[ $exit_code -eq 0 ]]; then
-        log_success "Download complete!"
-        log_info "Saved to: $output_dir"
-
-        # Trigger media scan
-        am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file://$output_dir" 2>/dev/null || true
-    else
-        log_error "Download failed (exit code: $exit_code)"
-    fi
-
-    echo ""
-    read -p "Press Enter to close..."
+  echo "$video_id"
 }
 
+yt_is_short() {
+  local url="$1"
+  local video_id="$2"
+  local re_shorts='youtube\.com/shorts/'
+  local re_number='^[0-9]+(\.[0-9]+)?$'
+
+  [[ "$url" =~ $re_shorts ]] && return 0
+
+  local duration
+  duration=$(yt-dlp --no-warnings --print duration "https://www.youtube.com/watch?v=$video_id" 2>/dev/null || echo "999")
+  [[ "$duration" =~ $re_number ]] && [[ "${duration%.*}" -le 60 ]] && return 0
+
+  return 1
+}
+
+yt_download() {
+  local video_id="$1"
+  local is_short="$2"
+  local base_dir="$DOWNLOAD_BASE/yt"
+  local output_dir
+  local yt_url="https://www.youtube.com/watch?v=$video_id"
+
+  if [[ "$is_short" == "true" ]]; then
+    output_dir="$base_dir/shorts"
+    log_info "Type: YouTube Short"
+  else
+    output_dir="$base_dir/videos"
+    log_info "Type: Regular Video"
+  fi
+  mkdir -p "$output_dir"
+
+  local title
+  title=$(yt-dlp --no-warnings --print title "$yt_url" 2>/dev/null || echo "Unknown")
+  log_info "Title: $title"
+
+  echo ""
+  log_info "Downloading in max resolution..."
+  echo ""
+
+  yt-dlp \
+    --no-playlist \
+    --retries 3 \
+    --fragment-retries 3 \
+    -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best" \
+    --merge-output-format mp4 \
+    --embed-thumbnail \
+    --embed-metadata \
+    --restrict-filenames \
+    --no-mtime \
+    --progress \
+    -o "$output_dir/%(title)s_[%(id)s].%(ext)s" \
+    "$yt_url"
+
+  local exit_code=$?
+
+  echo ""
+  if [[ $exit_code -eq 0 ]]; then
+    log_success "Download complete!"
+    log_info "Saved to: $output_dir"
+    am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file://$output_dir" 2>/dev/null || true
+  else
+    log_error "Download failed (exit code: $exit_code)"
+  fi
+}
+
+handle_youtube() {
+  local url="$1"
+
+  log_info "YouTube Downloader"
+  echo "-------------------"
+
+  require_cmds yt-dlp ffmpeg
+
+  local video_id
+  video_id=$(yt_extract_video_id "$url")
+
+  if [[ -z "$video_id" ]]; then
+    log_error "Could not extract video ID"
+    wait_exit 1
+  fi
+
+  log_info "Video ID: $video_id"
+
+  local is_short_video="false"
+  yt_is_short "$url" "$video_id" && is_short_video="true"
+
+  yt_download "$video_id" "$is_short_video"
+}
+
+# ==============================================================================
+# Tidal
+# ==============================================================================
+
+handle_tidal() {
+  local url="$1"
+
+  log_info "Tidal Downloader"
+  echo "-------------------"
+
+  log_warn "Tidal support not yet implemented"
+  log_info "URL: $url"
+}
+
+# ==============================================================================
 # Main
+# ==============================================================================
+
 main() {
-    local url="${1:-}"
+  local input="${1:-}"
 
-    echo ""
-    log_info "YouTube Downloader"
-    echo "-------------------"
+  echo ""
 
-    check_deps
+  check_storage
 
-    if [[ -z "$url" ]]; then
-        log_error "No URL provided"
-        read -p "Press Enter to exit..."
-        exit 1
-    fi
+  if [[ -z "$input" ]]; then
+    log_error "No input provided"
+    wait_exit 1
+  fi
 
-    log_info "URL: $url"
+  log_info "Input: $input"
 
-    # Check if it's a YouTube URL
-    local re_youtube='(youtube\.com|youtu\.be)'
-    if [[ ! "$url" =~ $re_youtube ]]; then
-        log_error "Not a YouTube URL"
-        read -p "Press Enter to exit..."
-        exit 1
-    fi
+  # Input type dispatch
+  case "$input" in
+  http://* | https://*)
+    # URL routing
+    case "$input" in
+    *youtube.com* | *youtu.be*)
+      handle_youtube "$input"
+      ;;
+    *tidal.com*)
+      handle_tidal "$input"
+      ;;
+    *)
+      log_error "Unsupported URL: $input"
+      log_info "Supported: YouTube, Tidal"
+      wait_exit 1
+      ;;
+    esac
+    ;;
+  *)
+    log_error "Unknown input type"
+    log_info "Expected: URL (http:// or https://)"
+    wait_exit 1
+    ;;
+  esac
 
-    local video_id
-    video_id=$(extract_video_id "$url")
-
-    if [[ -z "$video_id" ]]; then
-        log_error "Could not extract video ID from URL"
-        read -p "Press Enter to exit..."
-        exit 1
-    fi
-
-    log_info "Video ID: $video_id"
-
-    local is_short_video="false"
-    is_short "$url" "$video_id" && is_short_video="true"
-
-    download "$video_id" "$is_short_video"
+  wait_exit 0
 }
 
 main "$@"
-
