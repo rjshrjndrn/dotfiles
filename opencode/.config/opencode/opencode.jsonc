@@ -12,6 +12,7 @@
     "messages_page_down": "ctrl+d",
     "model_cycle_recent": "ctrl+n",
     "model_cycle_recent_reverse": "ctrl+p",
+    "input_newline": "shift+return,ctrl+return,alt+return,ctrl+j",
   },
   "permission": {
     "bash": {
