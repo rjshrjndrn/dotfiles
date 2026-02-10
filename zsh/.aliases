@@ -53,6 +53,11 @@ function sendfile() {
 
 alias cno='curl https://naas.isalman.dev/no'
 
+function tdg() {
+  directory=$(realpath "$(git rev-parse --git-common-dir)/../")
+  td -w "$directory"
+}
+
 function csh() {
   curl cheat.sh/$1
 }
@@ -156,19 +161,19 @@ function gwa() {
   # Parse args
   while [[ $# -gt 0 ]]; do
     case $1 in
-      -r|--remote)
-        remote="$2"
-        shift 2
-        ;;
-      *)
-        # Positional: first is name, second is folder
-        if [[ -z "$name" ]]; then
-          name="$1"
-        elif [[ -z "$folder" ]]; then
-          folder="$1"
-        fi
-        shift
-        ;;
+    -r | --remote)
+      remote="$2"
+      shift 2
+      ;;
+    *)
+      # Positional: first is name, second is folder
+      if [[ -z "$name" ]]; then
+        name="$1"
+      elif [[ -z "$folder" ]]; then
+        folder="$1"
+      fi
+      shift
+      ;;
     esac
   done
 
