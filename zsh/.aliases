@@ -55,7 +55,7 @@ alias cno='curl https://naas.isalman.dev/no'
 
 function tdg() {
   directory=$(realpath "$(git rev-parse --git-common-dir)/../")
-  td -w "$directory"
+  td -w "$directory" $@
 }
 
 function csh() {
