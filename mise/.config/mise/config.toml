@@ -65,6 +65,10 @@ atuin = "latest"
 starship = "latest"
 fzf = "latest"
 
+# project management tools
+"github:marcus/td" = "latest"
+"github:marcus/sidecar" = "latest"
+
 ###############
 # DBs
 ###############
@@ -143,4 +147,3 @@ url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d
 bin = "claude.exe"
 url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/{{ version }}/win32-x64/claude.exe"
 """, version_list_url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/latest" }
-"github:marcus/td" = "latest"
