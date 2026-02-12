@@ -1,0 +1,51 @@
+# Ghostty config - migrated from kitty.conf
+
+# Disable audio bell
+bell-features = no-audio
+
+# Clipboard paste protection (equivalent to kitty's paste_actions replace-dangerous-control-codes)
+clipboard-paste-protection = false
+
+# Font
+# ghostty +list-fonts to see all available fonts
+font-family = JetBrainsMono Nerd Font Mono
+font-size = 14
+
+# Theme: ayu_mirage
+# https://github.com/dexpota/kitty-themes/blob/master/themes/ayu_mirage.conf
+background = #212733
+foreground = #d9d7ce
+cursor-color = #ffcc66
+selection-background = #343f4c
+selection-foreground = #212733
+
+# black
+palette = 0=#191e2a
+palette = 8=#686868
+# red
+palette = 1=#ed8274
+palette = 9=#f28779
+# green
+palette = 2=#a6cc70
+palette = 10=#bae67e
+# yellow
+palette = 3=#fad07b
+palette = 11=#ffd580
+# blue
+palette = 4=#6dcbfa
+palette = 12=#73d0ff
+# magenta
+palette = 5=#cfbafa
+palette = 13=#d4bfff
+# cyan
+palette = 6=#90e1c6
+palette = 14=#95e6cb
+# white
+palette = 7=#c7c7c7
+palette = 15=#ffffff
+
+# Hide window decorations (equivalent to kitty's x11_hide_window_decorations yes)
+window-decoration = false
+
+# Background opacity
+background-opacity = 0.9
