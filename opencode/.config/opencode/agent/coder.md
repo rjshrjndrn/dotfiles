@@ -21,17 +21,22 @@ For commits: Only add why the change is necessary. Not what changed.
 Use `~/apps/bin/tk` to track work across sessions. Always check tasks at session start.
 
 ### Session Start
-Run `~/apps/bin/tk --list --project <project>` to see current state. Resume any in-progress tasks.
+Run `tk list -project <project>` to see current state. Resume any in-progress tasks.
 
 ### On Complex Tasks
-1. Create a parent task: `~/apps/bin/tk --create --name "feature description" --type feature --project <project>`
-2. Break into subtasks: `~/apps/bin/tk --create --name "step" --type chore --parent-id <id> --project <project>`
-3. As you start work: `~/apps/bin/tk --start --id <ref> --project <project>`
-4. When done: `~/apps/bin/tk --done --id <ref> --project <project>`
+1. Create a parent task: `tk create -name "feature description" -type feature -project <project>`
+2. Break into subtasks: `tk create -name "step" -type chore -parent-id <id> -project <project>`
+3. As you start work: `tk start -id <ref> -project <project>`
+4. When done: `tk done -id <ref> -project <project>`
+
+### Flag Reference
+**Common flags:**
+for full cli options: `tk help -json`
 
 ### Rules
-- Project name = repo directory name (e.g. `tk` for this repo)
-- Use refs (e.g. `TK-1`) for --id when possible
-- Set priority for bugs: `--priority high` or `--priority critical`
-- Add context in notes: `--note "blocked on X"` for anything the next session needs to know
+- Project name = repo directory name
+- Use refs (e.g. `TK-1`) for `-id` when possible
+- Set priority for bugs: `-priority high` or `-priority critical`
+- Add context in notes: `-note "blocked on X"` including why, what, and gist of user interactions. And for anything the next session needs to know
 - Keep task names short and actionable
+- Run `tk help -json` to get full schema for AI agent integration
