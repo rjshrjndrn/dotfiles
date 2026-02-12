@@ -16,3 +16,22 @@ Don't create readme or document unless asked explicitly, and NEVER use emojis.
 Don't create summary documents.
 If you're creating readme, keep in small, short and concise. Don't ever use emojis.
 For commits: Only add why the change is necessary. Not what changed.
+
+## Task Tracking with tk
+Use `~/apps/bin/tk` to track work across sessions. Always check tasks at session start.
+
+### Session Start
+Run `~/apps/bin/tk --list --project <project>` to see current state. Resume any in-progress tasks.
+
+### On Complex Tasks
+1. Create a parent task: `~/apps/bin/tk --create --name "feature description" --type feature --project <project>`
+2. Break into subtasks: `~/apps/bin/tk --create --name "step" --type chore --parent-id <id> --project <project>`
+3. As you start work: `~/apps/bin/tk --start --id <ref> --project <project>`
+4. When done: `~/apps/bin/tk --done --id <ref> --project <project>`
+
+### Rules
+- Project name = repo directory name (e.g. `tk` for this repo)
+- Use refs (e.g. `TK-1`) for --id when possible
+- Set priority for bugs: `--priority high` or `--priority critical`
+- Add context in notes: `--note "blocked on X"` for anything the next session needs to know
+- Keep task names short and actionable
