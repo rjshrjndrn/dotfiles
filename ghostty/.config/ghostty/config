@@ -1,4 +1,5 @@
 # Ghostty config - migrated from kitty.conf
+# to dynamically reload ctrl+shift+,
 
 # Disable audio bell
 bell-features = no-audio
