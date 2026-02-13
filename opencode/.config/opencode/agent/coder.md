@@ -42,7 +42,6 @@ This is your todo list. Every piece of work gets a subtask. Never use built-in t
 for full cli options: `tk help -json`
 
 ### Rules
-- Project name = repo directory name
 - Use refs (e.g. `TK-1`) for `-id` when possible
 - Set priority for bugs: `-priority high` or `-priority critical`
 - Add context in notes: `-note "blocked on X"` including why, what, and gist of user interactions. And for anything the next session needs to know
