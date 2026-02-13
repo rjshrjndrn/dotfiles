@@ -21,8 +21,7 @@ For commits: Only add why the change is necessary. Not what changed.
 Use `~/apps/bin/tk` as the ONLY task/todo manager. Never use built-in todo tools. Always check tasks at session start.
 
 ### Session Start
-Run `tk list -project <project>` to see current state. Resume any in-progress tasks.
-Run `tk project list` and read the `notes` field for the current project. These are project-specific instructions -- follow them for the entire session.
+Run `tk list` to see current state. Resume any in-progress tasks.
 
 ### Workflow
 Before writing any code, always plan by splitting work into tk subtasks:
