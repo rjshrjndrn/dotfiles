@@ -40,9 +40,9 @@
           "git push *": "ask",
           "rm *": "ask", // find and other tools can embed rm like -exec
           "* rm *": "ask", // find and other tools can embed rm like -exec
-          "aws *": "ask",
-          "* aws *": "ask",
-          "az *": "ask",
+          // "aws *": "ask",
+          // "* aws *": "ask",
+          // "az *": "ask",
           "* az *": "ask",
           "scw *": "ask",
           "* scw *": "ask",
