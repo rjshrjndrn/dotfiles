@@ -46,3 +46,17 @@ source ~/.completions.sh
 # bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
+
+# This is for doing auto correction: git ckout <tab> => git checkout
+#
+# Note: Make sure compinit is already called in your .zshrc before these lines (most setups already have it). If not, add:
+# autoload -Uz compinit && compinit
+# before the two lines above.
+#
+# How it works:
+# - _complete tries exact match first
+# - If that fails, _approximate kicks in and fuzzy-matches with up to 2 character errors
+# - git chko<tab> → no exact match → approximate matches checkout, cherry-pick etc.
+
+zstyle ':completion:*' completer _complete _approximate
+zstyle ':completion:*:approximate:*' max-errors 2 numeric
