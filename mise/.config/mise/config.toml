@@ -40,14 +40,15 @@ usage = "latest" # To generate completions.
 aws-cli = { version = "latest", symlink_bins = "true" }
 localstack = "latest"
 azure-cli = "latest"
-"aqua:scaleway/scaleway-cli" = "latest"
 
 # Tools
 "github:zyedidia/eget" = "latest"
 "github:rjshrjndrn/templater" = "latest"
 "aqua:schollz/croc" = "latest"
+
 opencode = "latest"
-"asdf:neovim" = "nightly"
+"npm:@fission-ai/openspec" = "latest"
+
 go = "latest"
 jq = "latest"
 yq = "latest"
@@ -126,6 +127,7 @@ uv = "latest"
 ###############
 
 node = "latest"
+npm = "latest"
 yarn = "latest"
 bun = "latest"
 pnpm = "latest"
@@ -153,3 +155,4 @@ url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d
 bin = "claude.exe"
 url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/{{ version }}/win32-x64/claude.exe"
 """, version_list_url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/latest" }
+scaleway = "latest"
