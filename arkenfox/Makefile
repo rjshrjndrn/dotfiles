@@ -4,4 +4,5 @@ help: ## Prints help for targets with comments
 download-updater: ## download latest updater script
 	wget https://raw.githubusercontent.com/arkenfox/user.js/refs/heads/master/updater.sh
 update: ## Update arkenfox
-	bash ./updater.sh -s -c
+	./updater.sh -s -c -o ${PWD}/user-overrides.js -p /home/skynet/.config/mozilla/firefox/cavlven7.default-release/
+	git clean -fd && git clean -fdX
