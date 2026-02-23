@@ -1,7 +1,8 @@
 ---
 description: Full-stack development with all tools enabled
 mode: primary
-model: anthropic/claude-opus-4-6
+model: anthropic/claude-sonnet-4-6
+# model: opencode/kimi-k2.5-free
 ---
 
 ## IMPORTANT

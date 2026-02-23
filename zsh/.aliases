@@ -550,7 +550,7 @@ alias y=yazi
 
 alias or-unset-aws="unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_SECURITY_TOKEN"
 function or-aws() {
-  otp=$(gopass otp -o ora)
+  otp=$(gopass otp -o work/ora)
   mfa "$otp"
   echo "unsetting current session"
   unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_SECURITY_TOKEN

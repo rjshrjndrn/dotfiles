@@ -40,6 +40,7 @@ usage = "latest" # To generate completions.
 aws-cli = { version = "latest", symlink_bins = "true" }
 localstack = "latest"
 azure-cli = "latest"
+scaleway = "latest"
 
 # Tools
 "github:zyedidia/eget" = "latest"
@@ -79,6 +80,7 @@ duckdb = "latest"
 k9s = "latest"
 stern = "latest"
 kubectl = "latest"
+kustomize = "latest"
 k3d = "latest"
 argo = "latest"
 flux2 = "latest"
@@ -155,4 +157,3 @@ url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d
 bin = "claude.exe"
 url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/{{ version }}/win32-x64/claude.exe"
 """, version_list_url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/latest" }
-scaleway = "latest"
