@@ -1,0 +1,108 @@
+#!/bin/bash
+# NetworkManager dispatcher: route specific domains to Cloudflare DoT,
+# bypassing NextDNS which blocks them.
+#
+# TO ADD MORE DOMAINS
+# -------------------
+# Add them to the WHITELISTED_DOMAINS array below. The ~ prefix is mandatory —
+# it marks them as routing-only domains (not search suffixes), meaning
+# systemd-resolved will send queries for those domains to Cloudflare but won't
+# append them to unqualified hostnames.
+#
+# Example:
+#   WHITELISTED_DOMAINS=(
+#       "~openreplay.cloud"
+#       "~example.internal"
+#   )
+#
+# PROBLEM
+# -------
+# monitoring.openreplay.cloud (and other *.openreplay.cloud hosts) resolve to
+# 0.0.0.0 because NextDNS (the global DNS) blocks them.
+#
+# The natural fix would be a resolved.conf drop-in with DNS= and Domains= to
+# route *.openreplay.cloud to Cloudflare (1.1.1.1) instead:
+#
+#   [Resolve]
+#   DNS=1.1.1.1#cloudflare-dns.com
+#   Domains=~openreplay.cloud
+#
+# WHY THAT DOESN'T WORK
+# ----------------------
+# systemd-resolved's per-domain DNS routing is strictly per-link/interface.
+# The global DNS pool (resolved.conf DNS=) has no routing — all servers in it
+# are candidates for all domains, and the first one to respond wins.
+# Adding 1.1.1.1 globally just puts Cloudflare in a race with NextDNS;
+# NextDNS still answers first and returns 0.0.0.0.
+#
+# The correct model, per systemd's own VPN docs (RESOLVED-VPNS.md), is:
+#   resolvectl dns   <iface> 1.1.1.1
+#   resolvectl domain <iface> ~openreplay.cloud
+# which pins a DNS server to a specific interface and scopes the routing
+# domain to that server only.
+#
+# WHY A DUMMY INTERFACE DOESN'T WORK EITHER
+# ------------------------------------------
+# The obvious persistent workaround is a dummy NM connection with ipv4.dns
+# and ipv4.dns-search set. This used to work but was broken in systemd 255:
+# resolved no longer activates a DNS scope ("Current Scopes: none") on dummy
+# interfaces because they are not considered routable.
+# See: https://github.com/systemd/systemd/issues/32022
+# The issue was closed without a fix.
+#
+# THE ACTUAL FIX
+# --------------
+# Use a NetworkManager dispatcher script (this file) to call resolvectl
+# directly against the real interface (wlan0, eth0, etc.) each time it
+# comes up. This is the supported approach for custom DNS routing with NM+resolved.
+# The script appends 1.1.1.1 to the link's DNS server list and adds
+# ~openreplay.cloud as a routing domain, preserving whatever NM/DHCP already
+# configured. Both operations are idempotent.
+#
+# NM invokes dispatcher scripts with: $1=interface, $2=action
+# Relevant actions: up, down, connectivity-change, etc.
+
+IFACE="$1"
+ACTION="$2"
+
+# Domains to whitelist from NextDNS by routing them via Cloudflare instead.
+# ~ prefix = routing domain (not a search suffix).
+WHITELISTED_DOMAINS=(
+    "~openreplay.cloud"
+)
+
+add_cloudflare() {
+    # Current DNS servers on this link (space-separated)
+    local current_dns
+    current_dns=$(resolvectl dns "$IFACE" 2>/dev/null | awk -F': ' '{print $2}')
+
+    # Current domains on this link (space-separated)
+    local current_domains
+    current_domains=$(resolvectl domain "$IFACE" 2>/dev/null | awk -F': ' '{print $2}')
+
+    # Add Cloudflare server (idempotent — skip if already present)
+    if ! echo "$current_dns" | grep -q "1.1.1.1"; then
+        resolvectl dns "$IFACE" $current_dns 1.1.1.1
+    fi
+
+    # Add routing domains from CLOUDFLARE_DOMAINS (idempotent — only add missing ones).
+    # The ~ prefix makes them routing-only (not search suffixes).
+    # systemd-resolved uses longest-suffix-match, so these win over the
+    # catch-all ~. on NextDNS and route exclusively to Cloudflare.
+    local new_domains=($current_domains)
+    for domain in "${WHITELISTED_DOMAINS[@]}"; do
+        local bare="${domain#\~}"  # strip leading ~ for the grep check
+        if ! echo "$current_domains" | grep -q "$bare"; then
+            new_domains+=("$domain")
+        fi
+    done
+    resolvectl domain "$IFACE" "${new_domains[@]}"
+
+    resolvectl dnsovertls "$IFACE" yes
+}
+
+case "$ACTION" in
+    up)
+        add_cloudflare
+        ;;
+esac
