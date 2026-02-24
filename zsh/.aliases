@@ -146,22 +146,25 @@ function gclb() {
   git clone --bare "$repo_url" "${repo_name}/.git" "$@"
 }
 
-# crate git worktree with optional local branch/remote branch
-# Usage: gwa <branch_or_tag> [folder_name] [-r remote_name]
+# Create git worktree with optional local branch/remote branch
+# Usage: gwa <local_branch> [folder_name] [-r remote[/remote_branch]]
+#   gwa local              -> create branch 'local' from HEAD or existing ref
+#   gwa local -r nh/work   -> create local branch 'local' tracking remote 'nh' branch 'work'
+#   gwa feature            -> create branch 'feature' (auto-detect local/remote/new)
 function gwa() {
   [[ -z "$1" ]] &&
-    echo "Usage: gwa <branch_or_tag> [folder_name] [-r remote_name]" &&
+    echo "Usage: gwa <local_branch> [folder_name] [-r remote[/remote_branch]]" &&
     return
 
   local name=""
   local folder=""
-  local remote="origin"
+  local remote_arg=""  # raw value passed to -r, e.g. "nh/work" or "origin"
 
   # Parse args
   while [[ $# -gt 0 ]]; do
     case $1 in
     -r | --remote)
-      remote="$2"
+      remote_arg="$2"
       shift 2
       ;;
     *)
@@ -202,17 +205,38 @@ function gwa() {
   local commitish
   local -a args
 
+  # If -r was given, treat remote_arg as the full remote ref to branch from.
+  # remote_arg can be "remote/branch" (e.g. "nh/work") or just "remote" (falls
+  # back to using $name as the remote branch).
+  if [[ -n "$remote_arg" ]]; then
+    # Split remote_arg into remote_name and remote_branch
+    # If remote_arg contains '/', first component is remote, rest is branch.
+    local remote_name remote_branch
+    if [[ "$remote_arg" == */* ]]; then
+      remote_name="${remote_arg%%/*}"
+      remote_branch="${remote_arg#*/}"
+    else
+      remote_name="$remote_arg"
+      remote_branch="$name"
+    fi
+    local commitish_candidate="$remote_name/$remote_branch"
+    if git show-ref --verify --quiet "refs/remotes/$commitish_candidate"; then
+      commitish="$commitish_candidate"
+      args=(-b "$name")
+    else
+      echo "Error: remote ref 'refs/remotes/$commitish_candidate' not found" && return 1
+    fi
   # If it's a tag, create a detached worktree at that tag.
-  if git show-ref --tags --verify --quiet "refs/tags/$name"; then
+  elif git show-ref --tags --verify --quiet "refs/tags/$name"; then
     commitish="refs/tags/$name"
     args=(--detach)
   # If local branch exists, use it directly.
   elif git show-ref --verify --quiet "refs/heads/$name"; then
     commitish="$name"
     args=()
-  # If remote branch exists, create local tracking branch from the remote.
-  elif git show-ref --verify --quiet "refs/remotes/$remote/$name"; then
-    commitish="$remote/$name"
+  # If remote branch exists on origin, create local tracking branch.
+  elif git show-ref --verify --quiet "refs/remotes/origin/$name"; then
+    commitish="origin/$name"
     args=(-b "$name")
   else
     # Branch doesn't exist anywhere, create new branch from current HEAD
