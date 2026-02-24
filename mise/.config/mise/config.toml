@@ -58,7 +58,7 @@ bat = "latest"
 
 lazygit = "latest"
 delta = "latest"
-github-cli = "latest"
+"github:cli/cli" = "latest"
 
 # terminal tools
 direnv = "latest"
