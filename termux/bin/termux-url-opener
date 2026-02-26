@@ -193,12 +193,30 @@ handle_youtube() {
 
 handle_tidal() {
   local url="$1"
+  local output_dir="$DOWNLOAD_BASE/tidal"
 
   log_info "Tidal Downloader"
   echo "-------------------"
 
-  log_warn "Tidal support not yet implemented"
+  require_cmds tidal-dl-ng
+
+  mkdir -p "$output_dir"
   log_info "URL: $url"
+  echo ""
+  log_info "Downloading..."
+  echo ""
+
+  tidal-dl-ng dl "$url"
+
+  local exit_code=$?
+
+  echo ""
+  if [[ $exit_code -eq 0 ]]; then
+    log_success "Download complete!"
+    log_info "Saved to: $output_dir"
+  else
+    log_error "Download failed (exit code: $exit_code)"
+  fi
 }
 
 # ==============================================================================
