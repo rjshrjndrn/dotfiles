@@ -68,6 +68,10 @@
 [url "git@github.com:openreplay/"]
   insteadOf = "gho:"
 
+[url "ssh://git@codeberg.org/rr/"]
+  insteadOf = "cbr:"
+
+
 [log]
 	date = local
 [filter "lfs"]
