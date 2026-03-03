@@ -134,6 +134,9 @@ alias gwl='git worktree list'
 ## CLOUD TOOLS
 alias sis="scw instance server"
 
+## Secrets
+alias gscan='ggshield secret scan --all-secrets path --recursive .'
+
 #######################################
 # Clone a bare repo with repo name
 # Usage: gclb gh:user/repo
@@ -158,7 +161,7 @@ function gwa() {
 
   local name=""
   local folder=""
-  local remote_arg=""  # raw value passed to -r, e.g. "nh/work" or "origin"
+  local remote_arg="" # raw value passed to -r, e.g. "nh/work" or "origin"
 
   # Parse args
   while [[ $# -gt 0 ]]; do
