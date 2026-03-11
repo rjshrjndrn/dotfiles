@@ -11,6 +11,7 @@ git:
 keybinding:
   universal:
     confirmInEditor: <c-y>
+    refresh: <c-r>
   commits:
     moveUpCommit: "K"
     moveDownCommit: "J"

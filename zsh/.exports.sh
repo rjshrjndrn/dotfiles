@@ -33,3 +33,5 @@ source "${HOME}/.shell.sh"
 if [[ "$TERM_PROGRAM" == "ghostty" ]]; then
     export TERM=xterm-256color
 fi
+
+export OPENCODE_EXPERIMENTAL_LSP_TOOL=true

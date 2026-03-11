@@ -1,3 +1,10 @@
+# OPENSPEC:START
+# OpenSpec shell completions configuration
+fpath=("/home/skyline/.oh-my-zsh/custom/completions" $fpath)
+autoload -Uz compinit
+compinit
+# OPENSPEC:END
+
 export ZSH="$HOME/.oh-my-zsh"
 HISTFILE=~/.histfile
 HISTSIZE=10000

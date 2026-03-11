@@ -5,3 +5,5 @@
 **/main
 **/*.pem
 **/*.pub
+**/.opencode
+**/openspec
