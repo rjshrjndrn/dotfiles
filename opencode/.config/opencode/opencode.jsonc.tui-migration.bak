@@ -1,7 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "theme": "lucent-orng",
-  "formatter": false,
   "tools": {
     "linear*": false
   },
@@ -22,8 +21,11 @@
     "lsp": "allow",
   },
   "model": "anthropic/claude-haiku-4-5",
-  "default_agent": "coder-v2",
+  "default_agent": "thinker",
   "agent": {
+    "thinker": {
+      "model": "anthropic/claude-opus-4-5",
+    },
     "coder-v2": {
       "model": "anthropic/claude-sonnet-4-6",
       "permission": {
@@ -49,9 +51,6 @@
           "* scw *": "ask",
         }
       },
-    },
-    "thinker": {
-      "model": "anthropic/claude-opus-4-5",
     },
     "coder": {
       "permission": {

@@ -226,6 +226,10 @@ function gwa() {
     if git show-ref --verify --quiet "refs/remotes/$commitish_candidate"; then
       commitish="$commitish_candidate"
       args=(-b "$name")
+    elif git show-ref --verify --quiet "refs/heads/$remote_branch"; then
+      # In bare repos, fetched remote refs land under refs/heads/ not refs/remotes/
+      commitish="$remote_branch"
+      args=(-b "$name")
     else
       echo "Error: remote ref 'refs/remotes/$commitish_candidate' not found" && return 1
     fi
