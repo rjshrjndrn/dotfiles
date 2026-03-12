@@ -106,6 +106,7 @@ podman = {version = "latest", rename_exe = "podman"}
 ###############
 trivy = "latest"
 age = "latest"
+sops = "latest"
 gopass = "latest"
 vals = "latest"
 doppler = "latest"
