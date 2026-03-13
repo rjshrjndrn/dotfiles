@@ -56,6 +56,8 @@ scaleway = "latest"
 
 opencode = "latest"
 "npm:@fission-ai/openspec" = "latest"
+# reduce context tokens
+"npm:context-mode" = "latest"
 
 go = "latest"
 jq = "latest"
