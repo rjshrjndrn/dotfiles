@@ -216,7 +216,7 @@
          :rules  [ :apps
             [:##n   "open '/Applications/Neovide.app'"]
             [:##s   "open '/Applications/Slack.app'"]
-            [:##j   "open '/Applications/Ghostty.app'"]
+            [:##j   "open '/Applications/kitty.app'"]
             [:##k   "open '/Applications/Zen Browser.app'"]
             [:##l   "open '/Applications/Slack.app'"]
           ]}
