@@ -1,5 +1,9 @@
 {
   "model": "sonnet",
+  "statusLine": {
+    "type": "command",
+    "command": "bash /Users/personal/.claude/statusline-command.sh"
+  },
   "extraKnownMarketplaces": {
     "context-mode": {
       "source": {
@@ -21,9 +25,10 @@
       "mcp__plugin_context-mode_context-mode__ctx_fetch_and_index",
       "mcp__plugin_context-mode_context-mode__ctx_stats",
       "mcp__plugin_context-mode_context-mode__ctx_doctor",
-      "Read(*)",
-      "Edit(*)",
-      "Write(*)",
+      "Read(./**)",
+      "Edit(./**)",
+      "Write(./**)",
+      "Bash(*)",
       "Bash(git *)",
       "Bash(ls *)",
       "Bash(find *)",
@@ -32,6 +37,12 @@
       "Bash(head *)"
     ],
     "ask": [
+      "Read(../**)",
+      "Edit(../**)",
+      "Write(../**)",
+      "Read(/**)",
+      "Edit(/**)",
+      "Write(/**)",
       "Bash(git push *)",
       "Bash(rm *)",
       "Bash(* rm *)",
