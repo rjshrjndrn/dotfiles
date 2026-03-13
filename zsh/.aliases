@@ -191,7 +191,9 @@ function gwa() {
     # If bare repo, use current directory
     toplevel=$(readlink -f .)
   else
-    toplevel=$(git rev-parse --show-toplevel)/worktree
+    # Use git-common-dir so we always resolve the main repo root,
+    # even when called from inside a linked worktree.
+    toplevel=$(realpath "$(git rev-parse --git-common-dir)/..")/worktree
   fi
 
   # If a worktree already exists for this branch name, just cd to it.
