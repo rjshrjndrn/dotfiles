@@ -1,0 +1,33 @@
+{
+  "model": "sonnet",
+  "extraKnownMarketplaces": {
+    "context-mode": {
+      "source": {
+        "source": "github",
+        "repo": "mksglu/context-mode"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "context-mode@context-mode": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(ls *)",
+      "Bash(find *)",
+      "Bash(mkdir *)",
+      "Bash(grep *)",
+      "Bash(head *)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(rm *)",
+      "Bash(* rm *)",
+      "Bash(* delete *)",
+      "Bash(* az *)",
+      "Bash(scw *)",
+      "Bash(* scw *)"
+    ]
+  }
+}

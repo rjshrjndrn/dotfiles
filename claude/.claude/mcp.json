@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "financial-datasets": {
+      "command": "sh",
+      "args": ["-c", "exec uv --directory ~/Documents/projects/stocks/mcp-servers/financial-datasets run server.py"],
+      "disabled": true
+    },
+    "yahoo-datasets": {
+      "command": "sh",
+      "args": ["-c", "exec uv --directory ~/Documents/projects/stocks/mcp-servers/yahoo-finance-mcp run server.py"]
+    },
+    "exa": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.exa.ai/mcp", "--header", "x-api-key:${EXA_API_KEY}"]
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.context7.com/mcp", "--header", "CONTEXT7_API_KEY:${CONTEXT7_API_KEY}"]
+    },
+    "linear": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.linear.app/sse"]
+    }
+  }
+}
