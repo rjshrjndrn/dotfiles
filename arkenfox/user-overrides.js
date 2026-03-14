@@ -61,6 +61,12 @@ user_pref("privacy.clearHistory.historyFormDataAndDownloads", false); // [DEFAUL
 user_pref("privacy.clearHistory.browsingHistoryAndDownloads", false); // [DEFAULT: true]
 user_pref("privacy.clearHistory.formdata", true);
 
+/* 0102: set startup page [SETUP-CHROME]
+ * 0=blank, 1=home, 2=last visited page, 3=resume previous session
+ * [NOTE] Session Restore is cleared if history is also cleared (2811+), and not used in Private Browsing mode
+ * [SETTING] General>Startup>Restore previous session ***/
+user_pref("browser.startup.page", 3);
+
 /** SANITIZE MANUAL: TIMERANGE ***/
 /* 2840: set "Time range to clear" for "Clear Data" (2820+) and "Clear History" (2830+)
  * Firefox remembers your last choice. This will reset the value when you start Firefox
