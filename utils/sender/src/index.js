@@ -164,6 +164,10 @@ Note: Receiver must connect within the timeout after sender initiates transfer.
     }
 
     if (request.method === "GET") {
+      const ua = request.headers.get("user-agent") || "";
+      if (/bot|crawler|spider|preview|skype|slack|discord|telegram|whatsapp|facebookexternalhit|twitterbot|LinkedInBot|WhatsApp|Iframely|Embedly|Quora|Pinterest|MSFT|SkypeUriPreview/i.test(ua)) {
+        return new Response("File transfer link\n", { status: 200 });
+      }
       return relay.fetch(new Request(`https://relay/?role=receiver`));
     }
 
