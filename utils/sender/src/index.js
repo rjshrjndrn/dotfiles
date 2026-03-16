@@ -143,7 +143,10 @@ export default {
 Send:    curl -X POST ${protocol}://${host}/<token> --data-binary @file
 Receive: curl ${protocol}://${host}/<token> > file
 
-Note: Receiver must connect within ${timeout} seconds after sender initiates transfer.
+Options:
+  ?timeout=N  Seconds to wait for receiver (default: ${timeout}, max: 300)
+
+Note: Receiver must connect within the timeout after sender initiates transfer.
 `);
     }
 
@@ -151,7 +154,9 @@ Note: Receiver must connect within ${timeout} seconds after sender initiates tra
     const relay = env.RELAY.get(id);
 
     if (request.method === "POST") {
-      const timeout = env.TIMEOUT_SECONDS || "10";
+      const envDefault = parseInt(env.TIMEOUT_SECONDS) || 10;
+      const requested = parseInt(url.searchParams.get("timeout")) || envDefault;
+      const timeout = Math.min(requested, 300);
       return relay.fetch(new Request(`https://relay/?role=sender&timeout=${timeout}`, {
         method: "POST",
         body: request.body,
