@@ -37,6 +37,15 @@ function pr() {
 ## Utilities
 
 function sendfile() {
+  local timeout=300 token file
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -t) timeout="$2"; shift 2 ;;
+      *) break ;;
+    esac
+  done
+
   if [[ $# -eq 1 ]]; then
     token="$(openssl rand -hex 10)"
     file="$1"
@@ -44,11 +53,11 @@ function sendfile() {
     file="$1"
     token="$2"
   else
-    echo "Usage: sendfile <file> [token]"
+    echo "Usage: sendfile [-t timeout] <file> [token]"
     return 1
   fi
-  echo "curl https://send.rjsh.me/${token} -o $(basename $file)"
-  curl -X POST https://send.rjsh.me/${token} --data-binary @"$file"
+  echo "curl https://send.rjsh.me/${token} -o $(basename "$file")"
+  curl -X POST "https://send.rjsh.me/${token}?timeout=${timeout}" --data-binary @"$file"
 }
 
 alias cno='curl https://naas.isalman.dev/no'
