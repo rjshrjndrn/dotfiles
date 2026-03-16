@@ -165,7 +165,12 @@ Note: Receiver must connect within the timeout after sender initiates transfer.
 
     if (request.method === "GET") {
       const ua = request.headers.get("user-agent") || "";
-      if (/bot|crawler|spider|preview|skype|slack|discord|telegram|whatsapp|facebookexternalhit|twitterbot|LinkedInBot|WhatsApp|Iframely|Embedly|Quora|Pinterest|MSFT|SkypeUriPreview/i.test(ua)) {
+      const accept = request.headers.get("accept") || "";
+      // Link-preview fetchers (Teams, Slack, bots) ask for text/html to get OG metadata.
+      // Real download clients (curl, wget) send Accept: */* and no Sec-Fetch headers.
+      const isPreview = accept.includes("text/html") ||
+        /bot|crawl|spider|preview|skype|slack|discord|telegram|whatsapp|facebookexternalhit|twitterbot|linkedin|iframely|embedly|microsoft|teams/i.test(ua);
+      if (isPreview) {
         return new Response("File transfer link\n", { status: 200 });
       }
       return relay.fetch(new Request(`https://relay/?role=receiver`));
