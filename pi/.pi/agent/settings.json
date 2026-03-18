@@ -1,0 +1,27 @@
+{
+  "lastChangelogVersion": "0.59.0",
+  "defaultProvider": "anthropic",
+  "defaultModel": "claude-opus-4-6",
+  "packages": [
+    "npm:@aliou/pi-guardrails",
+    "npm:@rjshrjndrn/pi-acm",
+    "npm:@zhafron/pi-mcp-tools",
+    "npm:@rjshrjndrn/pi-sandbox"
+  ],
+  "mcp": {
+    "exa": {
+      "type": "remote",
+      "url": "https://mcp.exa.ai/mcp"
+    },
+    "cc": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@upstash/context7-mcp@latest"
+      ]
+    }
+  },
+  "hideThinkingBlock": true,
+  "defaultThinkingLevel": "high"
+}
