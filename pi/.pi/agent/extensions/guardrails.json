@@ -1,0 +1,87 @@
+{
+  "permissionGate": {
+    "requireConfirmation": true,
+    "explainCommands": true,
+    "patterns": [
+      {
+        "pattern": "terraform apply",
+        "description": "Terraform infrastructure changes"
+      },
+      {
+        "pattern": "* rm *",
+        "description": "delete",
+        "regex": true
+      },
+      {
+        "pattern": "git push *--force*",
+        "description": "git force push",
+        "regex": true
+      },
+      {
+        "pattern": "*kubectl delete *",
+        "description": "delete kube assets",
+        "regex": true
+      }
+    ]
+  },
+  "policies": {
+    "rules": [
+      {
+        "id": "example-regex-env",
+        "name": "Regex env files",
+        "description": "Regex example for env files",
+        "patterns": [
+          {
+            "pattern": "^\\.env(\\..+)?$",
+            "regex": true
+          }
+        ],
+        "allowedPatterns": [
+          {
+            "pattern": "^\\.env\\.example$",
+            "regex": true
+          }
+        ],
+        "protection": "noAccess",
+        "onlyIfExists": true,
+        "enabled": true
+      },
+      {
+        "id": "example-regex-env-2",
+        "name": "Regex env files",
+        "description": "Regex example for env files",
+        "patterns": [
+          {
+            "pattern": "^\\.env(\\..+)?$",
+            "regex": true
+          }
+        ],
+        "allowedPatterns": [
+          {
+            "pattern": "^\\.env\\.example$",
+            "regex": true
+          }
+        ],
+        "protection": "noAccess",
+        "onlyIfExists": true,
+        "enabled": true
+      },
+      {
+        "id": "example-aws-credentials",
+        "name": "AWS credentials",
+        "description": "Block AWS credentials and config files",
+        "patterns": [
+          {
+            "pattern": ".aws/credentials"
+          },
+          {
+            "pattern": ".aws/config"
+          }
+        ],
+        "protection": "noAccess",
+        "onlyIfExists": true,
+        "enabled": true
+      }
+    ]
+  }
+}
