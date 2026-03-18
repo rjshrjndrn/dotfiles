@@ -1,12 +1,13 @@
 {
-  "lastChangelogVersion": "0.59.0",
+  "lastChangelogVersion": "0.60.0",
   "defaultProvider": "anthropic",
   "defaultModel": "claude-opus-4-6",
   "packages": [
     "npm:@aliou/pi-guardrails",
     "npm:@rjshrjndrn/pi-acm",
     "npm:@zhafron/pi-mcp-tools",
-    "npm:@rjshrjndrn/pi-sandbox"
+    "npm:@rjshrjndrn/pi-sandbox",
+    "npm:@rjshrjndrn/pi-auth-profiles"
   ],
   "mcp": {
     "exa": {
@@ -21,6 +22,9 @@
         "@upstash/context7-mcp@latest"
       ]
     }
+  },
+  "compaction": {
+    "enabled": false
   },
   "hideThinkingBlock": true,
   "defaultThinkingLevel": "high"
