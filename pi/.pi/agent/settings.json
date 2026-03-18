@@ -1,13 +1,14 @@
 {
   "lastChangelogVersion": "0.60.0",
   "defaultProvider": "anthropic",
-  "defaultModel": "claude-sonnet-4-6",
+  "defaultModel": "claude-opus-4-6",
   "packages": [
     "npm:@aliou/pi-guardrails",
     "npm:@zhafron/pi-mcp-tools",
     "npm:pi-acm",
     "npm:pi-auth-profiles",
-    "npm:pi-boundary"
+    "npm:pi-boundary",
+    "npm:pi-themes"
   ],
   "mcp": {
     "exa": {
@@ -26,6 +27,8 @@
   "compaction": {
     "enabled": true
   },
+  "quietStartup": true,
   "hideThinkingBlock": false,
-  "defaultThinkingLevel": "high"
+  "defaultThinkingLevel": "high",
+  "theme": "gruvbox-dark"
 }
