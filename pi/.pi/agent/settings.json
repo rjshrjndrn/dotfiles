@@ -24,7 +24,7 @@
     }
   },
   "compaction": {
-    "enabled": false
+    "enabled": true
   },
   "hideThinkingBlock": false,
   "defaultThinkingLevel": "high"
