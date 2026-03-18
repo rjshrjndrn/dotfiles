@@ -4,6 +4,9 @@
       "modelOverrides": {
         "claude-opus-4-6": {
           "contextWindow": 200000
+        },
+        "claude-sonnet-4-6": {
+          "contextWindow": 200000
         }
       }
     }

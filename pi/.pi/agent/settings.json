@@ -4,10 +4,10 @@
   "defaultModel": "claude-sonnet-4-6",
   "packages": [
     "npm:@aliou/pi-guardrails",
-    "npm:@rjshrjndrn/pi-acm",
     "npm:@zhafron/pi-mcp-tools",
-    "npm:@rjshrjndrn/pi-sandbox",
-    "npm:@rjshrjndrn/pi-auth-profiles"
+    "npm:pi-acm",
+    "npm:pi-auth-profiles",
+    "npm:pi-boundary"
   ],
   "mcp": {
     "exa": {
