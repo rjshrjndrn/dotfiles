@@ -14,26 +14,6 @@ function k3g() {
   export KUBECONFIG=~/.k3d/kube/$1
 }
 
-function pr() {
-  # Get current working branch
-  local currentBranch=$(git branch --show-current)
-
-  # Default branch to 'main' if no argument provided
-  local targetBranch="${1:-$currentBranch}"
-
-  # Extract organization and repository from the git remote origin URL
-  local originUrl=$(git remote get-url origin)
-  local repo=$(basename -s .git "${originUrl}")
-  local org=$(basename $(dirname "${originUrl}"))
-
-  # Clean up the URLs for SSH and HTTP formats
-  org=$(echo "${org}" | sed -e 's/.*://' -e 's/.com\/\(.*\)/\1/')
-
-  echo hub pull-request -b "${org}/${repo}:${targetBranch}" -h "${currentBranch}" -f
-  # Run hub pull-request command
-  hub pull-request -b "${org}/${repo}:${targetBranch}" -h "${currentBranch}" -f
-}
-
 ## Utilities
 
 function sendfile() {
@@ -41,8 +21,11 @@ function sendfile() {
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -t) timeout="$2"; shift 2 ;;
-      *) break ;;
+    -t)
+      timeout="$2"
+      shift 2
+      ;;
+    *) break ;;
     esac
   done
 
@@ -81,7 +64,9 @@ alias ll='ls -alF'
 alias la='ls -A'
 alias l='ls -CF'
 alias cx='chmod +x'
-alias p='podman'
+alias po='podman'
+alias p='pi'
+alias pr='pi -r'
 alias sovp='gps svpn; sudo openvpn --config ~/.cred/sunbird-staging.ovpn --auth-user-pass ~/.cred/ntp/vpn'
 alias ovp="gps svpn; docker run -it --rm -e JENKINS_ADDR=10.20.0.9:8080 --privileged -p 8081:8080 -v ${HOME}/.cred/sunbird-staging.ovpn:/tmp/l.ovpn:ro -v ${HOME}/.cred/ntp/vpn:/tmp/vpn:ro rjshrjndrn/openvpn:latest /bin/sh -c '/tmp/socat.sh; /usr/sbin/openvpn --config /tmp/l.ovpn --auth-user-pass /tmp/vpn --ask-pass' "
 alias sovpd='gps dvpn; sudo openvpn --config ~/.cred/sunbird-dev.ovpn --auth-user-pass ~/.cred/ntp/vpn'
