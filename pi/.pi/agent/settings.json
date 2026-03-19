@@ -4,31 +4,17 @@
   "defaultModel": "claude-opus-4-6",
   "packages": [
     "npm:@aliou/pi-guardrails",
-    "npm:@zhafron/pi-mcp-tools",
+    "npm:pi-mcp-adapter",
     "npm:pi-acm",
     "npm:pi-auth-profiles",
     "npm:pi-boundary",
     "npm:pi-themes"
   ],
-  "mcp": {
-    "exa": {
-      "type": "remote",
-      "url": "https://mcp.exa.ai/mcp"
-    },
-    "cc": {
-      "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "@upstash/context7-mcp@latest"
-      ]
-    }
-  },
   "compaction": {
     "enabled": true
   },
   "quietStartup": true,
   "hideThinkingBlock": false,
-  "defaultThinkingLevel": "high",
+  "defaultThinkingLevel": "xhigh",
   "theme": "gruvbox-dark"
 }
