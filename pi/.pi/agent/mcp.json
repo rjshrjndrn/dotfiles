@@ -2,7 +2,7 @@
   "mcpServers": {
     "exa": {
       "url": "https://mcp.exa.ai/mcp",
-      "lifecycle": "lazy"
+      "lifecycle": "eager"
     },
     "cc": {
       "command": "npx",
@@ -10,7 +10,7 @@
         "-y",
         "@upstash/context7-mcp@latest"
       ],
-      "lifecycle": "lazy"
+      "lifecycle": "eager"
     },
     "linear": {
       "command": "npx",
