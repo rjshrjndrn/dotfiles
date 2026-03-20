@@ -35,3 +35,6 @@ if [[ "$TERM_PROGRAM" == "ghostty" ]]; then
 fi
 
 export OPENCODE_EXPERIMENTAL_LSP_TOOL=true
+
+# for macos config path
+export XDG_CONFIG_HOME="$HOME/.config"
