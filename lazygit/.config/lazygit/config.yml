@@ -13,6 +13,6 @@ keybinding:
     confirmInEditor: <c-y>
     refresh: <c-r>
   commits:
-    moveUpCommit: "K"
-    moveDownCommit: "J"
+    moveDownCommit: <c-n>
+    moveUpCommit: <c-p>
     openInBrowser: "o"
