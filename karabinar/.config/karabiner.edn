@@ -217,7 +217,7 @@
             [:##n   "open '/Applications/Neovide.app'"]
             [:##s   "open '/Applications/Slack.app'"]
             [:##j   "open '/Applications/kitty.app'"]
-            [:##k   "open '/Applications/Zen Browser.app'"]
+            [:##k   "open '/Applications/Zen.app'"]
             [:##l   "open '/Applications/Slack.app'"]
           ]}
 

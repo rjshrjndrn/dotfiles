@@ -169,3 +169,4 @@ url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d
 github-cli = "latest"
 ggshield = "latest"
 ansible-core = "latest"
+"npm:@mariozechner/pi-coding-agent" = "latest"

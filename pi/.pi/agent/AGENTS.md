@@ -19,5 +19,6 @@
 
 ## Commits
 - For each task done, make atomic commits needed.
+- Commits are for "why", don't add what changed.
 - Each commit should represent exactly one logical change.
 - Never bundle unrelated changes in a single commit.
