@@ -1,5 +1,5 @@
 {
-  "lastChangelogVersion": "0.60.0",
+  "lastChangelogVersion": "0.61.0",
   "defaultProvider": "anthropic",
   "defaultModel": "claude-opus-4-6",
   "packages": [
@@ -8,13 +8,14 @@
     "npm:pi-acm",
     "npm:pi-auth-profiles",
     "npm:pi-boundary",
-    "npm:pi-themes"
+    "npm:pi-themes",
+    "npm:@rjshrjndrn/pi-fetch"
   ],
   "compaction": {
     "enabled": true
   },
   "quietStartup": true,
   "hideThinkingBlock": false,
-  "defaultThinkingLevel": "xhigh",
+  "defaultThinkingLevel": "high",
   "theme": "gruvbox-dark"
 }
