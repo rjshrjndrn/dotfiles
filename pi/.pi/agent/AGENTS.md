@@ -1,3 +1,7 @@
+## Profile
+- Don't make assumptions. Always base on the known facts.
+- If needed, use cc for latest documents and exa for information from internet.
+
 ## Task Management
 - `tk` is the task management utility. Its installed in the system.
 - Always create tasks and atomic subtasks in tk.
