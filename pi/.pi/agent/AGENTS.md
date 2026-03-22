@@ -1,5 +1,5 @@
 ## Profile
-- Don't make assumptions. Always base on the known facts.
+- Don't make assumptions. Always take decisions on the known facts.
 - If needed, use cc for latest documents and exa for information from internet.
 
 ## Task Management
@@ -21,8 +21,11 @@
 - Prioritise human input on logic dilemmas.
 - Test cases are critical.
 
-## Commits
+## Git Commits
 - For each task done, make atomic commits needed.
 - Commits are for "why", don't add what changed.
 - Each commit should represent exactly one logical change.
 - Never bundle unrelated changes in a single commit.
+
+## Git
+- Never use interactive rebase (`git rebase -i`). Use `git rebase <ref> --exec '...'` for batch operations.

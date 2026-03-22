@@ -22,6 +22,11 @@
         "pattern": "kubectl delete ",
         "description": "delete kube assets",
         "regex": true
+      },
+      {
+        "pattern": "git rebase",
+        "description": "git rebase rewrites commit history",
+        "regex": true
       }
     ]
   },
