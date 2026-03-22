@@ -144,9 +144,10 @@ function gclb() {
 }
 
 # Create git worktree with optional local branch/remote branch
-# Usage: gwa <local_branch> [folder_name] [-r remote[/remote_branch]]
+# Usage: gwa <local_branch> [folder_name] [-r ref]
 #   gwa local              -> create branch 'local' from HEAD or existing ref
 #   gwa local -r nh/work   -> create local branch 'local' tracking remote 'nh' branch 'work'
+#   gwa local -r abc123    -> create branch 'local' from commit abc123
 #   gwa feature            -> create branch 'feature' (auto-detect local/remote/new)
 function gwa() {
   [[ -z "$1" ]] &&
@@ -226,8 +227,12 @@ function gwa() {
       # In bare repos, fetched remote refs land under refs/heads/ not refs/remotes/
       commitish="$remote_branch"
       args=(-b "$name")
+    elif git rev-parse --verify --quiet "$remote_arg^{commit}" >/dev/null 2>&1; then
+      # Treat as a raw commit/ref (SHA, tag, etc.)
+      commitish="$remote_arg"
+      args=(-b "$name")
     else
-      echo "Error: remote ref 'refs/remotes/$commitish_candidate' not found" && return 1
+      echo "Error: '$remote_arg' is not a valid remote ref or commit" && return 1
     fi
   # If it's a tag, create a detached worktree at that tag.
   elif git show-ref --tags --verify --quiet "refs/tags/$name"; then
