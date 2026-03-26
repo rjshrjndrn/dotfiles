@@ -93,13 +93,20 @@
   },
   "plugin": [
     "opencode-anthropic-auth@latest",
-    "opencode-antigravity-auth@latest"
+    "opencode-antigravity-auth@latest",
+    "context-mode"
     // "opencode-mem"
     // "opencode-openai-codex-auth",
     // "oh-my-opencode",
     // "opencode-antigravity-auth@1.2.8"
   ],
   "mcp": {
+    "context-mode": {
+      "type": "local",
+      "command": [
+        "context-mode"
+      ]
+    },
     "financial-datasets": {
       "enabled": false,
       "type": "local",
