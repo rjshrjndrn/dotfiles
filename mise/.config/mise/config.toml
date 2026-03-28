@@ -170,3 +170,5 @@ github-cli = "latest"
 ggshield = "latest"
 ansible-core = "latest"
 "npm:@mariozechner/pi-coding-agent" = "latest"
+depot = { version = "latest", exe = "depot" }
+"github:block/goose" = "latest"

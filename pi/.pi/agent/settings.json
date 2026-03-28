@@ -15,7 +15,7 @@
     "enabled": true
   },
   "quietStartup": true,
-  "hideThinkingBlock": false,
+  "hideThinkingBlock": true,
   "defaultThinkingLevel": "xhigh",
   "theme": "gruvbox-dark"
 }

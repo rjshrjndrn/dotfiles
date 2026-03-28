@@ -8,14 +8,14 @@ eval "$(gopass completion zsh)"
 
 # Tab completion for gwc function
 # Lists worktree branch names for switching between worktrees
-# For detached HEAD (e.g., tags), shows the folder basename instead of "detached"
+# For detached HEAD (e.g., tags), shows the folder basename instead of the raw git label
 _gwc() {
     local worktrees
     worktrees=($(git worktree list | awk '{
         branch = $3
         gsub(/[\[\]]/, "", branch)
         # detached HEAD shows as "(detached" - use folder name instead
-        if (branch ~ /^\(detached/) {
+        if (branch ~ /^\(/) {
             n = split($1, parts, "/")
             print parts[n]
         } else {
@@ -40,14 +40,14 @@ _gwa() {
 
 # Tab completion for gwr function
 # Lists worktree branch names for removing worktrees
-# For detached HEAD (e.g., tags), shows the folder basename instead of "detached"
+# For detached HEAD (e.g., tags), shows the folder basename instead of the raw git label
 _gwr() {
     local worktrees
     worktrees=($(git worktree list | awk '{
         branch = $3
         gsub(/[\[\]]/, "", branch)
         # detached HEAD shows as "(detached" - use folder name instead
-        if (branch ~ /^\(detached/) {
+        if (branch ~ /^\(/) {
             n = split($1, parts, "/")
             print parts[n]
         } else {
