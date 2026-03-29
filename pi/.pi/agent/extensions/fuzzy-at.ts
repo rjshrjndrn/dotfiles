@@ -75,11 +75,12 @@ class FuzzyAtProvider implements AutocompleteProvider {
     private cwd: string
   ) { }
 
-  getSuggestions(
+  async getSuggestions(
     lines: string[],
     cursorLine: number,
-    cursorCol: number
-  ): { items: AutocompleteItem[]; prefix: string } | null {
+    cursorCol: number,
+    options?: { force?: boolean; signal?: AbortSignal }
+  ): Promise<{ items: AutocompleteItem[]; prefix: string } | null> {
     const currentLine = lines[cursorLine] || "";
     const textBeforeCursor = currentLine.slice(0, cursorCol);
 
@@ -88,7 +89,7 @@ class FuzzyAtProvider implements AutocompleteProvider {
     if (atPrefix) {
       const query = atPrefix.slice(1);
       if (!query) {
-        return this.original.getSuggestions(lines, cursorLine, cursorCol);
+        return this.original.getSuggestions(lines, cursorLine, cursorCol, options);
       }
 
       const items = fzfFuzzyFiles(query, this.cwd);
@@ -97,7 +98,7 @@ class FuzzyAtProvider implements AutocompleteProvider {
       return { items, prefix: atPrefix };
     }
 
-    return this.original.getSuggestions(lines, cursorLine, cursorCol);
+    return this.original.getSuggestions(lines, cursorLine, cursorCol, options);
   }
 
   applyCompletion(
