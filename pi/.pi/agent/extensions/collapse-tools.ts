@@ -239,22 +239,20 @@ export default function (pi: ExtensionAPI) {
       let text = theme.fg("success", "  ✓ ");
       text += theme.fg("success", `+${adds}`) + theme.fg("dim", "/") + theme.fg("error", `-${dels}`);
 
-      if (expanded) {
-        for (const l of diffLines.slice(0, 40)) {
-          const prefix = theme.fg("dim", "  │ ");
-          if (l.startsWith("+") && !l.startsWith("+++")) {
-            text += "\n" + prefix + theme.fg("toolDiffAdded", l);
-          } else if (l.startsWith("-") && !l.startsWith("---")) {
-            text += "\n" + prefix + theme.fg("toolDiffRemoved", l);
-          } else {
-            text += "\n" + prefix + theme.fg("toolDiffContext", l);
-          }
-        }
-        if (diffLines.length > 40) {
-          text += "\n" + theme.fg("dim", `  └─ … ${diffLines.length - 40} more diff lines`);
+      for (const l of diffLines.slice(0, 40)) {
+        const prefix = theme.fg("dim", "  │ ");
+        if (l.startsWith("+") && !l.startsWith("+++")) {
+          text += "\n" + prefix + theme.fg("toolDiffAdded", l);
+        } else if (l.startsWith("-") && !l.startsWith("---")) {
+          text += "\n" + prefix + theme.fg("toolDiffRemoved", l);
         } else {
-          text += "\n" + theme.fg("dim", "  └─");
+          text += "\n" + prefix + theme.fg("toolDiffContext", l);
         }
+      }
+      if (diffLines.length > 40) {
+        text += "\n" + theme.fg("dim", `  └─ … ${diffLines.length - 40} more diff lines`);
+      } else {
+        text += "\n" + theme.fg("dim", "  └─");
       }
 
       return new Text(text, 0, 0);
