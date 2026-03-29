@@ -1,41 +1,36 @@
 {
+  "enabled": true,
+  "features": {
+    "policies": true,
+    "permissionGate": true
+  },
   "permissionGate": {
     "requireConfirmation": true,
     "explainCommands": true,
-    "patterns": [
+    "customPatterns": [
       {
         "pattern": "terraform apply",
-        "description": "Terraform infrastructure changes",
-        "regex": true
+        "description": "Terraform infrastructure changes"
       },
       {
-        "pattern": " rm ",
-        "description": "delete",
-        "regex": true
+        "pattern": "git push --force",
+        "description": "git force push"
       },
       {
-        "pattern": "git push *--force*",
-        "description": "git force push",
-        "regex": true
-      },
-      {
-        "pattern": "kubectl delete ",
-        "description": "delete kube assets",
-        "regex": true
+        "pattern": "kubectl delete",
+        "description": "delete kube assets"
       },
       {
         "pattern": "git rebase",
-        "description": "git rebase rewrites commit history",
-        "regex": true
+        "description": "git rebase rewrites commit history"
       }
     ]
   },
   "policies": {
     "rules": [
       {
-        "id": "example-regex-env",
-        "name": "Regex env files",
-        "description": "Regex example for env files",
+        "id": "env-files",
+        "description": "Protect env files containing secrets",
         "patterns": [
           {
             "pattern": "^\\.env(\\..+)?$",
@@ -53,28 +48,7 @@
         "enabled": true
       },
       {
-        "id": "example-regex-env-2",
-        "name": "Regex env files",
-        "description": "Regex example for env files",
-        "patterns": [
-          {
-            "pattern": "^\\.env(\\..+)?$",
-            "regex": true
-          }
-        ],
-        "allowedPatterns": [
-          {
-            "pattern": "^\\.env\\.example$",
-            "regex": true
-          }
-        ],
-        "protection": "noAccess",
-        "onlyIfExists": true,
-        "enabled": true
-      },
-      {
-        "id": "example-aws-credentials",
-        "name": "AWS credentials",
+        "id": "aws-credentials",
         "description": "Block AWS credentials and config files",
         "patterns": [
           {
