@@ -113,6 +113,7 @@ alias tl='tmux -u ls'
 alias tc="tmux -u new -s $@"
 # git aliases
 alias g='git'
+alias gi='git init .'
 alias gb='git branch'
 alias gl='git log'
 alias ga='git add'
