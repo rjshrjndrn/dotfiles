@@ -287,14 +287,36 @@ function gwc() {
   local worktree_path
 
   # check if branch exists as a worktree
-  worktree_path=$(git worktree list | grep "\[$name\]" | cut -d' ' -f1)
+  local matches
+  matches=$(git worktree list | grep "\[$name\]" | cut -d' ' -f1)
 
   # if not found, check by folder name (for detached HEAD like tags)
-  if [[ -z "$worktree_path" ]]; then
-    worktree_path=$(git worktree list | awk -v name="$name" '{
+  if [[ -z "$matches" ]]; then
+    matches=$(git worktree list | awk -v name="$name" '{
       n = split($1, parts, "/")
       if (parts[n] == name) print $1
     }')
+  fi
+
+  local count=$(echo "$matches" | grep -c .)
+  if (( count > 1 )); then
+    echo "Multiple worktrees match '$name':"
+    local i=1
+    while IFS= read -r line; do
+      echo "  $i) $line"
+      ((i++))
+    done <<< "$matches"
+    echo -n "Select [1-$count]: "
+    local choice
+    read -r choice
+    if [[ "$choice" -ge 1 && "$choice" -le "$count" ]] 2>/dev/null; then
+      worktree_path=$(echo "$matches" | sed -n "${choice}p")
+    else
+      echo "Invalid selection"
+      return 1
+    fi
+  else
+    worktree_path="$matches"
   fi
 
   if [[ -n "$worktree_path" ]]; then
