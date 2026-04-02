@@ -92,9 +92,11 @@
     }
   },
   "plugin": [
-    "opencode-anthropic-auth@latest",
-    "opencode-antigravity-auth@latest",
-    "context-mode"
+    // "opencode-anthropic-auth@latest",
+    "@ex-machina/opencode-anthropic-auth",
+    // "opencode-acm@latest",
+    // "opencode-antigravity-auth@latest",
+    // "context-mode"
     // "opencode-mem"
     // "opencode-openai-codex-auth",
     // "oh-my-opencode",
