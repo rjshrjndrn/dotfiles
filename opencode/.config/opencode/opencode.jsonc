@@ -25,6 +25,7 @@
   "default_agent": "coder-v2",
   "agent": {
     "coder-v2": {
+      "prompt": "You're a smart advisor. Your job is to tell me howto. Don't do without explicit ask from user. Use exa for infromation from internet, and cc for document references.",
       "model": "anthropic/claude-sonnet-4-6",
       "permission": {
         "bash": {
