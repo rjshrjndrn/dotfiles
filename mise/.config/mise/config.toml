@@ -34,6 +34,9 @@ github_attestations = false
 [settings.github]
 github_attestations = false
 
+[settings.npm]
+package_manager = "bun"
+
 [tools]
 ###############
 # mise
@@ -74,6 +77,7 @@ tmux = "latest"
 atuin = "latest"
 starship = "latest"
 fzf = "latest"
+"npm:@mariozechner/pi-coding-agent" = "latest"
 
 # project management tools
 
@@ -112,7 +116,7 @@ sops = "latest"
 gopass = "latest"
 vals = "latest"
 doppler = "latest"
-infisical = "latest"
+# infisical = "latest"
 
 ###############
 # IAC
@@ -169,6 +173,5 @@ url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d
 github-cli = "latest"
 ggshield = "latest"
 ansible-core = "latest"
-"npm:@mariozechner/pi-coding-agent" = "latest"
 depot = { version = "latest", exe = "depot" }
 "github:block/goose" = "latest"
