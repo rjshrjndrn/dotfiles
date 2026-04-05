@@ -67,6 +67,7 @@ alias cx='chmod +x'
 alias po='podman'
 alias p='pi'
 alias pr='pi -r'
+alias gw=greywall # sandboxing tool for cli tools: # https://github.com/GreyhavenHQ/greyproxy
 alias sovp='gps svpn; sudo openvpn --config ~/.cred/sunbird-staging.ovpn --auth-user-pass ~/.cred/ntp/vpn'
 alias ovp="gps svpn; docker run -it --rm -e JENKINS_ADDR=10.20.0.9:8080 --privileged -p 8081:8080 -v ${HOME}/.cred/sunbird-staging.ovpn:/tmp/l.ovpn:ro -v ${HOME}/.cred/ntp/vpn:/tmp/vpn:ro rjshrjndrn/openvpn:latest /bin/sh -c '/tmp/socat.sh; /usr/sbin/openvpn --config /tmp/l.ovpn --auth-user-pass /tmp/vpn --ask-pass' "
 alias sovpd='gps dvpn; sudo openvpn --config ~/.cred/sunbird-dev.ovpn --auth-user-pass ~/.cred/ntp/vpn'
@@ -123,7 +124,6 @@ alias gsn='git status --untracked-files=no'
 alias gcp='git cherry-pick'
 alias gc='git checkout'
 alias gpl='git pull --rebase'
-alias gw='git worktree'
 alias gwl='git worktree list'
 
 ## CLOUD TOOLS
@@ -299,13 +299,13 @@ function gwc() {
   fi
 
   local count=$(echo "$matches" | grep -c .)
-  if (( count > 1 )); then
+  if ((count > 1)); then
     echo "Multiple worktrees match '$name':"
     local i=1
     while IFS= read -r line; do
       echo "  $i) $line"
       ((i++))
-    done <<< "$matches"
+    done <<<"$matches"
     echo -n "Select [1-$count]: "
     local choice
     read -r choice
