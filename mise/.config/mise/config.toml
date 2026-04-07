@@ -59,6 +59,9 @@ scaleway = "latest"
 
 opencode = "latest"
 "npm:@fission-ai/openspec" = "latest"
+"github:block/goose" = "latest"
+# Proxy to filter permissions for an app
+"github:GreyhavenHQ/greywall" = "latest"
 # reduce context tokens
 "npm:context-mode" = "latest"
 
@@ -174,4 +177,3 @@ github-cli = "latest"
 ggshield = "latest"
 ansible-core = "latest"
 depot = { version = "latest", exe = "depot" }
-"github:block/goose" = "latest"
