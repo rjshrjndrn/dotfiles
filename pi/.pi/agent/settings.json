@@ -1,7 +1,7 @@
 {
-  "lastChangelogVersion": "0.61.1",
+  "lastChangelogVersion": "0.65.2",
   "defaultProvider": "anthropic",
-  "defaultModel": "claude-opus-4-6",
+  "defaultModel": "claude-sonnet-4-6",
   "packages": [
     "npm:@aliou/pi-guardrails",
     "npm:pi-mcp-adapter",
@@ -16,6 +16,11 @@
   },
   "quietStartup": true,
   "hideThinkingBlock": true,
-  "defaultThinkingLevel": "xhigh",
-  "theme": "gruvbox-dark"
+  "defaultThinkingLevel": "high",
+  "theme": "gruvbox-dark",
+  "enabledModels": [
+    "anthropic/claude-opus-4-6",
+    "anthropic/claude-sonnet-4-6",
+    "anthropic/claude-haiku-4-5"
+  ]
 }
