@@ -9,6 +9,43 @@
           "contextWindow": 200000
         }
       }
+    },
+    "omniroute": {
+      "baseUrl": "http://localhost:20128/v1",
+      "api": "openai-completions",
+      "apiKey": "ANTHROPIC_API_KEY",
+      "models": [
+        {
+          "id": "cc/claude-opus-4-6",
+          "name": "Claude Opus 4.6 (OmniRoute)",
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 200000,
+          "maxTokens": 32000
+        },
+        {
+          "id": "cc/claude-sonnet-4-6",
+          "name": "Claude Sonnet 4.6 (OmniRoute)",
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 200000,
+          "maxTokens": 32000
+        },
+        {
+          "id": "cc/claude-haiku-4-5",
+          "name": "Claude Haiku 4.5 (OmniRoute)",
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 200000,
+          "maxTokens": 16384
+        }
+      ]
     }
   }
 }
