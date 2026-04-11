@@ -1,7 +1,7 @@
 {
-  "lastChangelogVersion": "0.65.2",
-  "defaultProvider": "anthropic",
-  "defaultModel": "claude-sonnet-4-6",
+  "lastChangelogVersion": "0.66.1",
+  "defaultProvider": "omniroute",
+  "defaultModel": "cc/claude-sonnet-4-6",
   "packages": [
     "npm:@aliou/pi-guardrails",
     "npm:pi-mcp-adapter",
@@ -9,7 +9,8 @@
     "npm:pi-auth-profiles",
     "npm:pi-boundary",
     "npm:pi-themes",
-    "npm:@rjshrjndrn/pi-fetch"
+    "npm:@rjshrjndrn/pi-fetch",
+    "npm:pi-caveman"
   ],
   "compaction": {
     "enabled": true
