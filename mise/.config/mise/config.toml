@@ -177,3 +177,6 @@ github-cli = "latest"
 ggshield = "latest"
 ansible-core = "latest"
 depot = { version = "latest", exe = "depot" }
+rust = "latest"
+"npm:gitnexus" = "latest"
+"npm:omniroute" = "latest"
