@@ -1,16 +1,16 @@
 {
   "lastChangelogVersion": "0.66.1",
-  "defaultProvider": "omniroute",
-  "defaultModel": "cc/claude-sonnet-4-6",
+  "defaultProvider": "anthropic",
+  "defaultModel": "claude-opus-4-6",
   "packages": [
     "npm:@aliou/pi-guardrails",
-    "npm:pi-mcp-adapter",
     "npm:pi-acm",
     "npm:pi-auth-profiles",
     "npm:pi-boundary",
     "npm:pi-themes",
     "npm:@rjshrjndrn/pi-fetch",
-    "npm:pi-caveman"
+    "npm:pi-caveman",
+    "git:github.com/igor-makarov/pi-mcp-adapter"
   ],
   "compaction": {
     "enabled": true
