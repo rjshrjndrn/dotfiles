@@ -1,5 +1,8 @@
-## Profile
-- Don't make assumptions. Always base decisions on the known facts, else ask the user.
+## Core Principles
+- Don't assume requirements — infer implementation details from code, ask user for business logic.
+- Prioritise human input on logic dilemmas (e.g., ambiguous requirements, multiple valid approaches, destructive operations).
+
+## MCP Tools
 - `cc` = Context7 MCP — use for searching library/framework documentation.
 - `exa` = Exa MCP — use for searching the internet for external information.
 
@@ -13,9 +16,10 @@ mcp({ tool: "cc_resolve-library-id", args: '{"libraryName": "Next.js", "query": 
 # Step 2: Query docs using resolved ID
 mcp({ tool: "cc_query-docs", args: '{"libraryId": "/vercel/next.js", "query": "how to set up middleware"}' })
 ```
-- Max 3 calls per tool per question. Use best result if not found after 3.
+- Max 3 calls per tool per question. If no good match after 3 attempts, proceed with closest result and note uncertainty to user.
 - Use official library names with proper punctuation (e.g., "Next.js" not "nextjs").
 - Query should be specific and descriptive, not just keywords.
+- If `resolve-library-id` returns no results, try alternate library names or fall back to `exa` web search.
 
 ### exa — Web Search & Fetch
 ```
@@ -26,16 +30,17 @@ mcp({ tool: "exa_web_search_exa", args: '{"query": "blog post comparing React an
 mcp({ tool: "exa_web_fetch_exa", args: '{"urls": ["https://example.com/article"], "maxCharacters": 3000}' })
 ```
 - Query tip: describe the ideal page, not keywords.
-- Use `category:people` or `category:company` for LinkedIn-style searches.
 - Batch multiple URLs in one `web_fetch_exa` call.
+- If search returns irrelevant results, rephrase query or narrow with date/domain filters.
 
 ## Task Management
-- `tk` is the task management utility. Its installed in the system.
+- `tk` is the task management utility. It's installed in the system.
 - Always create tasks and atomic subtasks in tk.
-  - "atomic" = one logical change that can be independently verified and committed.
+  - "atomic" = one logical change that can be independently verified and committed (same granularity as a git commit).
 - For each parent task, record the plan, reasoning, and thought process in its note.
 - Each subtask must have its own detailed note explaining scope and context.
 - Proactively update task and subtask notes when plans or circumstances change.
+- Before creating tasks, check `tk list` to avoid duplicates.
 - On failure: update subtask note with error details, ask user before retrying or changing approach.
 - Usual commands:
    tk list                                    # list all tasks
@@ -47,14 +52,15 @@ mcp({ tool: "exa_web_fetch_exa", args: '{"urls": ["https://example.com/article"]
 
 ## Workflow
 - Do not jump into implementation. First analyze the task, create a detailed plan with subtasks, present it as a numbered subtask list to the user, and only proceed after explicit approval (e.g., "go", "approved").
-- Prioritise human input on logic dilemmas.
-- Test cases are critical. Write tests alongside implementation. Ensure key logic paths are covered.
+- A task is done when: implementation complete, tests pass, and user confirms.
 
-## Git Commits
-- For each task done, make atomic commits needed.
+## Testing
+- Write tests alongside implementation. Ensure key logic paths are covered.
+- Tests are not optional — every subtask with logic changes should have corresponding test coverage.
+
+## Git
+- For each task done, make atomic commits as needed.
 - Commit messages explain "why", not "what" changed. The diff shows what.
 - Each commit should represent exactly one logical change.
 - Never bundle unrelated changes in a single commit.
-
-## Git
 - Never use interactive rebase (`git rebase -i`). Use `git rebase <ref> --exec '...'` for batch operations.
