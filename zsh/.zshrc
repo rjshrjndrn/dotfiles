@@ -15,7 +15,7 @@ setopt appendhistory
 # eval "$(~/.local/bin/mise activate zsh)"  # Full activate with hooks
 # eval "$(~/.local/bin/mise activate zsh --shims)" # same as the following
 # export PATH=~/.local/share/mise/shims:$PATH
-eval "$(~/.local/bin/mise activate zsh)"
+eval "$(mise activate zsh)"
 ZSH_THEME="robbyrussell"
 
 # Autosuggestion styling - must be set BEFORE plugin loads
@@ -48,7 +48,7 @@ eval "$(mise completion zsh)"
 source ~/.completions.sh
 
 # bun completions
-[ -s "/home/skyline/.bun/_bun" ] && source "/home/skyline/.bun/_bun"
+[ -s "~/.bun/_bun" ] && source "~/.bun/_bun"
 
 # bun
 export BUN_INSTALL="$HOME/.bun"
