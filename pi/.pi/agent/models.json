@@ -1,15 +1,5 @@
 {
   "providers": {
-    "anthropic": {
-      "modelOverrides": {
-        "claude-opus-4-6": {
-          "contextWindow": 200000
-        },
-        "claude-sonnet-4-6": {
-          "contextWindow": 200000
-        }
-      }
-    },
     "omniroute": {
       "baseUrl": "http://localhost:20128/v1",
       "api": "openai-completions",

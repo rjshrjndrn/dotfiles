@@ -6,7 +6,7 @@
 - `cc` = Context7 MCP — use for searching library/framework documentation.
 - `exa` = Exa MCP — use for searching the internet for external information.
 
-### cc (Context7) — Library Docs
+### How to use cc (Context7) MCP — Library Docs
 Two-step process: resolve library ID first, then query docs.
 ```
 # Step 1: Resolve library ID
@@ -21,7 +21,7 @@ mcp({ tool: "cc_query-docs", args: '{"libraryId": "/vercel/next.js", "query": "h
 - Query should be specific and descriptive, not just keywords.
 - If `resolve-library-id` returns no results, try alternate library names or fall back to `exa` web search.
 
-### exa — Web Search & Fetch
+### How to use exa MCP — Web Search & Fetch
 ```
 # Search the web (describe ideal page, not keywords)
 mcp({ tool: "exa_web_search_exa", args: '{"query": "blog post comparing React and Vue performance", "numResults": 5}' })

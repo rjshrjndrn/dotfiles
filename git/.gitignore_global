@@ -6,5 +6,4 @@
 **/*.pem
 **/*.pub
 **/.opencode
-**/openspec
 **/.pi
