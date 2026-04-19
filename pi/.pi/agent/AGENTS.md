@@ -3,35 +3,9 @@
 - Prioritise human input on logic dilemmas (e.g., ambiguous requirements, multiple valid approaches, destructive operations).
 
 ## MCP Tools
-- `cc` = Context7 MCP — use for searching library/framework documentation.
-- `exa` = Exa MCP — use for searching the internet for external information.
-
-### How to use cc (Context7) MCP — Library Docs
-Two-step process: resolve library ID first, then query docs.
-```
-# Step 1: Resolve library ID
-mcp({ tool: "cc_resolve-library-id", args: '{"libraryName": "Next.js", "query": "how to set up middleware"}' })
-# Returns library ID like /vercel/next.js
-
-# Step 2: Query docs using resolved ID
-mcp({ tool: "cc_query-docs", args: '{"libraryId": "/vercel/next.js", "query": "how to set up middleware"}' })
-```
-- Max 3 calls per tool per question. If no good match after 3 attempts, proceed with closest result and note uncertainty to user.
-- Use official library names with proper punctuation (e.g., "Next.js" not "nextjs").
-- Query should be specific and descriptive, not just keywords.
-- If `resolve-library-id` returns no results, try alternate library names or fall back to `exa` web search.
-
-### How to use exa MCP — Web Search & Fetch
-```
-# Search the web (describe ideal page, not keywords)
-mcp({ tool: "exa_web_search_exa", args: '{"query": "blog post comparing React and Vue performance", "numResults": 5}' })
-
-# Fetch full content from URL(s) when search highlights aren't enough
-mcp({ tool: "exa_web_fetch_exa", args: '{"urls": ["https://example.com/article"], "maxCharacters": 3000}' })
-```
-- Query tip: describe the ideal page, not keywords.
-- Batch multiple URLs in one `web_fetch_exa` call.
-- If search returns irrelevant results, rephrase query or narrow with date/domain filters.
+- `cc` (Context7) — library/framework docs. Two-step: `cc_resolve-library-id` → `cc_query-docs`. Use official names ("Next.js" not "nextjs"). Max 3 calls per question. Fallback to `exa` if no match.
+- `exa` — web search/fetch. Describe ideal page, not keywords. Batch URLs in one `exa_web_fetch_exa` call. Narrow with date/domain filters if noisy.
+- Discover schemas on demand: `mcp({ describe: "tool_name" })`.
 
 ## Task Management
 - `tk` is the task management utility. It's installed in the system.
