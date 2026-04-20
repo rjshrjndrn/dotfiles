@@ -55,7 +55,6 @@ scaleway = "latest"
 # Tools
 "github:zyedidia/eget" = "latest"
 "github:rjshrjndrn/templater" = "latest"
-"aqua:schollz/croc" = "latest"
 
 opencode = "latest"
 "npm:@fission-ai/openspec" = "latest"
@@ -180,3 +179,5 @@ depot = { version = "latest", exe = "depot" }
 rust = "latest"
 "npm:gitnexus" = "latest"
 "npm:omniroute" = "latest"
+croc = "latest"
+kubens = "latest"

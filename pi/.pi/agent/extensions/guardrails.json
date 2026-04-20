@@ -23,6 +23,10 @@
       {
         "pattern": "git rebase",
         "description": "git rebase rewrites commit history"
+      },
+      {
+        "pattern": "git push",
+        "description": "Push commits to remote repository"
       }
     ]
   },

@@ -6,5 +6,7 @@
 
   "app.thinking.cycle": ["ctrl+t"],
 
-  "ext.recentModels.cycle": ["ctrl+p"]
+  "ext.recentModels.cycle": ["ctrl+p"],
+
+  "app.model.select": ["ctrl+shift+l"]
 }
