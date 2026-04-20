@@ -22,3 +22,4 @@
 - One commit = one logical change. Never bundle unrelated.
 - Messages explain "why", diff shows "what".
 - Never `rebase -i`. Use `git rebase <ref> --exec '...'` for batch ops.
+- Never git push
