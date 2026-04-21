@@ -97,10 +97,6 @@
         "description": "Signal processes by pattern"
       },
       {
-        "pattern": "/dev/null",
-        "description": "Redirect to null - potential data loss if misused"
-      },
-      {
         "pattern": "curl | sh",
         "description": "Pipe remote script to shell - arbitrary code execution"
       },
