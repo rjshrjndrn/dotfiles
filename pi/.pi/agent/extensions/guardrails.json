@@ -27,6 +27,148 @@
       {
         "pattern": "git push",
         "description": "Push commits to remote repository"
+      },
+      {
+        "pattern": "rm -rf",
+        "description": "Recursive force delete - can wipe entire directories"
+      },
+      {
+        "pattern": "rm -r",
+        "description": "Recursive delete - removes directories and contents"
+      },
+      {
+        "pattern": "rm ",
+        "description": "File deletion command"
+      },
+      {
+        "pattern": "rmdir",
+        "description": "Directory removal"
+      },
+      {
+        "pattern": "mkfs",
+        "description": "Filesystem format - destroys all data on target device"
+      },
+      {
+        "pattern": "dd if=",
+        "description": "Low-level disk write - can overwrite drives/partitions"
+      },
+      {
+        "pattern": "> /dev/sd",
+        "description": "Direct write to disk device - destroys data"
+      },
+      {
+        "pattern": "chmod -R 777",
+        "description": "Recursive world-writable permissions - security risk"
+      },
+      {
+        "pattern": "chmod -R 000",
+        "description": "Recursive remove all permissions - can brick system"
+      },
+      {
+        "pattern": "chown -R",
+        "description": "Recursive ownership change"
+      },
+      {
+        "pattern": ":(){ :|:& };:",
+        "description": "Fork bomb - crashes system via resource exhaustion"
+      },
+      {
+        "pattern": "shutdown",
+        "description": "System shutdown"
+      },
+      {
+        "pattern": "reboot",
+        "description": "System reboot"
+      },
+      {
+        "pattern": "init 0",
+        "description": "System halt"
+      },
+      {
+        "pattern": "kill -9",
+        "description": "Force kill process - no cleanup"
+      },
+      {
+        "pattern": "killall",
+        "description": "Kill all processes by name"
+      },
+      {
+        "pattern": "pkill",
+        "description": "Signal processes by pattern"
+      },
+      {
+        "pattern": "/dev/null",
+        "description": "Redirect to null - potential data loss if misused"
+      },
+      {
+        "pattern": "curl | sh",
+        "description": "Pipe remote script to shell - arbitrary code execution"
+      },
+      {
+        "pattern": "curl | bash",
+        "description": "Pipe remote script to bash - arbitrary code execution"
+      },
+      {
+        "pattern": "wget | sh",
+        "description": "Pipe remote script to shell - arbitrary code execution"
+      },
+      {
+        "pattern": "wget | bash",
+        "description": "Pipe remote script to bash - arbitrary code execution"
+      },
+      {
+        "pattern": "shred",
+        "description": "Secure file deletion - irrecoverable"
+      },
+      {
+        "pattern": "wipefs",
+        "description": "Wipe filesystem signatures from device"
+      },
+      {
+        "pattern": "fdisk",
+        "description": "Disk partition manipulation"
+      },
+      {
+        "pattern": "parted",
+        "description": "Disk partition manipulation"
+      },
+      {
+        "pattern": "mv /",
+        "description": "Move from root - can relocate critical system files"
+      },
+      {
+        "pattern": "iptables -F",
+        "description": "Flush all firewall rules - exposes system"
+      },
+      {
+        "pattern": "systemctl disable",
+        "description": "Disable system service"
+      },
+      {
+        "pattern": "systemctl stop",
+        "description": "Stop system service"
+      }
+    ],
+    "patterns": [
+      {
+        "pattern": "gcloud",
+        "description": "GCP Cloud SQL instance deletion"
+      },
+      {
+        "pattern": "az ",
+        "description": "azure Cloud SQL instance deletion"
+      },
+      {
+        "pattern": "scw ",
+        "description": "scaleway Cloud SQL instance deletion"
+      },
+      {
+        "pattern": "aws",
+        "description": "aws Cloud SQL instance deletion"
+      },
+      {
+        "pattern": "kubectl delete",
+        "description": "Kubernetes resource deletion"
       }
     ]
   },
