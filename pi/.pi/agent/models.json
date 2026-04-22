@@ -1,38 +1,17 @@
 {
   "providers": {
     "anthropic": {
-      "models": [
-        {
-          "id": "claude-opus-4-6",
-          "name": "Claude Opus 4.6",
-          "input": [
-            "text",
-            "image"
-          ],
-          "contextWindow": 200000,
-          "maxTokens": 32000
+      "modelOverrides": {
+        "claude-opus-4-6": {
+          "contextWindow": 200000
         },
-        {
-          "id": "claude-sonnet-4-6",
-          "name": "Claude Sonnet 4.6",
-          "input": [
-            "text",
-            "image"
-          ],
-          "contextWindow": 200000,
-          "maxTokens": 32000
+        "claude-opus-4-7": {
+          "contextWindow": 200000
         },
-        {
-          "id": "claude-haiku-4-5",
-          "name": "Claude Haiku 4.5",
-          "input": [
-            "text",
-            "image"
-          ],
-          "contextWindow": 200000,
-          "maxTokens": 16384
+        "claude-sonnet-4-6": {
+          "contextWindow": 200000
         }
-      ]
+      }
     },
     "omniroute": {
       "baseUrl": "http://localhost:20128/v1",
@@ -42,6 +21,7 @@
         {
           "id": "anthropic/claude-opus-4-6",
           "name": "Claude Opus 4.6",
+          "reasoning": true,
           "input": [
             "text",
             "image"
@@ -52,6 +32,7 @@
         {
           "id": "anthropic/claude-sonnet-4-6",
           "name": "Claude Sonnet 4.6",
+          "reasoning": true,
           "input": [
             "text",
             "image"
@@ -62,6 +43,7 @@
         {
           "id": "anthropic/claude-haiku-4-5",
           "name": "Claude Haiku 4.5",
+          "reasoning": true,
           "input": [
             "text",
             "image"
