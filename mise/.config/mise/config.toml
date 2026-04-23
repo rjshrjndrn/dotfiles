@@ -42,7 +42,7 @@ package_manager = "bun"
 # mise
 ###############
 usage = "latest" # To generate completions.
-"github:jdx/mise" = {version = "latest", exe = "~/.local/bin/mise"}
+"github:jdx/mise" = "latest"
 
 ###############
 # Cloud
