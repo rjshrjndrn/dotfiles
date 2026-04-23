@@ -1,7 +1,7 @@
 {
-  "lastChangelogVersion": "0.67.6",
+  "lastChangelogVersion": "0.69.0",
   "defaultProvider": "anthropic",
-  "defaultModel": "claude-opus-4-7",
+  "defaultModel": "claude-opus-4-6",
   "packages": [
     "npm:@aliou/pi-guardrails",
     "npm:pi-acm",
@@ -10,7 +10,8 @@
     "npm:pi-themes",
     "npm:@rjshrjndrn/pi-fetch",
     "npm:pi-caveman",
-    "git:github.com/igor-makarov/pi-mcp-adapter"
+    "git:github.com/igor-makarov/pi-mcp-adapter",
+    "npm:pi-gitnexus"
   ],
   "compaction": {
     "enabled": true
@@ -18,7 +19,7 @@
   "quietStartup": true,
   "hideThinkingBlock": true,
   "defaultThinkingLevel": "high",
-  "theme": "gruvbox-dark",
+  "theme": "one-dark",
   "enabledModels": [
     "anthropic/claude-opus-4-6",
     "anthropic/claude-sonnet-4-6",
