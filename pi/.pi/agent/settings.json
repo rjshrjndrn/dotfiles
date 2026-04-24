@@ -1,7 +1,7 @@
 {
   "lastChangelogVersion": "0.69.0",
   "defaultProvider": "anthropic",
-  "defaultModel": "claude-opus-4-6",
+  "defaultModel": "claude-opus-4-7",
   "packages": [
     "npm:@aliou/pi-guardrails",
     "npm:pi-acm",
@@ -22,6 +22,7 @@
   "defaultThinkingLevel": "high",
   "theme": "one-dark",
   "enabledModels": [
+    "anthropic/claude-opus-4-7",
     "anthropic/claude-opus-4-6",
     "anthropic/claude-sonnet-4-6",
     "anthropic/claude-haiku-4-5"
