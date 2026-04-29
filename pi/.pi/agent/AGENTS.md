@@ -21,5 +21,6 @@
 ## Git
 - One commit = one logical change. Never bundle unrelated.
 - Messages explain "why", diff shows "what".
+- Commit messages: use commitizen convention. Title under 50 chars, body wrapped at 72 chars. Output as a gitcommit code block. No markdown inside the message.
 - Never `rebase -i`. Use `git rebase <ref> --exec '...'` for batch ops.
 - Never git push
