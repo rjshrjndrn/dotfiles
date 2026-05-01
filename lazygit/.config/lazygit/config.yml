@@ -16,3 +16,20 @@ keybinding:
     moveDownCommit: <c-n>
     moveUpCommit: <c-p>
     openInBrowser: "o"
+customCommands:
+  - key: 'G'
+    context: 'files'
+    description: 'AI commit message (pi)'
+    loadingText: 'Generating commit message...'
+    command: |
+      DIFF=$(git diff --cached --diff-algorithm=minimal)
+      [ -z "$DIFF" ] && DIFF=$(git diff --diff-algorithm=minimal)
+      [ -z "$DIFF" ] && { echo "Nothing to commit"; exit 1; }
+      MSG=$(pi -p --no-tools --no-extensions --no-skills --thinking off \
+        --system-prompt "You write git commit messages. Output ONLY the commit message text. No preamble, no questions, no markdown fences, no quotes. Use Conventional Commits (feat/fix/chore/docs/refactor/test/build/ci/perf). Imperative mood. Subject line <=50 chars. If a body is needed, add blank line then wrap at 72 chars. Explain WHY, not WHAT." \
+        "Generate a commit message for this diff: $DIFF" 2>/dev/null)
+      if [ -z "$MSG" ]; then
+        echo "pi returned empty message"; exit 1
+      fi
+      git commit -e -m "$MSG"
+    output: terminal
