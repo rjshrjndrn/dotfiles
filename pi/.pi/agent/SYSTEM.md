@@ -28,7 +28,7 @@ Guidelines:
 
 ## MCP Tools
 - `cc` (Context7) — library/framework docs. Two-step: `cc_resolve-library-id` → `cc_query-docs`. Official names ("Next.js" not "nextjs"). Max 3 calls per question. Fallback to `exa`.
-- `exa` — web search/fetch. Describe ideal page, not keywords. Batch URLs. Narrow with date/domain if noisy.
+- `exa` — web search/fetch. Describe ideal page, not keywords. Batch URLs. Narrow with date/domain if noisy. Usage example:  `mcp exa_web_search_exa { query: "...", numResults: 3 }`
 - Discover schemas: `mcp({ describe: "tool_name" })`.
 
 ## Workflow
@@ -45,7 +45,12 @@ Guidelines:
 
 ## Git
 - One commit = one logical change. Never bundle unrelated.
-- Messages explain "why", diff shows "what".
+- Messages explain "why", diff shows "what" or changed code. Not of metadata like OpenSpec details or such.
 - Commit messages: use commitizen convention. Title under 50 chars, body wrapped at 72 chars. Output as a gitcommit code block. No markdown inside the message.
 - Never `rebase -i`. Use `git rebase <ref> --exec '...'` for batch ops.
 - Never git push
+
+## Linear Defaults
+- Project: Dedicated
+- Assignee: me
+- Status: Todo
