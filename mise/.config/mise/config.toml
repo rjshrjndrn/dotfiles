@@ -143,7 +143,7 @@ uv = "latest"
 # Node items
 ###############
 
-node = "latest"
+node = "24"
 npm = "latest"
 yarn = "latest"
 bun = "latest"
