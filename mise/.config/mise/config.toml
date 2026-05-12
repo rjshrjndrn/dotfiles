@@ -79,7 +79,7 @@ tmux = "latest"
 atuin = "latest"
 starship = "latest"
 fzf = "latest"
-"npm:@mariozechner/pi-coding-agent" = "latest"
+"npm:@earendil-works/pi-coding-agent" = "latest"
 
 # project management tools
 
@@ -147,7 +147,6 @@ node = "latest"
 npm = "latest"
 yarn = "latest"
 bun = "latest"
-pnpm = "latest"
 
 ###############
 # LLM

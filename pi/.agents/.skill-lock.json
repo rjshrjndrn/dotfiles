@@ -36,6 +36,15 @@
       "skillFolderHash": "238d64a169e9026c635cd1b8835d7ec113ffad8f",
       "installedAt": "2026-04-08T18:52:14.573Z",
       "updatedAt": "2026-04-08T18:52:14.573Z"
+    },
+    "context-mode": {
+      "source": "mksglu/context-mode",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/mksglu/context-mode.git",
+      "skillPath": "skills/context-mode/SKILL.md",
+      "skillFolderHash": "2f683b752f9a3e145b32ba136c4a1b27d642a33d",
+      "installedAt": "2026-04-19T08:59:19.459Z",
+      "updatedAt": "2026-04-19T08:59:19.459Z"
     }
   },
   "dismissed": {
@@ -48,6 +57,7 @@
     "codex",
     "cursor",
     "deepagents",
+    "firebender",
     "gemini-cli",
     "github-copilot",
     "kimi-cli",
