@@ -20,10 +20,6 @@
         "https://mcp.linear.app/sse"
       ],
       "lifecycle": "lazy"
-    },
-    "context-mode": {
-      "command": "context-mode",
-      "lifecycle": "eager"
     }
   }
 }

@@ -1,5 +1,5 @@
 {
-  "lastChangelogVersion": "0.73.0",
+  "lastChangelogVersion": "0.74.0",
   "defaultProvider": "anthropic",
   "defaultModel": "claude-opus-4-6",
   "packages": [
@@ -11,8 +11,7 @@
     "npm:@rjshrjndrn/pi-fetch",
     "npm:pi-caveman",
     "git:github.com/igor-makarov/pi-mcp-adapter",
-    "npm:pi-gitnexus",
-    "npm:context-mode"
+    "npm:pi-gitnexus"
   ],
   "compaction": {
     "enabled": true
