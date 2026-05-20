@@ -152,18 +152,23 @@ function gclb() {
 #   gwa feature            -> create branch 'feature' (auto-detect local/remote/new)
 function gwa() {
   [[ -z "$1" ]] &&
-    echo "Usage: gwa <local_branch> [folder_name] [-r remote[/remote_branch]]" &&
+    echo "Usage: gwa <local_branch> [folder_name] [-r remote[/remote_branch]] [-p path]" &&
     return
 
   local name=""
   local folder=""
   local remote_arg="" # raw value passed to -r, e.g. "nh/work" or "origin"
+  local path_arg=""   # custom base path for worktree
 
   # Parse args
   while [[ $# -gt 0 ]]; do
     case $1 in
     -r | --remote)
       remote_arg="$2"
+      shift 2
+      ;;
+    -p | --path)
+      path_arg="$2"
       shift 2
       ;;
     *)
@@ -183,7 +188,9 @@ function gwa() {
   local toplevel
 
   # Check if bare repo, then create worktree dir
-  if [[ $(git rev-parse --is-bare-repository) == "true" ]]; then
+  if [[ -n "$path_arg" ]]; then
+    toplevel=$(realpath "$path_arg")
+  elif [[ $(git rev-parse --is-bare-repository) == "true" ]]; then
     # If bare repo, use current directory
     toplevel=$(readlink -f .)
   else
