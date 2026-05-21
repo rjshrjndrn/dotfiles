@@ -144,7 +144,7 @@ uv = "latest"
 ###############
 
 node = "24"
-npm = "latest"
+npm = "11"
 yarn = "latest"
 bun = "latest"
 
@@ -180,3 +180,4 @@ rust = "latest"
 "npm:omniroute" = "latest"
 croc = "latest"
 kubens = "latest"
+"github:1jehuang/jcode" = { version = "latest", bin = "jcode"}
