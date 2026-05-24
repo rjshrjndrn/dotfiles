@@ -4,6 +4,15 @@
       "url": "https://mcp.exa.ai/mcp",
       "lifecycle": "lazy"
     },
+    "notion": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.notion.com/mcp"
+      ],
+      "lifecycle": "lazy"
+    },
     "cc": {
       "command": "npx",
       "args": [
