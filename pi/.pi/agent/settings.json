@@ -20,7 +20,10 @@
   "quietStartup": true,
   "hideThinkingBlock": true,
   "defaultThinkingLevel": "high",
-  "theme": "one-dark",
+  "theme": "acm",
+  "warnings": {
+    "anthropicExtraUsage": false
+  },
   "enabledModels": [
     "cc/claude-opus-4-7",
     "anthropic/claude-opus-4-7",
