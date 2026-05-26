@@ -2,9 +2,6 @@
   "$schema": "https://opencode.ai/config.json",
   "theme": "lucent-orng",
   "formatter": false,
-  "tools": {
-    "linear*": false
-  },
   "keybinds": {
     "leader": "ctrl+space",
     "editor_open": "ctrl+e",
@@ -121,27 +118,19 @@
     // "opencode-antigravity-auth@1.2.8"
   ],
   "mcp": {
+    "linear": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "mcp-remote",
+        "https://mcp.linear.app/sse"
+      ]
+    },
     "context-mode": {
       "type": "local",
       "command": [
         "context-mode"
-      ]
-    },
-    "financial-datasets": {
-      "enabled": false,
-      "type": "local",
-      "command": [
-        "sh",
-        "-c",
-        "exec uv --directory ~/Documents/projects/stocks/mcp-servers/financial-datasets run server.py"
-      ]
-    },
-    "yahoo-datasets": {
-      "type": "local",
-      "command": [
-        "sh",
-        "-c",
-        "exec uv --directory ~/Documents/projects/stocks/mcp-servers/yahoo-finance-mcp run server.py"
       ]
     },
     "exa": {
@@ -167,14 +156,22 @@
         "mcp"
       ]
     },
-    "linear": {
+    "financial-datasets": {
+      "enabled": false,
       "type": "local",
       "command": [
-        "npx",
-        "-y",
-        "mcp-remote",
-        "https://mcp.linear.app/sse"
+        "sh",
+        "-c",
+        "exec uv --directory ~/Documents/projects/stocks/mcp-servers/financial-datasets run server.py"
       ]
-    }
+    },
+    "yahoo-datasets": {
+      "type": "local",
+      "command": [
+        "sh",
+        "-c",
+        "exec uv --directory ~/Documents/projects/stocks/mcp-servers/yahoo-finance-mcp run server.py"
+      ]
+    },
   },
 }

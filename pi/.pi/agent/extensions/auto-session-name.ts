@@ -15,6 +15,9 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 const SYSTEM_PROMPT =
   "Generate a short name (under 72 characters) for a coding session that starts with this message. Output only the name, nothing else. No quotes, no prefix.";
 
+// Matches pi's skill block format: <skill name="..." location="...">...content...</skill>
+const SKILL_BLOCK_RE = /^<skill name="([^"]+)" location="[^"]+">\n[\s\S]*?\n<\/skill>(?:\n\n([\s\S]+))?$/;
+
 export default function (pi: ExtensionAPI) {
   let eligible = false;
 
@@ -36,7 +39,7 @@ export default function (pi: ExtensionAPI) {
     // Skip if name already set (by user or another extension)
     if (pi.getSessionName()) return;
 
-    // Get first user message from branch
+    // Get first user message from branch, skipping slash-command instructions
     const branch = ctx.sessionManager.getBranch();
     let firstUserText = "";
     for (const entry of branch) {
@@ -44,16 +47,33 @@ export default function (pi: ExtensionAPI) {
         entry.type === "message" &&
         entry.message?.role === "user"
       ) {
+        let text = "";
         const content = entry.message.content;
         if (typeof content === "string") {
-          firstUserText = content;
+          text = content;
         } else if (Array.isArray(content)) {
           for (const part of content) {
             if (part && typeof part === "object" && "type" in part && part.type === "text" && "text" in part) {
-              firstUserText += (part as any).text + " ";
+              text += (part as any).text + " ";
             }
           }
         }
+        text = text.trim();
+
+        // If message contains a skill block, extract the user's actual text
+        const skillMatch = text.match(SKILL_BLOCK_RE);
+        if (skillMatch) {
+          const userPart = skillMatch[2]?.trim();
+          if (userPart) {
+            // Use the user's text after the skill block
+            text = userPart;
+          } else {
+            // Skill invoked with no user text — use skill name as fallback context
+            text = skillMatch[1];
+          }
+        }
+
+        firstUserText = text;
         break;
       }
     }

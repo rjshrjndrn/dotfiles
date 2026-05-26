@@ -1,12 +1,13 @@
 {
-  "tui.input.newLine": ["ctrl+n"],
-
+  "tui.input.newLine": [
+    "ctrl+n"
+  ],
   "app.session.togglePath": [],
   "app.model.cycleForward": [],
-
-  "app.thinking.cycle": ["ctrl+t"],
-
-  "ext.recentModels.cycle": ["ctrl+p"],
-
-  "app.model.select": ["ctrl+shift+l"]
+  "app.thinking.cycle": [
+    "ctrl+t"
+  ],
+  "app.model.select": [
+    "ctrl+shift+l"
+  ]
 }

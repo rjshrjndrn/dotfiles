@@ -43,6 +43,9 @@ package_manager = "bun"
 ###############
 usage = "latest" # To generate completions.
 "github:jdx/mise" = "latest"
+# Alternative to tmate
+# Usage: upterm host
+"github:owenthereal/upterm" = "latest"
 
 ###############
 # Cloud

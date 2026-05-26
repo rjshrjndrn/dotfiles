@@ -1,4 +1,5 @@
 {
+  "$schema": "https://unpkg.com/@aliou/pi-guardrails@0.12.1/schema.json",
   "enabled": true,
   "features": {
     "policies": true,
@@ -6,7 +7,6 @@
   },
   "permissionGate": {
     "requireConfirmation": true,
-    "explainCommands": true,
     "customPatterns": [
       {
         "pattern": "terraform apply",
