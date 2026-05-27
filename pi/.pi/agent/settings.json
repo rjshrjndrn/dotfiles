@@ -7,12 +7,14 @@
     "npm:pi-acm",
     "npm:pi-auth-profiles",
     "npm:pi-boundary",
-    "npm:pi-themes",
     "npm:@rjshrjndrn/pi-fetch",
     "npm:pi-caveman",
     "git:github.com/igor-makarov/pi-mcp-adapter",
     "npm:pi-gitnexus",
     "git:github.com/minghinmatthewlam/pi-subagents"
+  ],
+  "skills": [
+    "~/private-skills"
   ],
   "compaction": {
     "enabled": true
