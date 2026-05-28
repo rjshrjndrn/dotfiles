@@ -1,118 +1,61 @@
 # vim: set ft=bash:
+
+###############################################################################
+# SSH & Remote Access
+###############################################################################
+
 function sk() {
   local org=${1:-curr}
   eval $(ssh-agent -s) >/dev/null
   find ~/.cred/${org} -maxdepth 1 -type f -iname "*.pem" -exec ssh-add {} \; &>/dev/null
 }
 
-function k3c() {
-  k3d create cluster $1 --k3s-server-arg --no-deploy --k3s-server-arg traefik --network kubelocal --k3s-server-arg --no-deploy --k3s-server-arg local-storage --k3s-server-arg --kubelet-arg --k3s-server-arg containerd=/run/k3s/containerd/containerd.sock --api-port ${2:-16433} --image rancher/k3s:v1.0.1
-}
-function k3g() {
-  k3d kubeconfig get $1 -o ~/.k3d/kube/$1
-  sleep .5
-  export KUBECONFIG=~/.k3d/kube/$1
-}
+alias ssh='ssh -A'
+alias nssh='ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"'
 
-## Utilities
-
-function sendfile() {
-  local timeout=300 token file
-
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-    -t)
-      timeout="$2"
-      shift 2
-      ;;
-    *) break ;;
-    esac
-  done
-
-  if [[ $# -eq 1 ]]; then
-    token="$(openssl rand -hex 10)"
-    file="$1"
-  elif [[ $# -eq 2 ]]; then
-    file="$1"
-    token="$2"
-  else
-    echo "Usage: sendfile [-t timeout] <file> [token]"
+function nscp() {
+  local user=$1
+  if [[ $# -eq 0 ]]; then
+    echo "Usage: nscp <source> <destination>"
     return 1
   fi
-  echo "curl https://send.rjsh.me/${token} -o $(basename "$file")"
-  curl -X POST "https://send.rjsh.me/${token}?timeout=${timeout}" --data-binary @"$file"
+  scp -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false" "${user}@${*}"
 }
 
-alias cno='curl https://naas.isalman.dev/no'
-
-function tdg() {
-  directory=$(realpath "$(git rev-parse --git-common-dir)/../")
-  td -w "$directory" $@
+nmosh() {
+  mosh --ssh='ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"' -p 60001 "$1"
 }
 
-function csh() {
-  curl cheat.sh/$1
+nsr() { nssh rajeshr@$1 }
+nsu() { nssh ubuntu@$1 }
+nso() { nssh ops@$1 }
+
+############################################
+# ssh into dedicated server using Tailscale
+# If arg given: ssh that as name
+# Else: list all instances via fzf
+############################################
+function nsud() {
+  local name=$1
+  if [[ -n "$name" ]]; then
+    local ip
+    ip=$(ts status | grep "$1" | awk '{print $1}')
+    nsu "$ip"
+    return
+  fi
+  nsu "$(ts status | fzf | awk '{print $1}')"
 }
 
-function gps() {
-  gopass otp -c $1 $(gopass $1) >/dev/null
-}
-alias ek='export KUBECONFIG='
-alias m='mkdir -p'
-alias clea='clear'
-alias ll='ls -alF'
-alias la='ls -A'
-alias l='ls -CF'
-alias cx='chmod +x'
-alias po='podman'
-alias p='pi'
-alias pr='pi -r'
-alias gw=greywall # sandboxing tool for cli tools: # https://github.com/GreyhavenHQ/greyproxy
-alias sovp='gps svpn; sudo openvpn --config ~/.cred/sunbird-staging.ovpn --auth-user-pass ~/.cred/ntp/vpn'
-alias ovp="gps svpn; docker run -it --rm -e JENKINS_ADDR=10.20.0.9:8080 --privileged -p 8081:8080 -v ${HOME}/.cred/sunbird-staging.ovpn:/tmp/l.ovpn:ro -v ${HOME}/.cred/ntp/vpn:/tmp/vpn:ro rjshrjndrn/openvpn:latest /bin/sh -c '/tmp/socat.sh; /usr/sbin/openvpn --config /tmp/l.ovpn --auth-user-pass /tmp/vpn --ask-pass' "
-alias sovpd='gps dvpn; sudo openvpn --config ~/.cred/sunbird-dev.ovpn --auth-user-pass ~/.cred/ntp/vpn'
-alias ovpd="gps dvpn; docker run -it --rm -e JENKINS_ADDR=10.20.0.14:443 --privileged -p 443:8080 -v ${HOME}/.cred/sunbird-dev.ovpn:/tmp/l.ovpn:ro -v ${HOME}/.cred/ntp/vpn:/tmp/vpn:ro rjshrjndrn/openvpn:latest /bin/sh -c '/tmp/socat.sh; /usr/sbin/openvpn --config /tmp/l.ovpn --auth-user-pass /tmp/vpn --ask-pass' "
-alias sovpl='gps lvpn; sudo openvpn --config ~/.cred/loadtest.ovpn --auth-user-pass ~/.cred/ntp/vpn'
-alias ovpl="gps lvpn; docker run -it --rm -e JENKINS_ADDR=27.0.0.11:8080 --privileged -p 8082:8080 -v ${HOME}/.cred/loadtest.ovpn:/tmp/l.ovpn:ro -v ${HOME}/.cred/ntp/vpn:/tmp/vpn:ro rjshrjndrn/openvpn:latest /bin/sh -c '/tmp/socat.sh; /usr/sbin/openvpn --config /tmp/l.ovpn --auth-user-pass /tmp/vpn --ask-pass' "
-alias vn='nvim -u ~/.essential.vim -N'
-# alias vim='/usr/bin/nvim -u ~/.config/nvim/minimal.vim'
-alias vim='nvim'
-alias vimm='nvim Makefile'
-# alias vim='NVIM_APPNAME=nvim-lazytest nvim'
-alias vi='nvim'
-alias v=nvim
-alias scratch='/usr/bin/nvim -u ~/.config/nvim/minimal.vim -c Scratch'
-alias gvim='neovide -u ~/.config/nvim/minimal.vim'
-alias neovide='neovide --fork'
-alias sv='cat | vim'
-alias x='xdg-open'
+###############################################################################
+# Tailscale
+###############################################################################
 
-alias mc="vim ~/.config/mise/config.toml"
-alias muu="mise up"
-alias mug="mise use -g"
-alias mu="mise use"
+alias ts=tailscale
 
-## Virtualization
-alias lc='limactl'
-alias lcs='limactl start'
-alias lcss='limactl stop'
-alias lcsh='limactl shell'
+###############################################################################
+# Git — Core
+###############################################################################
 
-## Generic linux shortcuts
-alias rmf='rm -rf'
-
-# alias emacs='emacs --no-window-system'
-
-# function vim(){
-#     [[ -f Session.vim ]] && nvim -S || nvim -c Obsession $@
-# }
-alias nvd='nvim -d'
-# Tmux alias
-alias t='tmux -u'
-alias ta="tmux -u attach -t $@"
-alias tl='tmux -u ls'
-alias tc="tmux -u new -s $@"
-# git aliases
 alias g='git'
 alias gi='git init .'
 alias gb='git branch'
@@ -123,14 +66,49 @@ alias gsi='git status --ignored'
 alias gsn='git status --untracked-files=no'
 alias gcp='git cherry-pick'
 alias gc='git checkout'
+alias gst='git stash'
+alias gstp='git stash pop'
+alias grb='git rebase'
+alias grc='git rebase --continue'
+alias grs='git rebase --skip'
+alias lg='lazygit'
+
+glt() {
+  git log --grep=TODO: --oneline
+}
+
+function getRemoteBranch() {
+  git status -sb 2>/dev/null | cut -d '/' -f2
+}
+
+###############################################################################
+# Git — Push / Pull
+###############################################################################
+
 alias gpl='git pull --rebase'
+alias gplo='git pull --rebase origin heads/$(git rev-parse --abbrev-ref HEAD | rev | cut -d '/' -f1 | rev)'
+alias gplr='git pull --rebase rjshrjndrn $(git rev-parse --abbrev-ref HEAD)'
+
+function gpo() {
+  args="$*"
+  if [[ $args != "" ]]; then
+    # Eval to expand variables with space. Else entire string will be taken as single string
+    eval git push origin $args
+  else
+    git push origin $(git rev-parse --abbrev-ref HEAD)
+  fi
+}
+alias gpof='gpo --force-with-lease'
+alias gpr='git push rjshrjndrn $(git rev-parse --abbrev-ref HEAD)'
+alias gpso='git push --set-upstream origin $(git rev-parse --abbrev-ref HEAD)'
+alias gpsof='gpo --force-with-lease'
+alias gpsr='git push --set-upstream rjshrjndrn HEAD:$(git rev-parse --abbrev-ref HEAD)'
+
+###############################################################################
+# Git — Worktree
+###############################################################################
+
 alias gwl='git worktree list'
-
-## CLOUD TOOLS
-alias sis="scw instance server"
-
-## Secrets
-alias gscan='ggshield secret scan --all-secrets path --recursive .'
 
 #######################################
 # Clone a bare repo with repo name
@@ -276,7 +254,6 @@ function gwr() {
   echo $branch
   git branch -D "$branch"
 }
-# alias gl='git log --graph --pretty=format:"%C(magenta)%h %C(white) %an  %ar%C(blue)  %D%n%s%n"'
 
 #######################################
 # cd to worktree by branch name or folder name
@@ -338,107 +315,25 @@ function gwc() {
   fi
 }
 
-alias lg="lazygit "
-function getRemoteBranch() {
-  git status -sb 2>/dev/null | cut -d '/' -f2
-}
-alias gplo='git pull --rebase origin heads/$(git rev-parse --abbrev-ref HEAD | rev | cut -d '/' -f1 | rev)'
-alias gplr='git pull --rebase rjshrjndrn $(git rev-parse --abbrev-ref HEAD)'
-function gpo() {
-  args="$*"
-  if [[ $args != "" ]]; then
-    # Eval to expand variables with space. Else entire string will be taken as single string
-    eval git push origin $args
-  else
-    git push origin $(git rev-parse --abbrev-ref HEAD)
-  fi
-}
-alias gpof="gpo --force-with-lease"
-alias gpr='git push rjshrjndrn $(git rev-parse --abbrev-ref HEAD)'
-alias gpso='git push --set-upstream origin $(git rev-parse --abbrev-ref HEAD)'
-alias gpsof="gpo --force-with-lease"
-alias gpsr='git push --set-upstream rjshrjndrn HEAD:$(git rev-parse --abbrev-ref HEAD)'
-alias grc='git rebase --continue'
-alias grs='git rebase --skip'
-alias grb='git rebase'
-alias gst='git stash'
-alias gstp='git stash pop'
-# alias glo='git log --graph --pretty=oneline --abbrev-commit'
-alias tf="terragrunt"
-alias pu="pulumi"
-alias hn='hugo new'
-
-# hub alias
-# Sourcing hub for git
-# eval "$(hub alias -s)"
-alias at='docker run --rm -it -v $(pwd):/work -w /work -urajeshr ansible_ubuntu:16.04 bash'
-# simpl3 git todo
-# gt() {
-#   git commit --allow-empty -m "TODO: $*"
-# }
-
-glt() {
-  git log --grep=TODO: --oneline
+function tdg() {
+  directory=$(realpath "$(git rev-parse --git-common-dir)/../")
+  td -w "$directory" $@
 }
 
-#shell alias
-alias cl='clear'
-alias ssh='ssh -A'
-# skiping knownkeys saving
-alias nssh='ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"'
-# alias nscp='scp -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"'
+###############################################################################
+# Kubernetes & Helm
+###############################################################################
 
-function nscp() {
-  local user=$1
-  if [[ $# -eq 0 ]]; then
-    echo "Usage: nscp <source> <destination>"
-    return 1
-  fi
-  scp -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false" "${user}@${*}"
+function k3c() {
+  k3d create cluster $1 --k3s-server-arg --no-deploy --k3s-server-arg traefik --network kubelocal --k3s-server-arg --no-deploy --k3s-server-arg local-storage --k3s-server-arg --kubelet-arg --k3s-server-arg containerd=/run/k3s/containerd/containerd.sock --api-port ${2:-16433} --image rancher/k3s:v1.0.1
+}
+function k3g() {
+  k3d kubeconfig get $1 -o ~/.k3d/kube/$1
+  sleep .5
+  export KUBECONFIG=~/.k3d/kube/$1
 }
 
-nmosh() {
-  mosh --ssh='ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking false"' -p 60001 "$1"
-}
-
-jt() {
-  nvim $1**
-}
-nsr() {
-  nssh rajeshr@$1
-}
-nsu() {
-  nssh ubuntu@$1
-}
-nso() {
-  nssh ops@$1
-}
-
-############################################
-# ssh in to dedicated server using tailscale
-# if arg given, it will ssh that as name
-# else list down all instances
-############################################
-function nsud() {
-  local name=$1
-  if [[ -n "$name" ]]; then
-    local ip
-    ip=$(ts status | grep "$1" | awk '{print $1}')
-    nsu "$ip"
-    return
-  fi
-  nsu "$(ts status | fzf | awk '{print $1}')" # login to dedicated
-}
-# ansible aliases
-alias ap='ansible-playbook'
-alias apc='ansible-playbook -c local'
-alias apcc="ansible-playbook -i $2 $1 --syntax-check -e 'hosts=dummy'"
-alias apn='ansible-playbook -i ntp_preprod_inventory/env/ --vault-password-file=ntp_preprod_inventory/pass_file  -e ansible_ssh_user=rajeshr'
-
-alias yay="yay --sudoloop"
-# Docker
-alias d='docker'
-alias dr='docker run'
+alias ek='export KUBECONFIG='
 alias k='kubectl'
 alias kg='kubectl get'
 alias kga='kubectl get all'
@@ -458,38 +353,91 @@ alias kfm='kubeconform -strict -verbose -schema-location default \
 -schema-location https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json \
 -schema-location https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/{{.NormalizedKubernetesVersion}}/{{.ResourceKind}}.json \
 -schema-location https://json.schemastore.org/{{.ResourceKind}}.json'
-# alias curl=curlie
-alias mcurl='curl -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0"'
-alias cat="bat --style=plain --paging=never --wrap=never"
-alias less="bat --paging=always"
 
 alias hi='helm upgrade --install'
 alias ht='helm template'
-alias civo="docker run -it --rm -v ${HOME}/.cred/civo/civo.json:/.civo.json civo/cli:latest"
 
+###############################################################################
+# Docker & Containers
+###############################################################################
+
+alias d='docker'
+alias dr='docker run'
+alias po='podman'
+alias at='docker run --rm -it -v $(pwd):/work -w /work -urajeshr ansible_ubuntu:16.04 bash'
+alias civo="docker run -it --rm -v ${HOME}/.cred/civo/civo.json:/.civo.json civo/cli:latest"
 alias db=distrobox
 function dbx() {
   distrobox enter "$@"
 }
 
-alias xc='xclip -sel clip'
+###############################################################################
+# Infrastructure — Terraform / Pulumi / Ansible / Hugo
+###############################################################################
 
-function uf() {
-  url=$(echo $1 | rev | cut -d'/' -f 1 | rev)
-  echo " curl --upload-file $url https://transfer.sh/$url -H 'Max-Downloads: 1' "
-  curl --upload-file $url https://transfer.sh/$url -H 'Max-Downloads: 1'
+alias tf='terragrunt'
+alias pu='pulumi'
+
+# Ansible
+alias ap='ansible-playbook'
+alias apc='ansible-playbook -c local'
+alias apcc="ansible-playbook -i $2 $1 --syntax-check -e 'hosts=dummy'"
+alias apn='ansible-playbook -i ntp_preprod_inventory/env/ --vault-password-file=ntp_preprod_inventory/pass_file  -e ansible_ssh_user=rajeshr'
+
+# Hugo
+alias hn='hugo new'
+
+###############################################################################
+# Editor — Neovim
+###############################################################################
+
+alias vn='nvim -u ~/.essential.vim -N'
+# alias vim='/usr/bin/nvim -u ~/.config/nvim/minimal.vim'
+alias vim='nvim'
+alias vimm='nvim Makefile'
+# alias vim='NVIM_APPNAME=nvim-lazytest nvim'
+alias vi='nvim'
+alias v=nvim
+alias scratch='/usr/bin/nvim -u ~/.config/nvim/minimal.vim -c Scratch'
+alias gvim='neovide -u ~/.config/nvim/minimal.vim'
+alias neovide='neovide --fork'
+alias sv='cat | vim'
+alias nvd='nvim -d'
+
+jt() {
+  nvim $1**
 }
+
+###############################################################################
+# Shell — Core Utilities
+###############################################################################
+
+alias cl='clear'
+alias clea='clear'
+alias clear='clear -x'
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+alias m='mkdir -p'
+alias rmf='rm -rf'
+alias cx='chmod +x'
+alias x='xdg-open'
+alias xc='xclip -sel clip'
+alias cat="bat --style=plain --paging=never --wrap=never"
+alias less="bat --paging=always"
+
+###############################################################################
+# Shell — Navigation (z / zz / fzf)
+###############################################################################
 
 unalias z 2>/dev/null
 z() {
   [ $# -gt 0 ] && zshz "$*" && return
   cd "$(zshz -l 2>&1 | fzf --height 40% --nth 2.. --reverse --inline-info +s --tac --query "${*##-* }" | sed 's/^[0-9,.]* *//')"
-  # [ $# -gt 0 ] && _z "$*" && return
-  # cd "$(_z -l 2>&1 | fzf --height 40% --nth 2.. --reverse --inline-info +s --tac --query "${*##-* }" | sed 's/^[0-9,.]* *//')"
 }
 
 #############################################
-# Interactive fzf based directory switcher
+# Interactive fzf-based directory switcher
 # pass --git to also show git repos in output
 #############################################
 function zz() {
@@ -599,18 +547,46 @@ function zz() {
 }
 
 alias zzf='zz --files'
+alias lw='cd ~/llm-wiki'
 
-alias hc='atuin history -c'
+###############################################################################
+# Tmux
+###############################################################################
 
-alias gps=gopass
-alias gpsc="gopass -c"
-alias gpsoc="gopass otp -c"
+alias t='tmux -u'
+alias ta="tmux -u attach -t $@"
+alias tl='tmux -u ls'
+alias tc="tmux -u new -s $@"
 
-alias go_build="go build -ldflags "-s -w""
+###############################################################################
+# Secrets & Passwords (gopass)
+###############################################################################
 
-alias y=yazi
+# NOTE: gps function (OTP copy helper) used by VPN aliases below
+function gps() {
+  gopass otp -c $1 $(gopass $1) >/dev/null
+}
+alias gpsc='gopass -c'
+alias gpsoc='gopass otp -c'
+alias gscan='ggshield secret scan --all-secrets path --recursive .'
 
-alias or-unset-aws="unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_SECURITY_TOKEN"
+###############################################################################
+# VPN
+###############################################################################
+
+alias sovp='gps svpn; sudo openvpn --config ~/.cred/sunbird-staging.ovpn --auth-user-pass ~/.cred/ntp/vpn'
+alias ovp="gps svpn; docker run -it --rm -e JENKINS_ADDR=10.20.0.9:8080 --privileged -p 8081:8080 -v ${HOME}/.cred/sunbird-staging.ovpn:/tmp/l.ovpn:ro -v ${HOME}/.cred/ntp/vpn:/tmp/vpn:ro rjshrjndrn/openvpn:latest /bin/sh -c '/tmp/socat.sh; /usr/sbin/openvpn --config /tmp/l.ovpn --auth-user-pass /tmp/vpn --ask-pass' "
+alias sovpd='gps dvpn; sudo openvpn --config ~/.cred/sunbird-dev.ovpn --auth-user-pass ~/.cred/ntp/vpn'
+alias ovpd="gps dvpn; docker run -it --rm -e JENKINS_ADDR=10.20.0.14:443 --privileged -p 443:8080 -v ${HOME}/.cred/sunbird-dev.ovpn:/tmp/l.ovpn:ro -v ${HOME}/.cred/ntp/vpn:/tmp/vpn:ro rjshrjndrn/openvpn:latest /bin/sh -c '/tmp/socat.sh; /usr/sbin/openvpn --config /tmp/l.ovpn --auth-user-pass /tmp/vpn --ask-pass' "
+alias sovpl='gps lvpn; sudo openvpn --config ~/.cred/loadtest.ovpn --auth-user-pass ~/.cred/ntp/vpn'
+alias ovpl="gps lvpn; docker run -it --rm -e JENKINS_ADDR=27.0.0.11:8080 --privileged -p 8082:8080 -v ${HOME}/.cred/loadtest.ovpn:/tmp/l.ovpn:ro -v ${HOME}/.cred/ntp/vpn:/tmp/vpn:ro rjshrjndrn/openvpn:latest /bin/sh -c '/tmp/socat.sh; /usr/sbin/openvpn --config /tmp/l.ovpn --auth-user-pass /tmp/vpn --ask-pass' "
+
+###############################################################################
+# AWS & OpenReplay
+###############################################################################
+
+alias or-unset-aws='unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_SECURITY_TOKEN'
+
 function or-aws() {
   otp=$(gopass otp -o work/ora)
   mfa "$otp"
@@ -618,6 +594,7 @@ function or-aws() {
   unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_SECURITY_TOKEN
   export AWS_PROFILE=default-tmp
 }
+
 function or-manual() {
   echo "unsetting current session"
   unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_SECURITY_TOKEN
@@ -638,17 +615,6 @@ function aws-ssm() {
   # Parse remaining parameters
   while [[ $# -gt 0 ]]; do
     case $1 in
-    # 1. **`--arg=value`** format (lines 292-295):
-    #    - Extracts the command after the `=` sign using parameter expansion `${1#*=}`
-    #    - Shifts to the next argument
-    #
-    # 2. **`--arg value`** format (lines 296-298):
-    #    - Takes the command from the next argument (`$2`)
-    #    - Shifts by 2 positions to skip both the option and its value
-    #
-    # This allows users to specify a custom command to run via AWS SSM in either format:
-    # - `aws-ssm instance-id --arg="ls -la"`
-    # - `aws-ssm instance-id --arg "ls -la"`
     --arg=*)
       command="${1#*=}"
       shift
@@ -692,10 +658,88 @@ function aws-ssm() {
   eval "$aws_cmd"
 }
 
-alias ts=tailscale
-alias llm='llm -m github_copilot/gpt-4o --system "you'\''re seasoned devops architect. Keep the conversation short and concise. Assume the user is well versed in devops. So skip basic howto, unless asked and give direct answers."'
-alias oc="opencode"
-alias ocs="opencode serve --port 4096"
-alias occ="vim ~/.config/opencode/opencode.jsonc"
+## Cloud (Scaleway)
+alias sis='scw instance server'
 
-alias clear='clear -x'
+###############################################################################
+# Lima / Virtualization
+###############################################################################
+
+alias lc='limactl'
+alias lcs='limactl start'
+alias lcss='limactl stop'
+alias lcsh='limactl shell'
+
+###############################################################################
+# Mise
+###############################################################################
+
+alias mc='vim ~/.config/mise/config.toml'
+alias muu='mise up'
+alias mug='mise use -g'
+alias mu='mise use'
+
+###############################################################################
+# LLM & AI Tools
+###############################################################################
+
+alias llm='llm -m github_copilot/gpt-4o --system "you'\''re seasoned devops architect. Keep the conversation short and concise. Assume the user is well versed in devops. So skip basic howto, unless asked and give direct answers."'
+alias oc='opencode'
+alias ocs='opencode serve --port 4096'
+alias occ='vim ~/.config/opencode/opencode.jsonc'
+alias p='pi'
+alias pr='pi -r'
+
+###############################################################################
+# Utilities & Web
+###############################################################################
+
+function sendfile() {
+  local timeout=300 token file
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    -t)
+      timeout="$2"
+      shift 2
+      ;;
+    *) break ;;
+    esac
+  done
+
+  if [[ $# -eq 1 ]]; then
+    token="$(openssl rand -hex 10)"
+    file="$1"
+  elif [[ $# -eq 2 ]]; then
+    file="$1"
+    token="$2"
+  else
+    echo "Usage: sendfile [-t timeout] <file> [token]"
+    return 1
+  fi
+  echo "curl https://send.rjsh.me/${token} -o $(basename "$file")"
+  curl -X POST "https://send.rjsh.me/${token}?timeout=${timeout}" --data-binary @"$file"
+}
+
+function uf() {
+  url=$(echo $1 | rev | cut -d'/' -f 1 | rev)
+  echo " curl --upload-file $url https://transfer.sh/$url -H 'Max-Downloads: 1' "
+  curl --upload-file $url https://transfer.sh/$url -H 'Max-Downloads: 1'
+}
+
+function csh() {
+  curl cheat.sh/$1
+}
+
+alias cno='curl https://naas.isalman.dev/no'
+alias mcurl='curl -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0"'
+
+###############################################################################
+# Misc / System
+###############################################################################
+
+alias yay='yay --sudoloop'
+alias gw=greywall  # sandboxing tool for cli tools: https://github.com/GreyhavenHQ/greyproxy
+alias go_build='go build -ldflags "-s -w"'
+alias y=yazi
+alias hc='atuin history -c'
