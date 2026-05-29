@@ -121,7 +121,7 @@ sops = "latest"
 gopass = "latest"
 vals = "latest"
 doppler = "latest"
-# infisical = "latest"
+infisical = "latest"
 
 ###############
 # IAC
