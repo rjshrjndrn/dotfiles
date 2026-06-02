@@ -114,6 +114,8 @@
                   [:##k :up_arrow]
                   [:##l :right_arrow]
                   [:##u :!Ctab]
+                  [:##semicolon :!Ctab]
+                  [:##quote :!CStab]
                   [:##i :!Cspacebar]
                   [:comma :page_down]
                   [:period :page_up]
