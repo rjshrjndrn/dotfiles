@@ -39,126 +39,30 @@ package_manager = "bun"
 
 [tools]
 ###############
-# mise
+# Mise (meta)
 ###############
 usage = "latest" # To generate completions.
 "github:jdx/mise" = "latest"
-# Alternative to tmate
-# Usage: upterm host
-"github:owenthereal/upterm" = "latest"
 
 ###############
-# Cloud
+# Languages & Runtimes
 ###############
-aws-cli = { version = "latest", symlink_bins = "true" }
-localstack = "latest"
-azure-cli = "latest"
-scaleway = "latest"
-
-# Tools
-"github:zyedidia/eget" = "latest"
-"github:rjshrjndrn/templater" = "latest"
-
-opencode = "latest"
-"npm:@fission-ai/openspec" = "latest"
-"github:block/goose" = "latest"
-# Proxy to filter permissions for an app
-"github:GreyhavenHQ/greywall" = "latest"
-# reduce context tokens
-"npm:context-mode" = "latest"
-# MCP
-"github:lightpanda-io/browser" = "latest"
-
 go = "latest"
-jq = "latest"
-yq = "latest"
-ripgrep = "latest"
-bat = "latest"
-
-lazygit = "latest"
-delta = "latest"
-
-# terminal tools
-direnv = "latest"
-tmux = "latest"
-atuin = "latest"
-starship = "latest"
-fzf = "latest"
-"npm:@earendil-works/pi-coding-agent" = "latest"
-
-# project management tools
-
-###############
-# DBs
-###############
-duckdb = "latest"
-
-###############
-# k8s
-###############
-k9s = "latest"
-stern = "latest"
-kubectl = "latest"
-kustomize = "latest"
-k3d = "latest"
-argo = "latest"
-flux2 = "latest"
-helm = "latest"
-helm-diff = "latest"
-kubeconform = "latest"
-cilium-cli = "latest"
-
-###############
-# Container/VM
-###############
-lima = "latest"
-podman = {version = "latest", rename_exe = "podman"}
-
-###############
-# Security
-###############
-trivy = "latest"
-age = "latest"
-sops = "latest"
-gopass = "latest"
-vals = "latest"
-doppler = "latest"
-infisical = "latest"
-
-###############
-# IAC
-###############
-opentofu = "latest"
-terraform = "latest"
-terragrunt = "latest"
-packer = "latest"
-
-
-###############
-# Python items
-###############
-
-# llm install llm-github-copilot
-# llm github_copilot auth login
-"pipx:llm" = "latest"
-
+node = "24"
+rust = "latest"
 uv = "latest"
 
 ###############
-# Node items
+# Package Managers
 ###############
-
-node = "24"
 npm = "11"
 yarn = "latest"
 bun = "latest"
 
 ###############
-# LLM
+# AI & LLM
 ###############
-
 ollama = {version="latest", os=["mac"]}
-# gcloud = "latest"
 claude = { version = "latest", bin = "claude", platforms = """
 [linux-arm64]
 url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/{{ version }}/linux-arm64/claude"
@@ -176,14 +80,108 @@ url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d
 bin = "claude.exe"
 url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/{{ version }}/win32-x64/claude.exe"
 """, version_list_url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/latest" }
-github-cli = "latest"
-ggshield = "latest"
-ansible-core = "latest"
-depot = { version = "latest", exe = "depot" }
-rust = "latest"
+opencode = "latest"
+"github:block/goose" = "latest"
+"github:1jehuang/jcode" = { version = "latest", bin = "jcode"}
+"npm:@earendil-works/pi-coding-agent" = "latest"
+"npm:@fission-ai/openspec" = "latest"
 "npm:gitnexus" = "latest"
 "npm:omniroute" = "latest"
-croc = "latest"
+# llm install llm-github-copilot
+# llm github_copilot auth login
+"pipx:llm" = "latest"
+# Proxy to filter permissions for an app
+"github:GreyhavenHQ/greywall" = "latest"
+# Reduce context tokens
+"npm:context-mode" = "latest"
+# MCP browser
+"github:lightpanda-io/browser" = "latest"
+
+###############
+# Cloud
+###############
+aws-cli = { version = "latest", symlink_bins = "true" }
+localstack = "latest"
+azure-cli = "latest"
+scaleway = "latest"
+# gcloud = "latest"
+
+###############
+# Kubernetes
+###############
+k9s = "latest"
+stern = "latest"
+kubectl = "latest"
+kustomize = "latest"
+k3d = "latest"
+argo = "latest"
+flux2 = "latest"
+helm = "latest"
+helm-diff = "latest"
+kubeconform = "latest"
+cilium-cli = "latest"
 kubens = "latest"
-"github:1jehuang/jcode" = { version = "latest", bin = "jcode"}
+
+###############
+# Container / VM
+###############
+lima = "latest"
+podman = {version = "latest", rename_exe = "podman"}
+depot = { version = "latest", exe = "depot" }
+
+###############
+# Security
+###############
+trivy = "latest"
+age = "latest"
+sops = "latest"
+gopass = "latest"
+vals = "latest"
+doppler = "latest"
+infisical = "latest"
+ggshield = "latest"
+
+###############
+# IaC
+###############
+opentofu = "latest"
+terraform = "latest"
+terragrunt = "latest"
+packer = "latest"
+ansible-core = "latest"
+
+###############
+# Git
+###############
+lazygit = "latest"
+delta = "latest"
+github-cli = "latest"
+
+###############
+# Terminal / Shell
+###############
+direnv = "latest"
+tmux = "latest"
+atuin = "latest"
+starship = "latest"
+fzf = "latest"
+
+###############
+# CLI Utilities
+###############
+jq = "latest"
+yq = "latest"
+ripgrep = "latest"
+bat = "latest"
 fd = "latest"
+croc = "latest"
+"github:zyedidia/eget" = "latest"
+"github:rjshrjndrn/templater" = "latest"
+# Alternative to tmate
+# Usage: upterm host
+"github:owenthereal/upterm" = "latest"
+
+###############
+# Databases
+###############
+duckdb = "latest"
