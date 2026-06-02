@@ -38,6 +38,13 @@
         "https://mcp.linear.app/mcp"
       ],
       "lifecycle": "lazy"
+    },
+    "lp": {
+      "command": "lightpanda",
+      "args": [
+        "mcp"
+      ],
+      "lifecycle": "lazy"
     }
   }
 }

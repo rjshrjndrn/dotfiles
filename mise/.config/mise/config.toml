@@ -66,6 +66,8 @@ opencode = "latest"
 "github:GreyhavenHQ/greywall" = "latest"
 # reduce context tokens
 "npm:context-mode" = "latest"
+# MCP
+"github:lightpanda-io/browser" = "latest"
 
 go = "latest"
 jq = "latest"
@@ -184,3 +186,4 @@ rust = "latest"
 croc = "latest"
 kubens = "latest"
 "github:1jehuang/jcode" = { version = "latest", bin = "jcode"}
+fd = "latest"
