@@ -56,7 +56,7 @@ uv = "latest"
 ###############
 # Package Managers
 ###############
-npm = "11"
+"npm:npm" = "11"  # aqua:npm/cli backend broken (queries wrong package name)
 yarn = "latest"
 bun = "latest"
 
