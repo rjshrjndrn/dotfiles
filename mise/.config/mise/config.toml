@@ -23,6 +23,7 @@ neovim = "https://github.com/richin13/asdf-neovim"
 
 [settings]
 experimental = false
+use_versions_host = false  # mise-versions.jdx.dev caches stale nightly digests (e.g. lightpanda)
 
 # Add latency to mac terminal
 disable_backends = ["vfox"]
