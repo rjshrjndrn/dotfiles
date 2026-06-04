@@ -96,6 +96,9 @@ opencode = "latest"
 "npm:context-mode" = "latest"
 # MCP browser
 "github:lightpanda-io/browser" = "latest"
+# Pass things from cli to ai
+# fabric -y <yt url> --pattern extract-ideas
+"github:danielmiessler/fabric" = "latest"
 
 ###############
 # Cloud
