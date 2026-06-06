@@ -93,6 +93,8 @@ opencode = "latest"
 "github:GreyhavenHQ/greywall" = "latest"
 # Reduce context tokens
 "npm:context-mode" = "latest"
+# Transparent LLM context compression proxy
+"pipx:headroom-ai" = { version = "latest", extras = "all" }
 # MCP browser
 "github:lightpanda-io/browser" = "latest"
 # Pass things from cli to ai
