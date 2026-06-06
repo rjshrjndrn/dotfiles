@@ -93,7 +93,7 @@ export default function (pi: ExtensionAPI) {
     const args = [
       "proxy",
       "--port", String(proxyPort),
-      "--mode", "cache",                // freeze prior turns for max prefix-cache hits
+      "--mode", "token",                // compress prior turns for max token savings
       "--code-aware",                    // AST-based code compression
       "--intercept-tool-results",        // compress Read/bash tool results
       "--memory",                        // persistent cross-session memory
