@@ -16,7 +16,7 @@
     "omniroute": {
       "baseUrl": "http://localhost:20128/v1",
       "api": "openai-completions",
-      "apiKey": "ANTHROPIC_API_KEY",
+      "apiKey": "$ANTHROPIC_API_KEY",
       "models": [
         {
           "id": "cc/claude-opus-4-7",
