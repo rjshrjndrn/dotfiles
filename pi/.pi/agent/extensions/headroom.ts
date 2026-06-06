@@ -89,8 +89,16 @@ export default function (pi: ExtensionAPI) {
       return;
     }
 
-    // Build proxy args
-    const args = ["proxy", "--port", String(proxyPort), "--no-telemetry"];
+    // Build proxy args with optimal defaults for pi
+    const args = [
+      "proxy",
+      "--port", String(proxyPort),
+      "--mode", "cache",                // freeze prior turns for max prefix-cache hits
+      "--code-aware",                    // AST-based code compression
+      "--intercept-tool-results",        // compress Read/bash tool results
+      "--no-subscription-tracking",      // pi doesn't use Claude Code subscription
+      "--no-telemetry",
+    ];
     if (process.env.HEADROOM_LOG_FILE) {
       args.push("--log-file", process.env.HEADROOM_LOG_FILE);
     }
