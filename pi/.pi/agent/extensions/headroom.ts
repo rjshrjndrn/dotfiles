@@ -96,6 +96,8 @@ export default function (pi: ExtensionAPI) {
       "--mode", "cache",                // freeze prior turns for max prefix-cache hits
       "--code-aware",                    // AST-based code compression
       "--intercept-tool-results",        // compress Read/bash tool results
+      "--memory",                        // persistent cross-session memory per project
+      "--memory-storage", "project",     // isolate memory per project directory
       "--no-subscription-tracking",      // pi doesn't use Claude Code subscription
       "--no-telemetry",
     ];
