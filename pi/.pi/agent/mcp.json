@@ -45,6 +45,24 @@
         "mcp"
       ],
       "lifecycle": "lazy"
+    },
+    "tinyfish": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://agent.tinyfish.ai/mcp"
+      ],
+      "lifecycle": "lazy"
+    },
+    "tinyfish-docs": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://docs.tinyfish.ai/mcp"
+      ],
+      "lifecycle": "lazy"
     }
   }
 }
