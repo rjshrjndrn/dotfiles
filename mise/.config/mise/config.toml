@@ -85,7 +85,7 @@ opencode = "latest"
 "npm:@earendil-works/pi-coding-agent" = "latest"
 "npm:@fission-ai/openspec" = "latest"
 "npm:gitnexus" = "latest"
-"npm:omniroute" = "latest"
+# "npm:omniroute" = "latest"
 # llm install llm-github-copilot
 # llm github_copilot auth login
 "pipx:llm" = "latest"
