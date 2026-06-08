@@ -548,6 +548,7 @@ function zz() {
 
 alias zzf='zz --files'
 alias lw='cd ~/llm-wiki'
+alias dot='cd ~/dotfiles'
 
 ###############################################################################
 # Tmux
