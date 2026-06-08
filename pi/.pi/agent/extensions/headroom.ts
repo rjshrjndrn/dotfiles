@@ -16,7 +16,10 @@
  */
 
 import { spawn, type ChildProcess } from "node:child_process";
+import { openSync, closeSync, appendFileSync } from "node:fs";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+
+const DEFAULT_LOG_FILE = "/tmp/headroom.log";
 
 const DEFAULT_PORT = 8787;
 const HEALTH_POLL_MS = 200;
@@ -108,15 +111,23 @@ export default function (pi: ExtensionAPI) {
       args.push(...process.env.HEADROOM_EXTRA_ARGS.split(" ").filter(Boolean));
     }
 
-    // Spawn the proxy — silence all output to avoid poisoning the TUI
+    // Spawn the proxy — log output to file instead of TUI
+    const logFile = process.env.HEADROOM_LOG_FILE_EXT || DEFAULT_LOG_FILE;
+    const logFd = openSync(logFile, "a");
+    const timestamp = new Date().toISOString();
+    appendFileSync(logFd, `\n--- headroom proxy started at ${timestamp} ---\n`);
+
     proxyProcess = spawn(headroomPath, args, {
-      stdio: ["ignore", "ignore", "ignore"],
+      stdio: ["ignore", logFd, logFd],
       detached: false,
       env: {
         ...process.env,
         ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
       },
     });
+
+    // Close fd in parent — child inherited it
+    closeSync(logFd);
 
     proxyProcess.on("error", () => {
       proxyProcess = null;
