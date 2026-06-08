@@ -39,6 +39,14 @@
       ],
       "lifecycle": "lazy"
     },
+    "headroom": {
+      "command": "headroom",
+      "args": [
+        "mcp",
+        "serve"
+      ],
+      "lifecycle": "lazy"
+    },
     "lp": {
       "command": "lightpanda",
       "args": [
