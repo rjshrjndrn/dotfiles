@@ -1,5 +1,5 @@
 {
-  "lastChangelogVersion": "0.78.1",
+  "lastChangelogVersion": "0.79.1",
   "defaultProvider": "anthropic",
   "defaultModel": "claude-opus-4-6",
   "packages": [
@@ -14,7 +14,8 @@
     "git:github.com/minghinmatthewlam/pi-subagents"
   ],
   "skills": [
-    "~/private-skills"
+    "~/private-skills",
+    "~/.agents/skills"
   ],
   "compaction": {
     "enabled": true

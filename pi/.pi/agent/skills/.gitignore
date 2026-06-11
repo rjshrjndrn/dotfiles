@@ -1,0 +1,5 @@
+# openspec-generated (symlinks to ~/.pi/skills/)
+openspec-*
+
+# omarchy-managed (symlink to ~/.local/share/omarchy/)
+omarchy
