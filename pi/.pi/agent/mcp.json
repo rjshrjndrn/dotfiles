@@ -13,6 +13,17 @@
       ],
       "lifecycle": "lazy"
     },
+    "alpaca": {
+      "command": "uvx",
+      "args": [
+        "alpaca-mcp-server"
+      ],
+      "env": {
+        "ALPACA_API_KEY": "${APCA_API_KEY_ID}",
+        "ALPACA_SECRET_KEY": "${APCA_API_SECRET_KEY}"
+      },
+      "lifecycle": "lazy"
+    },
     "notion": {
       "command": "npx",
       "args": [
