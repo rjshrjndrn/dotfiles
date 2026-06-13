@@ -36,8 +36,8 @@
     "thinkingText":      "comment",
 
     "selectedBg":        "bgHighlight",
-    "userMessageBg":     "bgFloat",
-    "userMessageText":   "",
+    "userMessageBg":     "#2a1a3a",
+    "userMessageText":   "#ffffff",
     "customMessageBg":   "bgPanel",
     "customMessageText": "",
     "customMessageLabel": "amber",
