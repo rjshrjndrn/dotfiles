@@ -3,8 +3,8 @@
  *
  * Usage: /sub create the proposal with this design
  *
- * Injects a hidden message instructing the LLM to spawn a sub-agent
- * with the user's task. The boilerplate instructions are invisible in the UI.
+ * Shows the user's prompt in history, then steers the LLM with hidden
+ * instructions to spawn a sub-agent immediately.
  */
 
 import type { ExtensionAPI } from "@anthropic-ai/claude-code";
@@ -19,14 +19,15 @@ export default function (pi: ExtensionAPI) {
 				return;
 			}
 
+			// Visible user message — shows in history
+			pi.sendUserMessage(`/sub ${task}`);
+
+			// Hidden instructions — steered after user message, invisible in UI
 			pi.sendMessage(
 				{
 					customType: "sub-agent-delegate",
 					content: [
-						`Spawn a sub-agent immediately for this task. No planning, no confirmation.`,
-						``,
-						`Task: ${task}`,
-						``,
+						`Spawn a sub-agent immediately for the task above. No planning, no confirmation.`,
 						`Rules:`,
 						`- Call spawn_agent right now. Do NOT ask for confirmation.`,
 						`- agent_type: "explorer" for questions/research, "worker" for creating/building.`,
@@ -38,7 +39,6 @@ export default function (pi: ExtensionAPI) {
 					display: false,
 				},
 				{
-					triggerTurn: true,
 					deliverAs: "steer",
 				},
 			);
