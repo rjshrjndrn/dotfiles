@@ -745,3 +745,4 @@ alias gw=greywall  # sandboxing tool for cli tools: https://github.com/Greyhaven
 alias go_build='go build -ldflags "-s -w"'
 alias y=yazi
 alias hc='atuin history -c'
+alias stow='stow --no-folding'
