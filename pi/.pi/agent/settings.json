@@ -1,10 +1,9 @@
 {
-  "lastChangelogVersion": "0.79.1",
+  "lastChangelogVersion": "0.79.3",
   "defaultProvider": "anthropic",
   "defaultModel": "claude-opus-4-6",
   "packages": [
     "npm:@aliou/pi-guardrails",
-    "npm:pi-acm",
     "npm:pi-auth-profiles",
     "npm:pi-boundary",
     "npm:@rjshrjndrn/pi-fetch",
@@ -15,7 +14,8 @@
   ],
   "skills": [
     "~/private-skills",
-    "~/.agents/skills"
+    "~/.agents/skills",
+    "~/Documents/Projects/stock-strategies/skills"
   ],
   "compaction": {
     "enabled": true
