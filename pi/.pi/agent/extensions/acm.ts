@@ -1,0 +1,859 @@
+/**
+ * ACM — Adaptive Context Manager
+ *
+ * LLM-driven context management. No slash commands — LLM decides when
+ * and what to prune using registered tools.
+ *
+ * Automatic: session_before_compact hijacks pi's compaction with two-phase
+ * strategy (clear tool results → slide if needed).
+ *
+ * Manual: user says "acm prune" → LLM inspects context, calls acm_clear/acm_status.
+ */
+
+import { complete } from "@earendil-works/pi-ai";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import {
+  convertToLlm,
+  estimateTokens,
+  serializeConversation,
+} from "@earendil-works/pi-coding-agent";
+import type { AgentMessage } from "@earendil-works/pi-agent-core";
+import { Type } from "@sinclair/typebox";
+
+// ── Types ────────────────────────────────────────────────────────────
+
+interface RecallMetadata {
+  entryId: string;
+  toolCallId: string;
+  toolName: string;
+  filePaths: string[];
+  keyTerms: string;
+  timestamp: number;
+  charCount: number;
+}
+
+export interface RehydrateInput {
+  type: string;
+  customType?: string;
+  data?: any;
+}
+
+export interface RehydrateResult {
+  clearSet: Set<string>;
+  toolCallIdToEntryId: Map<string, string>;
+  recallIndex: Map<string, any>;
+  pinnedSet: Set<string>;
+  compactSet: Set<string>;
+  totalTokensSaved: number;
+}
+
+// ── State ────────────────────────────────────────────────────────────
+
+const clearSet = new Set<string>();
+const toolCallIdToEntryId = new Map<string, string>();
+const recallIndex = new Map<string, RecallMetadata>();
+const pinnedSet = new Set<string>();
+const compactSet = new Set<string>();
+let totalTokensSaved = 0;
+
+// ── Persistence ──────────────────────────────────────────────────────
+
+function persist(appendEntry: (type: string, data?: any) => void) {
+  appendEntry("acm-clear-state", {
+    clearedToolCallIds: [...clearSet],
+    toolCallIdToEntryId: Object.fromEntries(toolCallIdToEntryId),
+    totalTokensSaved,
+    compactedEntryIds: [...compactSet],
+  });
+  appendEntry("acm-recall-index", { entries: [...recallIndex.values()] });
+}
+
+function persistPin(appendEntry: (type: string, data?: any) => void, entryId: string, action: "pin" | "unpin") {
+  appendEntry("acm-pin", { entryId, action });
+}
+
+function rehydrateState(entries: Array<{ type: string; customType?: string; data?: any }>) {
+  let lastClearState: any;
+  let lastRecallIndex: any;
+  const pinEvents: Array<{ entryId: string; action: "pin" | "unpin" }> = [];
+
+  for (const entry of entries) {
+    if (entry.type !== "custom") continue;
+    if (entry.customType === "acm-clear-state") lastClearState = entry.data;
+    else if (entry.customType === "acm-recall-index") lastRecallIndex = entry.data;
+    else if (entry.customType === "acm-pin" && entry.data) pinEvents.push(entry.data);
+  }
+
+  if (lastClearState) {
+    clearSet.clear();
+    for (const id of lastClearState.clearedToolCallIds) clearSet.add(id);
+    toolCallIdToEntryId.clear();
+    for (const [k, v] of Object.entries(lastClearState.toolCallIdToEntryId)) {
+      toolCallIdToEntryId.set(k, v as string);
+    }
+    totalTokensSaved = lastClearState.totalTokensSaved ?? 0;
+    compactSet.clear();
+    for (const id of lastClearState.compactedEntryIds ?? []) compactSet.add(id);
+  }
+
+  if (lastRecallIndex) {
+    recallIndex.clear();
+    for (const entry of lastRecallIndex.entries) recallIndex.set(entry.toolCallId, entry);
+  }
+
+  pinnedSet.clear();
+  for (const { entryId, action } of pinEvents) {
+    if (action === "pin") pinnedSet.add(entryId);
+    else pinnedSet.delete(entryId);
+  }
+
+  return { cleared: clearSet.size, recalled: recallIndex.size, pinned: pinnedSet.size };
+}
+
+// ── Exported Pure Helpers (tested independently) ─────────────────────
+
+export const STOP_WORDS = new Set([
+  "this", "that", "with", "from", "have", "will", "been", "they", "then",
+  "than", "when", "what", "which", "would", "should", "could", "also",
+  "just", "like", "into", "each", "make", "here", "need", "some",
+]);
+
+export function extractKeywords(text: string, max = 15): string {
+  const words = text.replace(/[^a-zA-Z0-9_./\-]/g, " ").split(/\s+/).filter(Boolean);
+  const seen = new Set<string>();
+  const keywords: string[] = [];
+  for (const word of words) {
+    if (word.length < 4 || STOP_WORDS.has(word.toLowerCase()) || seen.has(word.toLowerCase())) continue;
+    seen.add(word.toLowerCase());
+    keywords.push(word);
+    if (keywords.length >= max) break;
+  }
+  return keywords.join(", ");
+}
+
+export function getBranchMessages(branch: any[]): any[] {
+  return branch
+    .filter((e: any) => e.type === "message" && e.message)
+    .map((e: any) => e.message);
+}
+
+export function getTextPreview(msg: any, maxLen = 500): string {
+  if (!Array.isArray(msg.content)) return "";
+  for (const block of msg.content) {
+    if (block.type === "text" && block.text) return block.text.slice(0, maxLen);
+    if (block.type === "image") return "[image]";
+  }
+  return "";
+}
+
+export function extractEntryContent(entry: any): string {
+  const c = entry?.message?.content;
+  if (typeof c === "string") return c;
+  if (Array.isArray(c)) {
+    return c.map((b: any) => b.type === "text" ? b.text : b.type === "image" ? "[image]" : JSON.stringify(b)).join("\n");
+  }
+  return JSON.stringify(entry);
+}
+
+export function compactMessage(msg: any, entryId: string): { content: any[]; saved: number } | null {
+  if (!Array.isArray(msg.content)) return null;
+
+  let totalChars = 0;
+  let textContent = "";
+  const hasToolCalls = msg.content.some((b: any) => b.type === "toolCall");
+
+  for (const block of msg.content) {
+    if (block.type === "text") { totalChars += block.text?.length || 0; textContent += block.text + " "; }
+    else if (block.type === "thinking") totalChars += block.thinking?.length || 0;
+  }
+
+  if (totalChars < 1000) return null;
+
+  const stub = `[compacted: ${extractKeywords(textContent)} | id: ${entryId}]`;
+
+  if (hasToolCalls) {
+    let stubInserted = false;
+    const newContent: any[] = [];
+    for (const block of msg.content) {
+      if (block.type === "text" || block.type === "thinking") {
+        if (!stubInserted) {
+          newContent.push({ type: "text", text: stub });
+          stubInserted = true;
+        }
+      } else {
+        newContent.push(block);
+      }
+    }
+    return { content: newContent, saved: totalChars - stub.length };
+  }
+
+  return { content: [{ type: "text", text: stub }], saved: totalChars - stub.length };
+}
+
+export function findHybridCutoff(branch: any[]): number {
+  if (branch.length < 10) return 0;
+
+  const validCuts: number[] = [];
+  for (let i = 0; i < branch.length; i++) {
+    const e = branch[i];
+    if (e.type === "compaction" || e.type === "branch_summary" || e.type === "custom") {
+      validCuts.push(i);
+    } else if (e.type === "message") {
+      const role = e.message?.role;
+      if (role === "user" || role === "assistant") validCuts.push(i);
+    }
+  }
+  if (validCuts.length === 0) return 0;
+
+  const now = Date.now();
+  const thirtyMin = 30 * 60 * 1000;
+  let timeCutoff = branch.length;
+  for (let i = branch.length - 1; i >= 0; i--) {
+    const ts = branch[i].timestamp;
+    const t = typeof ts === "number" ? ts : typeof ts === "string" ? new Date(ts).getTime() : 0;
+    if (now - t > thirtyMin) { timeCutoff = i + 1; break; }
+  }
+
+  let cutoff = Math.min(timeCutoff, Math.max(0, branch.length - 10));
+
+  const before = validCuts.filter((i) => i <= cutoff);
+  cutoff = before.length > 0 ? before[before.length - 1] : validCuts[0];
+
+  return cutoff;
+}
+
+/** Pure version of rehydrateState for testing — returns new state instead of mutating globals */
+export function rehydrateStatePure(entries: RehydrateInput[]): RehydrateResult {
+  const result: RehydrateResult = {
+    clearSet: new Set(),
+    toolCallIdToEntryId: new Map(),
+    recallIndex: new Map(),
+    pinnedSet: new Set(),
+    compactSet: new Set(),
+    totalTokensSaved: 0,
+  };
+
+  let lastClearState: any;
+  let lastRecallIndex: any;
+  const pinEvents: Array<{ entryId: string; action: "pin" | "unpin" }> = [];
+
+  for (const entry of entries) {
+    if (entry.type !== "custom") continue;
+    if (entry.customType === "acm-clear-state") lastClearState = entry.data;
+    else if (entry.customType === "acm-recall-index") lastRecallIndex = entry.data;
+    else if (entry.customType === "acm-pin" && entry.data) pinEvents.push(entry.data);
+  }
+
+  if (lastClearState) {
+    for (const id of lastClearState.clearedToolCallIds ?? []) result.clearSet.add(id);
+    for (const [k, v] of Object.entries(lastClearState.toolCallIdToEntryId ?? {})) {
+      result.toolCallIdToEntryId.set(k, v as string);
+    }
+    result.totalTokensSaved = lastClearState.totalTokensSaved ?? 0;
+    for (const id of lastClearState.compactedEntryIds ?? []) result.compactSet.add(id);
+  }
+
+  if (lastRecallIndex) {
+    for (const entry of lastRecallIndex.entries ?? []) result.recallIndex.set(entry.toolCallId, entry);
+  }
+
+  for (const { entryId, action } of pinEvents) {
+    if (action === "pin") result.pinnedSet.add(entryId);
+    else result.pinnedSet.delete(entryId);
+  }
+
+  return result;
+}
+
+// ── Internal Helpers ─────────────────────────────────────────────────
+
+function buildToolCallMapping(branch: any[]) {
+  toolCallIdToEntryId.clear();
+  for (const entry of branch) {
+    if (entry.type === "message" && entry.message?.role === "toolResult" && entry.message.toolCallId) {
+      toolCallIdToEntryId.set(entry.message.toolCallId, entry.id);
+    }
+  }
+}
+
+function inventoryToolResults(messages: AgentMessage[]) {
+  const results: Array<{ toolCallId: string; toolName: string; tokens: number; keyTerms: string }> = [];
+  for (const msg of messages) {
+    const m = msg as any;
+    if (m.role !== "toolResult" || !m.toolCallId || clearSet.has(m.toolCallId)) continue;
+    let keyTerms = "";
+    if (Array.isArray(m.content)) {
+      for (const block of m.content) {
+        if (block.type === "text" && block.text) { keyTerms = block.text.slice(0, 150).replace(/\n/g, " "); break; }
+        if (block.type === "image") { keyTerms = "[image]"; break; }
+      }
+    }
+    results.push({ toolCallId: m.toolCallId, toolName: m.toolName || "unknown", tokens: estimateTokens(msg), keyTerms });
+  }
+  return results.sort((a, b) => b.tokens - a.tokens);
+}
+
+function buildStub(msg: any): string {
+  const toolName = msg.toolName || "unknown";
+  const entryId = toolCallIdToEntryId.get(msg.toolCallId) || "?";
+  const recall = recallIndex.get(msg.toolCallId);
+  const source = recall?.keyTerms ?? getTextPreview(msg);
+  return `[cleared: ${toolName} | id: ${entryId} | ${extractKeywords(source, 10)}]`;
+}
+
+function buildRecallEntry(toolCallId: string, toolName: string, keyTerms: string, charCount: number, messages: AgentMessage[]): RecallMetadata {
+  const filePaths: string[] = [];
+  for (const msg of messages) {
+    const m = msg as any;
+    if (m.role !== "assistant" || !Array.isArray(m.content)) continue;
+    for (const block of m.content) {
+      if (block.type === "toolCall" && block.id === toolCallId && block.arguments) {
+        for (const key of ["path", "file", "file_path", "command"]) {
+          if (typeof block.arguments[key] === "string") filePaths.push(block.arguments[key]);
+        }
+      }
+    }
+  }
+  return { entryId: toolCallIdToEntryId.get(toolCallId) || "", toolCallId, toolName, filePaths, keyTerms, timestamp: Date.now(), charCount };
+}
+
+function clearToolResults(
+  toolResults: Array<{ toolCallId: string; toolName: string; tokens: number; keyTerms: string }>,
+  notify: (msg: string) => void,
+  contextMessages: AgentMessage[],
+): number {
+  let saved = 0;
+  for (const tr of toolResults) {
+    if (clearSet.has(tr.toolCallId)) continue;
+    const entryId = toolCallIdToEntryId.get(tr.toolCallId);
+    if (entryId && pinnedSet.has(entryId)) {
+      notify(`📌 ${tr.toolName} (${Math.round(tr.tokens / 1000)}k) — pinned, skip`);
+      continue;
+    }
+    clearSet.add(tr.toolCallId);
+    const tokensSaved = tr.tokens - 50;
+    totalTokensSaved += tokensSaved;
+    saved += tokensSaved;
+    recallIndex.set(tr.toolCallId, buildRecallEntry(tr.toolCallId, tr.toolName, tr.keyTerms, tr.tokens * 4, contextMessages));
+    notify(`✂ ${tr.toolName} (${Math.round(tr.tokens / 1000)}k) → stub [id: ${entryId || "?"}]`);
+  }
+  return saved;
+}
+
+function statusText() {
+  return `ACM: ${clearSet.size} cleared, ${compactSet.size} compacted | ~${Math.round(totalTokensSaved * 0.4 / 1000)}k saved`;
+}
+
+// ── Extension ────────────────────────────────────────────────────────
+
+export default function (pi: ExtensionAPI) {
+  // ── Rehydrate on session load ──────────────────────────────────────
+
+  pi.on("session_start" as any, (_event: any, ctx: any) => {
+    const stats = rehydrateState(ctx.sessionManager.getEntries());
+    if (stats.cleared > 0 || stats.pinned > 0) {
+      ctx.ui.notify(`[ACM] Restored: ${stats.cleared} cleared, ${stats.pinned} pinned, ${stats.recalled} in recall`, "info");
+      ctx.ui.setStatus("acm", statusText());
+    }
+  });
+
+  // ── Context event: apply clearing/compaction ───────────────────────
+
+  pi.on("context", (event, ctx) => {
+    const branch = ctx.sessionManager.getBranch() as any[];
+
+    // Build lookup maps
+    const msgEntryId = new Map<any, string>();
+    const tcEntryId = new Map<string, string>();
+    for (const entry of branch) {
+      if (entry.type !== "message" || !entry.message) continue;
+      msgEntryId.set(entry.message, entry.id);
+      if (entry.message.role === "toolResult" && entry.message.toolCallId) {
+        tcEntryId.set(entry.message.toolCallId, entry.id);
+      }
+    }
+
+    // Find threshold: keep last N turns unmodified
+    const recentTurns = 3;
+    let turnCount = 0;
+    let recentThreshold = event.messages.length;
+    for (let i = event.messages.length - 1; i >= 0; i--) {
+      if ((event.messages[i] as any).role === "user") turnCount++;
+      if (turnCount > recentTurns) { recentThreshold = i; break; }
+    }
+
+    const messages = event.messages.map((msg: any, idx: number) => {
+      // Clear tool results
+      if (msg.role === "toolResult" && msg.toolCallId && clearSet.has(msg.toolCallId)) {
+        return { ...msg, content: [{ type: "text" as const, text: buildStub(msg) }] };
+      }
+
+      // Strip thinking blocks from old messages
+      if (msg.role === "assistant" && Array.isArray(msg.content) && idx < recentThreshold) {
+        const hasThinking = msg.content.some((b: any) => b.type === "thinking");
+        if (hasThinking) {
+          const stripped = msg.content.filter((b: any) => b.type !== "thinking");
+          msg = { ...msg, content: stripped.length > 0 ? stripped : [{ type: "text", text: "[thinking stripped]" }] };
+        }
+      }
+
+      // Compact marked messages
+      const entryId = msgEntryId.get(msg) || (msg.toolCallId ? tcEntryId.get(msg.toolCallId) : undefined);
+      if (entryId && compactSet.has(entryId) && !pinnedSet.has(entryId)) {
+        const compacted = compactMessage(msg, entryId);
+        if (compacted) return { ...msg, content: compacted.content };
+      }
+
+      return msg;
+    });
+
+    // Inject ACM context into first user message
+    if (clearSet.size > 0 || compactSet.size > 0) {
+      const acmText = [
+        `<acm-context>`,
+        `${clearSet.size} tool results cleared, ${compactSet.size} messages compacted, ${pinnedSet.size} pinned, ${recallIndex.size} recallable.`,
+        `Thinking blocks stripped from old messages (last ${recentTurns} turns preserved).`,
+        `To retrieve [cleared/compacted] content: acm_recall(entryId: "<id>") or acm_recall(query: "keywords"). Or re-read file from disk.`,
+        `Do NOT guess cleared content.`,
+        `</acm-context>`,
+      ].join("\n");
+
+      for (let i = 0; i < messages.length; i++) {
+        if ((messages[i] as any).role === "user") {
+          const m = messages[i] as any;
+          messages[i] = {
+            ...m,
+            content: [{ type: "text", text: acmText }, ...(Array.isArray(m.content) ? m.content : [{ type: "text", text: m.content }])],
+          };
+          break;
+        }
+      }
+    }
+
+    const usage = ctx.getContextUsage();
+    const pct = usage?.percent != null ? `${Math.round(usage.percent)}%` : "?";
+    ctx.ui.setStatus("acm", `${statusText()} | ${pct}`);
+
+    return { messages };
+  });
+
+  // ── Tool: acm_status ───────────────────────────────────────────────
+
+  pi.registerTool({
+    name: "acm_status",
+    label: "ACM Status",
+    description: "Show current ACM state: context usage, cleared tool results, tokens saved.",
+    promptSnippet: "acm_status: Show context usage, cleared entries, tokens saved by ACM.",
+    parameters: Type.Object({}),
+    async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
+      const usage = ctx.getContextUsage();
+      const branch = ctx.sessionManager.getBranch() as any[];
+      buildToolCallMapping(branch);
+      const clearable = inventoryToolResults(getBranchMessages(branch));
+      const est = Math.round(clearable.reduce((s, r) => s + r.tokens, 0) * 0.4);
+
+      const report = [
+        `── ACM Status ──`,
+        `Context: ${usage?.tokens ? Math.round(usage.tokens / 1000) + "k" : "?"} / ${usage?.contextWindow ? Math.round(usage.contextWindow / 1000) + "k" : "?"} (${usage?.percent != null ? Math.round(usage.percent) + "%" : "?"})`,
+        `Cleared: ${clearSet.size} tool results, ${compactSet.size} compacted`,
+        `Saved: ~${Math.round(totalTokensSaved * 0.4 / 1000)}k`,
+        ``,
+        `── Clearable: ${clearable.length} (~${Math.round(est / 1000)}k) ──`,
+        ...clearable.slice(0, 10).map((r) => `  ${r.toolName} (${Math.round(r.tokens / 1000)}k) [${r.keyTerms.slice(0, 60)}...]`),
+        clearable.length > 10 ? `  ... +${clearable.length - 10} more` : "",
+      ].filter(Boolean).join("\n");
+
+      return { content: [{ type: "text" as const, text: report }], details: {} };
+    },
+  });
+
+  // ── Tool: acm_clear ────────────────────────────────────────────────
+
+  pi.registerTool({
+    name: "acm_clear",
+    label: "ACM Clear",
+    description:
+      "Clear tool result content from context, replacing with compact stubs. " +
+      "Frees tokens without losing the ability to recall original content later. " +
+      "Call acm_status first to see what's clearable.",
+    promptSnippet: "acm_clear: Clear tool results from context (replace with stubs). Use to free tokens.",
+    promptGuidelines: [
+      "When user says 'acm prune': 1) acm_status, 2) acm_clear, 3) acm_compact_messages if still high, 4) acm_slide as last resort.",
+      "Tool results are ephemeral — safe to drop entirely. Just stubs + recall index.",
+    ],
+    parameters: Type.Object({
+      toolCallIds: Type.Optional(Type.Array(Type.String(), { description: "Specific toolCallIds to clear. Omit to clear all." })),
+      olderThanMinutes: Type.Optional(Type.Number({ description: "Only clear tool results older than N minutes." })),
+      minTokens: Type.Optional(Type.Number({ description: "Only clear tool results larger than N tokens." })),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const branch = ctx.sessionManager.getBranch() as any[];
+      buildToolCallMapping(branch);
+      const branchMessages = getBranchMessages(branch);
+      let candidates = inventoryToolResults(branchMessages);
+
+      if (params.toolCallIds?.length) {
+        const ids = new Set(params.toolCallIds);
+        candidates = candidates.filter((r) => ids.has(r.toolCallId));
+      }
+      if (params.olderThanMinutes != null) {
+        const cutoff = Date.now() - params.olderThanMinutes * 60 * 1000;
+        candidates = candidates.filter((r) => {
+          const msg = branchMessages.find((m: any) => m.toolCallId === r.toolCallId) as any;
+          return msg?.timestamp != null && msg.timestamp < cutoff;
+        });
+      }
+      if (params.minTokens != null) {
+        candidates = candidates.filter((r) => r.tokens >= params.minTokens!);
+      }
+
+      if (candidates.length === 0) {
+        return { content: [{ type: "text" as const, text: "[ACM] Nothing to clear." }], details: { count: 0 } };
+      }
+
+      const saved = clearToolResults(candidates, (msg) => ctx.ui.notify(`[ACM] ${msg}`, "info"), branchMessages);
+      persist(pi.appendEntry.bind(pi));
+
+      const report = `[ACM] ✅ Cleared ${candidates.length} tool results (~${Math.round(saved * 0.4 / 1000)}k freed, ${clearSet.size} total). Effect on next turn.`;
+      ctx.ui.notify(report, "info");
+      ctx.ui.setStatus("acm", `${statusText()} | pending…`);
+
+      return { content: [{ type: "text" as const, text: report }], details: { count: candidates.length, estimatedTokensSaved: saved } };
+    },
+  });
+
+  // ── Tool: acm_slide ─────────────────────────────────────────────────
+
+  pi.registerTool({
+    name: "acm_slide",
+    label: "ACM Slide",
+    description:
+      "Trigger a sliding window compaction. Summarizes old context and keeps recent. " +
+      "Fires session_before_compact where ACM generates a custom summary.",
+    promptSnippet: "acm_slide: Trigger sliding window compaction to summarize old context.",
+    parameters: Type.Object({
+      customInstructions: Type.Optional(Type.String({ description: "Custom instructions for the summary generation." })),
+    }),
+    async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
+      const branch = ctx.sessionManager.getBranch() as any[];
+      buildToolCallMapping(branch);
+
+      const cutoff = findHybridCutoff(branch);
+      if (cutoff === 0) {
+        return { content: [{ type: "text" as const, text: "[ACM] Session too short to slide." }], details: { success: false } };
+      }
+
+      // Clear all tool results + compact old messages
+      clearToolResults(inventoryToolResults(getBranchMessages(branch)), (msg) => ctx.ui.notify(`[ACM] ${msg}`, "info"), getBranchMessages(branch));
+      for (let i = 0; i < cutoff; i++) {
+        const e = branch[i];
+        if (e.type === "message" && e.message && !pinnedSet.has(e.id)) compactSet.add(e.id);
+      }
+
+      persist(pi.appendEntry.bind(pi));
+      ctx.ui.setStatus("acm", `${statusText()} | slid`);
+
+      return {
+        content: [{
+          type: "text" as const,
+          text: `[ACM] ✅ Slide: ${cutoff} old entries cleared/compacted, ${branch.length - cutoff} kept, ${pinnedSet.size} pinned. All recallable via acm_recall.`,
+        }],
+        details: { success: true, cutoff, kept: branch.length - cutoff },
+      };
+    },
+  });
+
+  // ── Tool: acm_recall ────────────────────────────────────────────────
+
+  pi.registerTool({
+    name: "acm_recall",
+    label: "ACM Recall",
+    description:
+      "Retrieve original content of cleared/compacted tool results. " +
+      "Search by entryId (exact) or keywords (fuzzy match against recall index). " +
+      "Returns full or truncated content based on context pressure.",
+    promptSnippet: "acm_recall: Retrieve original content of cleared tool results by ID or keyword search.",
+    parameters: Type.Object({
+      entryId: Type.Optional(Type.String({ description: "Exact session entry ID to recall." })),
+      query: Type.Optional(Type.String({ description: "Keyword search across cleared tool results." })),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      if (params.entryId) {
+        const entry = ctx.sessionManager.getEntry(params.entryId) as any;
+        if (!entry) return { content: [{ type: "text" as const, text: `[ACM] Entry ${params.entryId} not found.` }], details: { found: false } };
+        const content = extractEntryContent(entry);
+        // Truncate under high context pressure
+        const usage = ctx.getContextUsage?.();
+        const truncated = (usage?.percent ?? 0) > 70 && content.length > 2000
+          ? `${content.slice(0, 2000)}\n\n[...truncated, ${content.length - 2000} chars omitted, ${Math.round(usage!.percent!)}% pressure]`
+          : content;
+        return { content: [{ type: "text" as const, text: truncated }], details: { source: "entryId", entryId: params.entryId } };
+      }
+
+      if (params.query) {
+        const terms = params.query.toLowerCase().split(/\s+/).filter(Boolean);
+        const matches: Array<{ entry: RecallMetadata; score: number }> = [];
+        for (const recall of recallIndex.values()) {
+          const searchable = `${recall.toolName} ${recall.keyTerms} ${recall.filePaths.join(" ")}`.toLowerCase();
+          const score = terms.filter((t) => searchable.includes(t)).length;
+          if (score > 0) matches.push({ entry: recall, score });
+        }
+        matches.sort((a, b) => b.score - a.score);
+
+        if (matches.length > 0) {
+          const best = matches[0].entry;
+          const entry = ctx.sessionManager.getEntry(best.entryId) as any;
+          if (entry) {
+            const content = extractEntryContent(entry);
+            const usage = ctx.getContextUsage?.();
+            const truncated = (usage?.percent ?? 0) > 70 && content.length > 2000
+              ? `${content.slice(0, 2000)}\n\n[...truncated]`
+              : content;
+            return {
+              content: [{ type: "text" as const, text: `[ACM Recall] ${matches.length} matches. Best: ${best.toolName} | ${best.filePaths.join(", ") || "no files"} | ${best.entryId}\n---\n${truncated}` }],
+              details: { source: "keyword", entryId: best.entryId, matches: matches.length },
+            };
+          }
+        }
+
+        return { content: [{ type: "text" as const, text: `[ACM] No results for: "${params.query}"` }], details: { found: false } };
+      }
+
+      return { content: [{ type: "text" as const, text: "[ACM] Provide entryId or query." }], details: {} };
+    },
+  });
+
+  // ── Tool: acm_pin ───────────────────────────────────────────────────
+
+  pi.registerTool({
+    name: "acm_pin",
+    label: "ACM Pin",
+    description: "Pin a message to protect it from clearing and sliding. Pinned messages survive all ACM operations.",
+    promptSnippet: "acm_pin: Pin/unpin entries to protect from context clearing.",
+    parameters: Type.Object({
+      entryId: Type.String({ description: "Session entry ID to pin/unpin." }),
+      action: Type.Optional(Type.Union([Type.Literal("pin"), Type.Literal("unpin")], { description: "Pin or unpin. Default: pin." })),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const action = params.action ?? "pin";
+      const { entryId } = params;
+
+      const branch = ctx.sessionManager.getBranch() as any[];
+      if (!branch.some((e: any) => e.id === entryId)) {
+        return { content: [{ type: "text" as const, text: `[ACM] Entry ${entryId} not found on branch.` }], details: {} };
+      }
+
+      if (action === "pin") {
+        pinnedSet.add(entryId);
+        for (const [tcId, eId] of toolCallIdToEntryId) {
+          if (eId === entryId) { clearSet.delete(tcId); recallIndex.delete(tcId); }
+        }
+      } else {
+        pinnedSet.delete(entryId);
+      }
+
+      persistPin(pi.appendEntry.bind(pi), entryId, action);
+      const report = `[ACM] ${action === "pin" ? "📌 Pinned" : "🔓 Unpinned"} ${entryId} (${pinnedSet.size} total)`;
+      ctx.ui.notify(report, "info");
+      return { content: [{ type: "text" as const, text: report }], details: { entryId, action } };
+    },
+  });
+
+  // ── Tool: acm_compact_messages ─────────────────────────────────────
+
+  pi.registerTool({
+    name: "acm_compact_messages",
+    label: "ACM Compact Messages",
+    description:
+      "Compact large assistant/user messages to keyword summaries with entry ID pointers. " +
+      "Keeps tool call blocks intact. Pinned messages are skipped. " +
+      "Original content retrievable via acm_recall.",
+    promptSnippet: "acm_compact_messages: Compact large messages to keyword stubs. Use after acm_clear if context still high.",
+    promptGuidelines: [
+      "Use AFTER acm_clear when context still high. Compacts reasoning/user messages to keywords + ID pointers.",
+      "Pinned messages never compacted. Recent messages should generally not be compacted.",
+    ],
+    parameters: Type.Object({
+      olderThanMinutes: Type.Optional(Type.Number({ description: "Only compact messages older than N minutes." })),
+      minChars: Type.Optional(Type.Number({ description: "Only compact messages larger than N characters. Default: 1000" })),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const branch = ctx.sessionManager.getBranch() as any[];
+      buildToolCallMapping(branch);
+      const minChars = params.minChars ?? 1000;
+      const now = Date.now();
+      let compacted = 0;
+      let charsSaved = 0;
+
+      for (const entry of branch) {
+        if (entry.type !== "message" || !entry.message) continue;
+        if (entry.message.role === "toolResult") continue;
+        if (pinnedSet.has(entry.id) || compactSet.has(entry.id)) continue;
+
+        if (params.olderThanMinutes != null) {
+          const ts = typeof entry.timestamp === "number" ? entry.timestamp
+            : typeof entry.timestamp === "string" ? new Date(entry.timestamp).getTime() : 0;
+          if (now - ts < params.olderThanMinutes * 60 * 1000) continue;
+        }
+
+        const result = compactMessage(entry.message, entry.id);
+        if (!result || result.saved < minChars) continue;
+
+        compactSet.add(entry.id);
+        charsSaved += result.saved;
+        compacted++;
+
+        const textContent = Array.isArray(entry.message.content)
+          ? entry.message.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join(" ")
+          : typeof entry.message.content === "string" ? entry.message.content : "";
+        recallIndex.set(entry.id, {
+          entryId: entry.id, toolCallId: "", toolName: entry.message.role,
+          filePaths: [], keyTerms: textContent.slice(0, 200), timestamp: Date.now(), charCount: textContent.length,
+        });
+      }
+
+      if (compacted === 0) {
+        return { content: [{ type: "text" as const, text: "[ACM] No messages large enough to compact." }], details: { count: 0 } };
+      }
+
+      persist(pi.appendEntry.bind(pi));
+      const tokensSaved = Math.round(charsSaved * 0.4 / 4);
+      const report = `[ACM] ✅ Compacted ${compacted} messages (~${Math.round(charsSaved / 1000)}k chars, ~${Math.round(tokensSaved / 1000)}k tokens freed). Effect on next turn.`;
+      ctx.ui.notify(report, "info");
+      ctx.ui.setStatus("acm", `${statusText()} | pending…`);
+
+      return { content: [{ type: "text" as const, text: report }], details: { count: compacted, charsSaved, tokensSaved } };
+    },
+  });
+
+  // ── Compaction intercept ───────────────────────────────────────────
+
+  pi.on("session_before_compact", async (event, ctx) => {
+    const { preparation, branchEntries, signal } = event;
+    const { messagesToSummarize, turnPrefixMessages, previousSummary, tokensBefore, firstKeptEntryId, fileOps, isSplitTurn } = preparation;
+
+    if (signal.aborted) return;
+    ctx.ui.notify(`[ACM] ⚡ Compaction intercepted`, "info");
+
+    buildToolCallMapping(branchEntries as any[]);
+    const allMessages = [...messagesToSummarize, ...turnPrefixMessages];
+    const toolResults = inventoryToolResults(allMessages);
+    const savings = toolResults.reduce((s, r) => s + r.tokens - 50, 0);
+
+    const usage = ctx.getContextUsage();
+    const contextWindow = usage?.contextWindow ?? 200_000;
+    const threshold = (preparation as any).settings?.reserveTokens ?? 16384;
+    const tokensToFree = tokensBefore - (contextWindow - threshold);
+    const conservativeSavings = Math.round(savings * 0.4);
+
+    ctx.ui.notify(`[ACM] Need ~${Math.round(tokensToFree / 1000)}k free. Clearable: ${toolResults.length} results (~${Math.round(conservativeSavings / 1000)}k)`, "info");
+
+    // ── Phase 1: Clear all tool results ──
+    clearToolResults(toolResults, (msg) => ctx.ui.notify(`[ACM] ${msg}`, "info"), allMessages);
+
+    if (conservativeSavings >= tokensToFree) {
+      ctx.ui.notify(`[ACM] ✅ Phase 1 sufficient — cancelled default compaction`, "info");
+      persist(pi.appendEntry.bind(pi));
+      return { cancel: true };
+    }
+
+    // ── Phase 2: Slide with LLM summary ──
+    ctx.ui.notify(`[ACM] Phase 1 insufficient (~${Math.round(conservativeSavings / 1000)}k < ${Math.round(tokensToFree / 1000)}k). Generating summary...`, "info");
+    if (signal.aborted) return;
+
+    const model = ctx.model;
+    if (!model) { ctx.ui.notify(`[ACM] No model — fallback to default`, "warning"); return; }
+    const auth = await ctx.modelRegistry.getApiKeyAndHeaders(model);
+    if (!auth.ok || !auth.apiKey) { ctx.ui.notify(`[ACM] Auth failed — fallback`, "warning"); return; }
+
+    const conversationText = serializeConversation(convertToLlm(messagesToSummarize));
+    const previousContext = previousSummary ? `\n\nPrevious session summary:\n${previousSummary}` : "";
+
+    const summaryMessages = [{
+      role: "user" as const,
+      content: [{
+        type: "text" as const, text: `You are a conversation summarizer. Create a structured summary:${previousContext}
+
+## Goal
+[What the user is trying to accomplish]
+
+## Constraints & Preferences
+- [Requirements mentioned by user]
+
+## Progress
+### Done
+- [x] [Completed tasks]
+
+### In Progress
+- [ ] [Current work]
+
+## Key Decisions
+- **[Decision]**: [Rationale]
+
+## Next Steps
+1. [What should happen next]
+
+## Critical Context
+- [Data needed to continue]
+
+Be thorough but concise. This replaces the entire conversation history.
+
+<conversation>
+${conversationText}
+</conversation>` }],
+      timestamp: Date.now(),
+    }];
+
+    try {
+      const response = await complete(model, { messages: summaryMessages }, { apiKey: auth.apiKey, headers: auth.headers, maxTokens: 8192, signal });
+      let summary = response.content.filter((c: any) => c.type === "text").map((c: any) => c.text).join("\n");
+      if (!summary.trim()) { if (!signal.aborted) ctx.ui.notify("[ACM] Empty summary — fallback", "warning"); return; }
+
+      if (isSplitTurn && turnPrefixMessages.length > 0) {
+        const prefixText = serializeConversation(convertToLlm(turnPrefixMessages));
+        const prefixResponse = await complete(model, {
+          messages: [{ role: "user" as const, content: [{ type: "text" as const, text: `Summarize concisely:\n\n<conversation>\n${prefixText}\n</conversation>` }], timestamp: Date.now() }],
+        }, { apiKey: auth.apiKey, headers: auth.headers, maxTokens: 4096, signal });
+        const prefixSummary = prefixResponse.content.filter((c: any) => c.type === "text").map((c: any) => c.text).join("\n");
+        if (prefixSummary.trim()) summary += `\n\n---\n\n**Turn Context (split turn):**\n\n${prefixSummary}`;
+      }
+
+      // Append pinned content from entries being summarized
+      const hybridCutoff = findHybridCutoff(branchEntries as any[]);
+      const pinnedContent: string[] = [];
+      for (let i = 0; i < hybridCutoff; i++) {
+        const e = branchEntries[i] as any;
+        if (pinnedSet.has(e.id) && e.message) pinnedContent.push(extractEntryContent(e));
+      }
+      if (pinnedContent.length > 0) summary += `\n\n## Pinned Context\n\n${pinnedContent.join("\n\n---\n\n")}`;
+
+      // Append file operations
+      const modified = new Set([...(fileOps as any).written, ...(fileOps as any).edited]);
+      const readFiles = [...(fileOps as any).read].filter((f: string) => !modified.has(f)).sort();
+      const modifiedFiles = [...modified].sort();
+      if (readFiles.length > 0) summary += `\n\n<read-files>\n${readFiles.join("\n")}\n</read-files>`;
+      if (modifiedFiles.length > 0) summary += `\n\n<modified-files>\n${modifiedFiles.join("\n")}\n</modified-files>`;
+
+      ctx.ui.notify(`[ACM] ✅ Slide: ~${Math.round(summary.length / 4)} token summary, ${clearSet.size} cleared`, "info");
+      persist(pi.appendEntry.bind(pi));
+
+      return { compaction: { summary, firstKeptEntryId, tokensBefore, details: { readFiles, modifiedFiles } } };
+    } catch (error) {
+      if (!signal.aborted) ctx.ui.notify(`[ACM] Summary failed: ${error instanceof Error ? error.message : error}`, "error");
+      return;
+    }
+  });
+
+  // ── Branch navigation ──────────────────────────────────────────────
+
+  pi.on("session_tree" as any, (_event: any, ctx: any) => {
+    const branch = ctx.sessionManager.getBranch();
+    buildToolCallMapping(branch);
+    const valid = new Set(toolCallIdToEntryId.keys());
+    let pruned = 0;
+    for (const id of clearSet) {
+      if (!valid.has(id)) { clearSet.delete(id); pruned++; }
+    }
+    if (pruned > 0) ctx.ui.notify(`[ACM] Branch nav: pruned ${pruned} stale entries`, "info");
+  });
+}
