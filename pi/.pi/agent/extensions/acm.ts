@@ -8,6 +8,22 @@
  * strategy (clear tool results → slide if needed).
  *
  * Manual: user says "acm prune" → LLM inspects context, calls acm_clear/acm_status.
+ *
+ * Eviction strategy draws from three research approaches:
+ *
+ * [1] Pichay 2025 — "Missing Pages: Demand Paging for LLM Context Windows"
+ *     https://arxiv.org/abs/2603.09023
+ *     Fault-driven pinning: evict aggressively, auto-pin on re-read.
+ *     Production fault rate <0.03% across 1.4M evictions, 93% context reduction.
+ *
+ * [2] Qian et al. 2025 — "Less Context, Better Agents"
+ *     https://arxiv.org/abs/2506.08338
+ *     Keep last N tool-call pairs (N=5). Pruned agents outperform full-context
+ *     (63.9% fewer tokens, better accuracy). Summarize instead of hard-delete.
+ *
+ * [3] CWL (Context Window Lifecycle) — episode typing heuristic:
+ *     Action episodes (writes/edits) safe to evict first (effects persisted).
+ *     Exploration episodes (reads/searches) evict last (LLM needs for reasoning).
  */
 
 import { complete } from "@earendil-works/pi-ai";
@@ -55,6 +71,34 @@ const recallIndex = new Map<string, RecallMetadata>();
 const pinnedSet = new Set<string>();
 const compactSet = new Set<string>();
 let totalTokensSaved = 0;
+
+// Turn-boundary pruning: only auto-clear between user turns, not mid-LLM-action.
+// Prevents evicting tool results the LLM is actively using for multi-step reasoning.
+let lastAutoClearUserCount = 0;
+
+// Fault-driven pinning (Pichay 2025, "Missing Pages" §3.2):
+// Track evicted file paths. If LLM re-reads same path → auto-pin to stop thrashing.
+// Production data shows <0.03% fault rate with this approach.
+const evictedPaths = new Map<string, string>(); // filePath → evicted toolCallId
+
+// Fault-pin TTL: auto-unpin fault-pins after N turn boundaries.
+// Manual pins (user-requested via acm_pin) are permanent — only fault-pins decay.
+// If LLM still needs content after expiry, re-read triggers re-fault-pin (self-correcting).
+export const FAULT_PIN_TTL = 5; // turns before fault-pin expires
+const faultPinTurns = new Map<string, number>(); // entryId → turn count when fault-pinned
+
+/** @internal — reset module-level state for test isolation */
+export function _resetState() {
+  clearSet.clear();
+  toolCallIdToEntryId.clear();
+  recallIndex.clear();
+  pinnedSet.clear();
+  compactSet.clear();
+  totalTokensSaved = 0;
+  lastAutoClearUserCount = 0;
+  evictedPaths.clear();
+  faultPinTurns.clear();
+}
 
 // ── Persistence ──────────────────────────────────────────────────────
 
@@ -105,6 +149,12 @@ function rehydrateState(entries: Array<{ type: string; customType?: string; data
   for (const { entryId, action } of pinEvents) {
     if (action === "pin") pinnedSet.add(entryId);
     else pinnedSet.delete(entryId);
+  }
+
+  // Rebuild evictedPaths from recall index for fault detection across restarts
+  evictedPaths.clear();
+  for (const recall of recallIndex.values()) {
+    for (const fp of recall.filePaths) evictedPaths.set(fp, recall.toolCallId);
   }
 
   return { cleared: clearSet.size, recalled: recallIndex.size, pinned: pinnedSet.size };
@@ -190,8 +240,9 @@ export function compactMessage(msg: any, entryId: string): { content: any[]; sav
   return { content: [{ type: "text", text: stub }], saved: totalChars - stub.length };
 }
 
-export function findHybridCutoff(branch: any[]): number {
-  if (branch.length < 10) return 0;
+export function findHybridCutoff(branch: any[], opts?: { keepMessages?: number; keepMinutes?: number }): number {
+  const keepMessages = opts?.keepMessages ?? 10;
+  const keepMinutes = opts?.keepMinutes ?? 30;
 
   const validCuts: number[] = [];
   for (let i = 0; i < branch.length; i++) {
@@ -205,16 +256,34 @@ export function findHybridCutoff(branch: any[]): number {
   }
   if (validCuts.length === 0) return 0;
 
+  // keepMessages = last N user messages + all associated responses/tool calls
+  // Walk backwards counting user messages to find the message-based cutoff
+  let msgCutoff = 0;
+  let userCount = 0;
+  for (let i = branch.length - 1; i >= 0; i--) {
+    const e = branch[i];
+    if (e.type === "message" && e.message?.role === "user") {
+      userCount++;
+      if (userCount >= keepMessages) { msgCutoff = i; break; }
+    }
+  }
+  if (userCount < keepMessages) return 0; // not enough messages to slide
+
+  // keepMinutes = keep everything from last N minutes
+  // timeCutoff = index of first entry to KEEP (everything before it gets slid)
+  // Default 0 = all within window = keep everything (no time-based eviction)
   const now = Date.now();
-  const thirtyMin = 30 * 60 * 1000;
-  let timeCutoff = branch.length;
+  const windowMs = keepMinutes * 60 * 1000;
+  let timeCutoff = 0;
   for (let i = branch.length - 1; i >= 0; i--) {
     const ts = branch[i].timestamp;
     const t = typeof ts === "number" ? ts : typeof ts === "string" ? new Date(ts).getTime() : 0;
-    if (now - t > thirtyMin) { timeCutoff = i + 1; break; }
+    if (now - t > windowMs) { timeCutoff = i + 1; break; }
   }
 
-  let cutoff = Math.min(timeCutoff, Math.max(0, branch.length - 10));
+  // Both are irrelevance thresholds: anything outside EITHER window is stale.
+  // Higher cutoff index = more aggressive (keep less). Take the max.
+  let cutoff = Math.max(timeCutoff, msgCutoff);
 
   const before = validCuts.filter((i) => i <= cutoff);
   cutoff = before.length > 0 ? before[before.length - 1] : validCuts[0];
@@ -430,6 +499,94 @@ export default function (pi: ExtensionAPI) {
       }
     }
 
+    // Count user messages (needed by both fault detection and auto-clear)
+    let currentUserCount = 0;
+    for (const m of event.messages) {
+      if ((m as any).role === "user") currentUserCount++;
+    }
+
+    // ── Fault-driven pinning: detect re-reads of evicted content ──
+    // If LLM re-reads a file that was previously evicted, auto-pin the new result
+    // to prevent read→evict→re-read thrashing (Pichay 2025, fault rate <0.03%)
+    const recentToolPaths = new Map<string, string>(); // toolCallId → filePath
+    for (let i = recentThreshold; i < event.messages.length; i++) {
+      const m = event.messages[i] as any;
+      if (m.role === "assistant" && Array.isArray(m.content)) {
+        for (const block of m.content) {
+          if (block.type === "toolCall" && block.arguments) {
+            const fp = block.arguments.path || block.arguments.file || block.arguments.file_path;
+            if (fp) recentToolPaths.set(block.id, fp);
+          }
+        }
+      }
+    }
+    for (let i = recentThreshold; i < event.messages.length; i++) {
+      const m = event.messages[i] as any;
+      if (m.role !== "toolResult" || !m.toolCallId) continue;
+      if (clearSet.has(m.toolCallId)) continue;
+      const filePath = recentToolPaths.get(m.toolCallId);
+      if (filePath && evictedPaths.has(filePath)) {
+        const entryId = tcEntryId.get(m.toolCallId);
+        if (entryId && !pinnedSet.has(entryId)) {
+          pinnedSet.add(entryId);
+          faultPinTurns.set(entryId, currentUserCount);
+          persistPin(pi.appendEntry.bind(pi), entryId, "pin");
+          ctx.ui.notify(`[ACM] 📌 Fault-pin: ${filePath} (re-read of evicted content)`, "info");
+          evictedPaths.delete(filePath);
+        }
+      }
+    }
+
+    // ── Auto-clear: turn-boundary only ──
+    // Only evict when a NEW user message arrives (turn boundary).
+    // Mid-turn tool results stay — LLM may still need them for reasoning.
+    if (currentUserCount > lastAutoClearUserCount) {
+      lastAutoClearUserCount = currentUserCount;
+
+      // ── Fault-pin TTL: expire stale fault-pins ──
+      // Manual pins (acm_pin) are permanent. Only fault-pins decay after FAULT_PIN_TTL turns.
+      for (const [entryId, pinnedAtTurn] of faultPinTurns) {
+        if (currentUserCount - pinnedAtTurn >= FAULT_PIN_TTL) {
+          pinnedSet.delete(entryId);
+          faultPinTurns.delete(entryId);
+          persistPin(pi.appendEntry.bind(pi), entryId, "unpin");
+          ctx.ui.notify(`[ACM] 📌 Fault-pin expired: ${entryId} (${FAULT_PIN_TTL} turns)`, "info");
+        }
+      }
+
+      // Collect toolCallIds from recent turns (protected)
+      const recentToolCallIds = new Set<string>();
+      for (let i = recentThreshold; i < event.messages.length; i++) {
+        const m = event.messages[i] as any;
+        if (m.role === "toolResult" && m.toolCallId) recentToolCallIds.add(m.toolCallId);
+      }
+
+      let autoClearCount = 0;
+      for (const entry of branch) {
+        if (entry.type !== "message" || !entry.message) continue;
+        const msg = entry.message as any;
+        if (msg.role !== "toolResult" || !msg.toolCallId) continue;
+        if (clearSet.has(msg.toolCallId)) continue;
+        if (pinnedSet.has(entry.id)) continue;
+        if (recentToolCallIds.has(msg.toolCallId)) continue; // protect recent
+        const tokens = estimateTokens(msg);
+        clearSet.add(msg.toolCallId);
+        totalTokensSaved += Math.max(tokens - 50, 0);
+        const textContent = Array.isArray(msg.content)
+          ? msg.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join(" ").slice(0, 200)
+          : "";
+        const recall = buildRecallEntry(msg.toolCallId, msg.toolName || "unknown", textContent, tokens * 4, getBranchMessages(branch));
+        recallIndex.set(msg.toolCallId, recall);
+        // Track evicted file paths for fault detection
+        for (const fp of recall.filePaths) evictedPaths.set(fp, msg.toolCallId);
+        autoClearCount++;
+      }
+      if (autoClearCount > 0) {
+        persist(pi.appendEntry.bind(pi));
+        ctx.ui.notify(`[ACM] Auto-cleared ${autoClearCount} old tool results`, "info");
+      }
+    }
+
     const usage = ctx.getContextUsage();
     const pct = usage?.percent != null ? `${Math.round(usage.percent)}%` : "?";
     ctx.ui.setStatus("acm", `${statusText()} | ${pct}`);
@@ -533,32 +690,46 @@ export default function (pi: ExtensionAPI) {
     promptSnippet: "acm_slide: Trigger sliding window compaction to summarize old context.",
     parameters: Type.Object({
       customInstructions: Type.Optional(Type.String({ description: "Custom instructions for the summary generation." })),
+      keepMessages: Type.Optional(Type.Number({ description: "Keep last N messages (default 10). E.g. 20 keeps more context." })),
+      keepMinutes: Type.Optional(Type.Number({ description: "Keep messages from last N minutes (default 30). E.g. 10 for aggressive slide." })),
     }),
     async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
       const branch = ctx.sessionManager.getBranch() as any[];
       buildToolCallMapping(branch);
+      const params = _params as { keepMessages?: number; keepMinutes?: number };
 
-      const cutoff = findHybridCutoff(branch);
+      const cutoff = findHybridCutoff(branch, {
+        keepMessages: params.keepMessages,
+        keepMinutes: params.keepMinutes,
+      });
       if (cutoff === 0) {
         return { content: [{ type: "text" as const, text: "[ACM] Session too short to slide." }], details: { success: false } };
       }
 
       // Clear all tool results + compact old messages
+      const clearedBefore = clearSet.size;
       clearToolResults(inventoryToolResults(getBranchMessages(branch)), (msg) => ctx.ui.notify(`[ACM] ${msg}`, "info"), getBranchMessages(branch));
+      const toolResultsCleared = clearSet.size - clearedBefore;
+
+      let messagesCompacted = 0;
       for (let i = 0; i < cutoff; i++) {
         const e = branch[i];
-        if (e.type === "message" && e.message && !pinnedSet.has(e.id)) compactSet.add(e.id);
+        if (e.type === "message" && e.message && !pinnedSet.has(e.id)) {
+          compactSet.add(e.id);
+          messagesCompacted++;
+        }
       }
 
       persist(pi.appendEntry.bind(pi));
       ctx.ui.setStatus("acm", `${statusText()} | slid`);
 
+      const kept = branch.length - cutoff;
       return {
         content: [{
           type: "text" as const,
-          text: `[ACM] ✅ Slide: ${cutoff} old entries cleared/compacted, ${branch.length - cutoff} kept, ${pinnedSet.size} pinned. All recallable via acm_recall.`,
+          text: `[ACM] ✅ Slide: ${toolResultsCleared} tool results cleared, ${messagesCompacted} messages compacted (shrunk to keyword stubs), ${kept} recent messages kept intact, ${pinnedSet.size} pinned. All recallable via acm_recall.`,
         }],
-        details: { success: true, cutoff, kept: branch.length - cutoff },
+        details: { success: true, cutoff, kept, toolResultsCleared, messagesCompacted },
       };
     },
   });

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 
 // Mock external deps that acm.ts imports but tests don't need
 vi.mock("@earendil-works/pi-ai", () => ({ complete: vi.fn() }));
@@ -20,7 +20,7 @@ vi.mock("@sinclair/typebox", () => ({
   },
 }));
 
-import {
+import registerExtension, {
   extractKeywords,
   getBranchMessages,
   getTextPreview,
@@ -29,7 +29,9 @@ import {
   findHybridCutoff,
   rehydrateStatePure,
   STOP_WORDS,
-} from "./acm.ts";
+  FAULT_PIN_TTL,
+  _resetState,
+} from "../extensions/acm.ts";
 
 // ── extractKeywords ──────────────────────────────────────────────────
 
@@ -218,12 +220,49 @@ describe("findHybridCutoff", () => {
     expect(cutoff).toBeLessThan(branch.length);
   });
 
-  it("keeps at least 10 recent entries", () => {
+  it("keeps at least 10 recent user messages by default", () => {
+    // 30 user messages, each 1 min ago from newest. All within 30 min window.
+    // ageMs: entry 0 = 29 min ago, entry 29 = 0 min ago
     const branch = Array.from({ length: 30 }, (_, i) =>
-      mkEntry("message", "user", (30 - i) * 5 * 60 * 1000),
+      mkEntry("message", "user", (29 - i) * 60 * 1000),
     );
     const cutoff = findHybridCutoff(branch);
-    expect(branch.length - cutoff).toBeGreaterThanOrEqual(10);
+    const keptUsers = branch.slice(cutoff).filter((e: any) => e.message?.role === "user").length;
+    expect(keptUsers).toBe(10);
+  });
+
+  it("respects keepMessages override (counts user messages)", () => {
+    // 20 entries: user, assistant, user, assistant, ...
+    // = 10 user messages total
+    const branch = Array.from({ length: 20 }, (_, i) =>
+      mkEntry("message", i % 2 === 0 ? "user" : "assistant", 0),
+    );
+    // keepMessages=5 → keep last 5 user msgs. 5th-from-end user is at index 10.
+    // Cutoff should be at that user message index.
+    const cut5 = findHybridCutoff(branch, { keepMessages: 5 });
+    // Count user messages after cutoff — should be 5
+    const keptUsers = branch.slice(cut5).filter((e: any) => e.message?.role === "user").length;
+    expect(keptUsers).toBe(5);
+
+    // keepMessages=3 → keep last 3 user msgs
+    const cut3 = findHybridCutoff(branch, { keepMessages: 3 });
+    const keptUsers3 = branch.slice(cut3).filter((e: any) => e.message?.role === "user").length;
+    expect(keptUsers3).toBe(3);
+
+    // keepMessages=10 → keep all 10 user msgs → cutoff at 0
+    const cutAll = findHybridCutoff(branch, { keepMessages: 10 });
+    expect(cutAll).toBe(0);
+  });
+
+  it("respects keepMinutes override", () => {
+    const branch = Array.from({ length: 20 }, (_, i) =>
+      mkEntry("message", "user", (20 - i) * 5 * 60 * 1000),
+    );
+    // Keep last 10 min → fewer messages kept
+    const cut10 = findHybridCutoff(branch, { keepMinutes: 10 });
+    // Keep last 120 min → more messages kept
+    const cut120 = findHybridCutoff(branch, { keepMinutes: 120 });
+    expect(cut10).toBeGreaterThanOrEqual(cut120);
   });
 
   it("snaps to valid cut point", () => {
@@ -313,5 +352,243 @@ describe("rehydrateStatePure", () => {
     ];
     const state = rehydrateStatePure(entries);
     expect(state.clearSet.size).toBe(0);
+  });
+});
+
+// ── Context handler: turn-boundary pruning & fault-driven pinning ────
+
+describe("context handler — eviction strategy", () => {
+  const handlers: Record<string, Function> = {};
+  let mockAppendEntry: ReturnType<typeof vi.fn>;
+  let notifications: string[];
+
+  function buildBranch(messages: any[]): any[] {
+    return messages.map((m, i) => ({
+      type: "message",
+      id: `e${i}`,
+      message: m,
+    }));
+  }
+
+  function createCtx(branch: any[]) {
+    return {
+      sessionManager: {
+        getBranch: () => branch,
+        getEntries: () => [],
+      },
+      ui: {
+        notify: (msg: string) => notifications.push(msg),
+        setStatus: vi.fn(),
+      },
+      getContextUsage: () => ({ percent: 50 }),
+    };
+  }
+
+  /** Build a conversation with N padding turns after initial content. */
+  function paddingTurns(n: number): any[] {
+    const msgs: any[] = [];
+    for (let i = 0; i < n; i++) {
+      msgs.push({ role: "user", content: `padding turn ${i}` });
+      msgs.push({ role: "assistant", content: [{ type: "text", text: "ok" }] });
+    }
+    return msgs;
+  }
+
+  // Register extension once — handlers persist, state resets via _resetState
+  beforeAll(() => {
+    mockAppendEntry = vi.fn();
+    const mockPi = {
+      on: vi.fn((event: string, handler: Function) => {
+        handlers[event] = handler;
+      }),
+      appendEntry: mockAppendEntry,
+      registerTool: vi.fn(),
+    };
+    registerExtension(mockPi);
+  });
+
+  beforeEach(() => {
+    _resetState();
+    notifications = [];
+    mockAppendEntry.mockClear();
+  });
+
+  it("auto-clears old tool results at turn boundary", () => {
+    // Turn 1: file read (will be old with 5 user messages)
+    // Turns 2-5: padding to push turn 1 beyond recentThreshold (3 turns)
+    const messages = [
+      { role: "user", content: "read file A" },
+      { role: "assistant", content: [
+        { type: "toolCall", id: "tc1", name: "Read", arguments: { path: "/src/a.ts" } },
+      ] },
+      { role: "toolResult", toolCallId: "tc1", toolName: "Read",
+        content: [{ type: "text", text: "file A content" }] },
+      ...paddingTurns(4),
+    ];
+    const branch = buildBranch(messages);
+
+    handlers["context"]({ messages }, createCtx(branch));
+
+    // tc1 should be auto-cleared (beyond recentThreshold)
+    expect(notifications.some(n => n.includes("Auto-cleared"))).toBe(true);
+
+    // Second call: stubs appear (clearSet populated on first call)
+    const result = handlers["context"]({ messages }, createCtx(branch));
+    const tc1Msg = result.messages.find((m: any) => m.toolCallId === "tc1");
+    expect(tc1Msg.content[0].text).toMatch(/\[cleared:/);
+  });
+
+  it("does NOT auto-clear mid-turn (same user count)", () => {
+    const messages = [
+      { role: "user", content: "read file A" },
+      { role: "assistant", content: [
+        { type: "toolCall", id: "tc1", name: "Read", arguments: { path: "/src/a.ts" } },
+      ] },
+      { role: "toolResult", toolCallId: "tc1", toolName: "Read",
+        content: [{ type: "text", text: "file A content" }] },
+      ...paddingTurns(4),
+    ];
+    const branch = buildBranch(messages);
+    const ctx = createCtx(branch);
+
+    // First call: turn boundary fires (0 → 5 user messages)
+    handlers["context"]({ messages }, ctx);
+    expect(notifications.some(n => n.includes("Auto-cleared"))).toBe(true);
+
+    // LLM continues working (adds tool calls, no new user message)
+    const midTurnMessages = [
+      ...messages,
+      { role: "assistant", content: [
+        { type: "toolCall", id: "tc-mid", name: "Read", arguments: { path: "/src/b.ts" } },
+      ] },
+      { role: "toolResult", toolCallId: "tc-mid", toolName: "Read",
+        content: [{ type: "text", text: "file B content" }] },
+    ];
+    const midBranch = buildBranch(midTurnMessages);
+
+    notifications = [];
+    handlers["context"]({ messages: midTurnMessages }, createCtx(midBranch));
+
+    // No auto-clear: user count unchanged
+    expect(notifications.filter(n => n.includes("Auto-cleared"))).toHaveLength(0);
+  });
+
+  it("fault-pins when LLM re-reads an evicted file", () => {
+    // Turn 1: read /src/a.ts (will be evicted)
+    // Turns 2-5: padding
+    const messages = [
+      { role: "user", content: "read file A" },
+      { role: "assistant", content: [
+        { type: "toolCall", id: "tc1", name: "Read", arguments: { path: "/src/a.ts" } },
+      ] },
+      { role: "toolResult", toolCallId: "tc1", toolName: "Read",
+        content: [{ type: "text", text: "file A content" }] },
+      ...paddingTurns(4),
+    ];
+    const branch = buildBranch(messages);
+
+    // Evict tc1
+    handlers["context"]({ messages }, createCtx(branch));
+    expect(notifications.some(n => n.includes("Auto-cleared"))).toBe(true);
+
+    // Turn 6: re-read /src/a.ts with new toolCallId
+    const messages2 = [
+      ...messages,
+      { role: "user", content: "read A again" },
+      { role: "assistant", content: [
+        { type: "toolCall", id: "tc-reread", name: "Read", arguments: { path: "/src/a.ts" } },
+      ] },
+      { role: "toolResult", toolCallId: "tc-reread", toolName: "Read",
+        content: [{ type: "text", text: "file A content again" }] },
+    ];
+    const branch2 = buildBranch(messages2);
+
+    notifications = [];
+    handlers["context"]({ messages: messages2 }, createCtx(branch2));
+
+    // Fault-pin should fire for /src/a.ts
+    expect(notifications.some(n =>
+      n.includes("Fault-pin") && n.includes("/src/a.ts")
+    )).toBe(true);
+  });
+
+  it("fault-pin expires after FAULT_PIN_TTL turns", () => {
+    // Setup: evict + re-read to create fault-pin
+    const baseMessages = [
+      { role: "user", content: "read file A" },
+      { role: "assistant", content: [
+        { type: "toolCall", id: "tc1", name: "Read", arguments: { path: "/src/a.ts" } },
+      ] },
+      { role: "toolResult", toolCallId: "tc1", toolName: "Read",
+        content: [{ type: "text", text: "file A content" }] },
+      ...paddingTurns(4),
+    ];
+
+    // Call 1: evict tc1
+    handlers["context"]({ messages: baseMessages }, createCtx(buildBranch(baseMessages)));
+
+    // Call 2: re-read → fault-pin
+    const rereadMessages = [
+      ...baseMessages,
+      { role: "user", content: "read A again" },
+      { role: "assistant", content: [
+        { type: "toolCall", id: "tc-reread", name: "Read", arguments: { path: "/src/a.ts" } },
+      ] },
+      { role: "toolResult", toolCallId: "tc-reread", toolName: "Read",
+        content: [{ type: "text", text: "file A content again" }] },
+    ];
+    handlers["context"]({ messages: rereadMessages }, createCtx(buildBranch(rereadMessages)));
+    expect(notifications.some(n => n.includes("Fault-pin") && n.includes("/src/a.ts"))).toBe(true);
+
+    // Now advance FAULT_PIN_TTL more user turns
+    let currentMessages = [...rereadMessages];
+    for (let i = 0; i < FAULT_PIN_TTL; i++) {
+      currentMessages = [
+        ...currentMessages,
+        { role: "user", content: `advance turn ${i}` },
+        { role: "assistant", content: [{ type: "text", text: "ok" }] },
+      ];
+    }
+
+    notifications = [];
+    handlers["context"]({ messages: currentMessages }, createCtx(buildBranch(currentMessages)));
+
+    // Fault-pin should have expired
+    expect(notifications.some(n => n.includes("Fault-pin expired"))).toBe(true);
+  });
+
+  it("manual pins survive beyond FAULT_PIN_TTL", () => {
+    // Setup: create a tool result and manually pin it via session_start rehydration
+    const pinEntries = [
+      { type: "custom", customType: "acm-pin", data: { entryId: "e2", action: "pin" } },
+    ];
+    const sessionStartCtx = {
+      sessionManager: { getEntries: () => pinEntries },
+      ui: { notify: vi.fn(), setStatus: vi.fn() },
+    };
+    handlers["session_start"]({}, sessionStartCtx);
+
+    // Build conversation: e2 is a tool result in turn 1 (old, would be cleared)
+    const messages = [
+      { role: "user", content: "turn 1" },
+      { role: "assistant", content: [
+        { type: "toolCall", id: "tc-pinned", name: "Read", arguments: { path: "/pinned.ts" } },
+      ] },
+      { role: "toolResult", toolCallId: "tc-pinned", toolName: "Read",
+        content: [{ type: "text", text: "pinned content" }] },
+      // Enough padding to push turn 1 beyond threshold
+      ...paddingTurns(4 + FAULT_PIN_TTL),
+    ];
+    const branch = buildBranch(messages);
+
+    handlers["context"]({ messages }, createCtx(branch));
+
+    // e2 (tc-pinned) should NOT be cleared — it's manually pinned
+    expect(notifications.some(n => n.includes("Fault-pin expired"))).toBe(false);
+    // The auto-clear should have skipped it
+    const result = handlers["context"]({ messages }, createCtx(branch));
+    const pinnedMsg = result.messages.find((m: any) => m.toolCallId === "tc-pinned");
+    // Content should NOT be a stub — pin protects it
+    expect(pinnedMsg.content[0].text).not.toMatch(/\[cleared:/);
   });
 });
