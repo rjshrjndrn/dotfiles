@@ -61,6 +61,8 @@ export interface RehydrateResult {
   pinnedSet: Set<string>;
   compactSet: Set<string>;
   totalTokensSaved: number;
+  lastAutoClearUserCount: number;
+  faultPinTurns: Map<string, number>;
 }
 
 // ── State ────────────────────────────────────────────────────────────
@@ -86,6 +88,19 @@ const evictedPaths = new Map<string, string>(); // filePath → evicted toolCall
 // If LLM still needs content after expiry, re-read triggers re-fault-pin (self-correcting).
 export const FAULT_PIN_TTL = 5; // turns before fault-pin expires
 const faultPinTurns = new Map<string, number>(); // entryId → turn count when fault-pinned
+export const MAX_EVICTED_PATHS = 200; // cap evictedPaths to prevent unbounded growth
+
+/** Parameter names that commonly contain file paths in tool call arguments. */
+export const FILE_PATH_PARAMS = ["path", "file", "file_path", "filePath", "filename", "file_name"] as const;
+
+export function extractToolCallPaths(args: Record<string, any>): string[] {
+  const paths: string[] = [];
+  if (!args || typeof args !== "object") return paths;
+  for (const key of FILE_PATH_PARAMS) {
+    if (typeof args[key] === "string" && args[key]) paths.push(args[key]);
+  }
+  return paths;
+}
 
 /** @internal — reset module-level state for test isolation */
 export function _resetState() {
@@ -108,18 +123,19 @@ function persist(appendEntry: (type: string, data?: any) => void) {
     toolCallIdToEntryId: Object.fromEntries(toolCallIdToEntryId),
     totalTokensSaved,
     compactedEntryIds: [...compactSet],
+    lastAutoClearUserCount,
   });
   appendEntry("acm-recall-index", { entries: [...recallIndex.values()] });
 }
 
-function persistPin(appendEntry: (type: string, data?: any) => void, entryId: string, action: "pin" | "unpin") {
-  appendEntry("acm-pin", { entryId, action });
+function persistPin(appendEntry: (type: string, data?: any) => void, entryId: string, action: "pin" | "unpin", opts?: { isFault?: boolean; pinnedAtTurn?: number }) {
+  appendEntry("acm-pin", { entryId, action, ...opts });
 }
 
 function rehydrateState(entries: Array<{ type: string; customType?: string; data?: any }>) {
   let lastClearState: any;
   let lastRecallIndex: any;
-  const pinEvents: Array<{ entryId: string; action: "pin" | "unpin" }> = [];
+  const pinEvents: Array<{ entryId: string; action: "pin" | "unpin"; isFault?: boolean; pinnedAtTurn?: number }> = [];
 
   for (const entry of entries) {
     if (entry.type !== "custom") continue;
@@ -136,6 +152,7 @@ function rehydrateState(entries: Array<{ type: string; customType?: string; data
       toolCallIdToEntryId.set(k, v as string);
     }
     totalTokensSaved = lastClearState.totalTokensSaved ?? 0;
+    lastAutoClearUserCount = lastClearState.lastAutoClearUserCount ?? 0;
     compactSet.clear();
     for (const id of lastClearState.compactedEntryIds ?? []) compactSet.add(id);
   }
@@ -146,15 +163,26 @@ function rehydrateState(entries: Array<{ type: string; customType?: string; data
   }
 
   pinnedSet.clear();
-  for (const { entryId, action } of pinEvents) {
-    if (action === "pin") pinnedSet.add(entryId);
-    else pinnedSet.delete(entryId);
+  faultPinTurns.clear();
+  for (const { entryId, action, isFault, pinnedAtTurn } of pinEvents) {
+    if (action === "pin") {
+      pinnedSet.add(entryId);
+      if (isFault && pinnedAtTurn != null) faultPinTurns.set(entryId, pinnedAtTurn);
+    } else {
+      pinnedSet.delete(entryId);
+      faultPinTurns.delete(entryId);
+    }
   }
 
   // Rebuild evictedPaths from recall index for fault detection across restarts
   evictedPaths.clear();
   for (const recall of recallIndex.values()) {
     for (const fp of recall.filePaths) evictedPaths.set(fp, recall.toolCallId);
+  }
+  // Cap evictedPaths to prevent unbounded growth
+  while (evictedPaths.size > MAX_EVICTED_PATHS) {
+    const first = evictedPaths.keys().next().value;
+    if (first) evictedPaths.delete(first); else break;
   }
 
   return { cleared: clearSet.size, recalled: recallIndex.size, pinned: pinnedSet.size };
@@ -300,11 +328,13 @@ export function rehydrateStatePure(entries: RehydrateInput[]): RehydrateResult {
     pinnedSet: new Set(),
     compactSet: new Set(),
     totalTokensSaved: 0,
+    lastAutoClearUserCount: 0,
+    faultPinTurns: new Map(),
   };
 
   let lastClearState: any;
   let lastRecallIndex: any;
-  const pinEvents: Array<{ entryId: string; action: "pin" | "unpin" }> = [];
+  const pinEvents: Array<{ entryId: string; action: "pin" | "unpin"; isFault?: boolean; pinnedAtTurn?: number }> = [];
 
   for (const entry of entries) {
     if (entry.type !== "custom") continue;
@@ -319,6 +349,7 @@ export function rehydrateStatePure(entries: RehydrateInput[]): RehydrateResult {
       result.toolCallIdToEntryId.set(k, v as string);
     }
     result.totalTokensSaved = lastClearState.totalTokensSaved ?? 0;
+    result.lastAutoClearUserCount = lastClearState.lastAutoClearUserCount ?? 0;
     for (const id of lastClearState.compactedEntryIds ?? []) result.compactSet.add(id);
   }
 
@@ -326,9 +357,14 @@ export function rehydrateStatePure(entries: RehydrateInput[]): RehydrateResult {
     for (const entry of lastRecallIndex.entries ?? []) result.recallIndex.set(entry.toolCallId, entry);
   }
 
-  for (const { entryId, action } of pinEvents) {
-    if (action === "pin") result.pinnedSet.add(entryId);
-    else result.pinnedSet.delete(entryId);
+  for (const { entryId, action, isFault, pinnedAtTurn } of pinEvents) {
+    if (action === "pin") {
+      result.pinnedSet.add(entryId);
+      if (isFault && pinnedAtTurn != null) result.faultPinTurns.set(entryId, pinnedAtTurn);
+    } else {
+      result.pinnedSet.delete(entryId);
+      result.faultPinTurns.delete(entryId);
+    }
   }
 
   return result;
@@ -377,9 +413,7 @@ function buildRecallEntry(toolCallId: string, toolName: string, keyTerms: string
     if (m.role !== "assistant" || !Array.isArray(m.content)) continue;
     for (const block of m.content) {
       if (block.type === "toolCall" && block.id === toolCallId && block.arguments) {
-        for (const key of ["path", "file", "file_path", "command"]) {
-          if (typeof block.arguments[key] === "string") filePaths.push(block.arguments[key]);
-        }
+        filePaths.push(...extractToolCallPaths(block.arguments));
       }
     }
   }
@@ -514,8 +548,8 @@ export default function (pi: ExtensionAPI) {
       if (m.role === "assistant" && Array.isArray(m.content)) {
         for (const block of m.content) {
           if (block.type === "toolCall" && block.arguments) {
-            const fp = block.arguments.path || block.arguments.file || block.arguments.file_path;
-            if (fp) recentToolPaths.set(block.id, fp);
+            const fps = extractToolCallPaths(block.arguments);
+            if (fps.length > 0) recentToolPaths.set(block.id, fps[0]);
           }
         }
       }
@@ -530,7 +564,7 @@ export default function (pi: ExtensionAPI) {
         if (entryId && !pinnedSet.has(entryId)) {
           pinnedSet.add(entryId);
           faultPinTurns.set(entryId, currentUserCount);
-          persistPin(pi.appendEntry.bind(pi), entryId, "pin");
+          persistPin(pi.appendEntry.bind(pi), entryId, "pin", { isFault: true, pinnedAtTurn: currentUserCount });
           ctx.ui.notify(`[ACM] 📌 Fault-pin: ${filePath} (re-read of evicted content)`, "info");
           evictedPaths.delete(filePath);
         }
@@ -580,6 +614,11 @@ export default function (pi: ExtensionAPI) {
         // Track evicted file paths for fault detection
         for (const fp of recall.filePaths) evictedPaths.set(fp, msg.toolCallId);
         autoClearCount++;
+      }
+      // Cap evictedPaths to prevent unbounded growth
+      while (evictedPaths.size > MAX_EVICTED_PATHS) {
+        const first = evictedPaths.keys().next().value;
+        if (first) evictedPaths.delete(first); else break;
       }
       if (autoClearCount > 0) {
         persist(pi.appendEntry.bind(pi));

@@ -22,6 +22,9 @@ vi.mock("@sinclair/typebox", () => ({
 
 import registerExtension, {
   extractKeywords,
+  extractToolCallPaths,
+  FILE_PATH_PARAMS,
+  MAX_EVICTED_PATHS,
   getBranchMessages,
   getTextPreview,
   extractEntryContent,
@@ -66,6 +69,42 @@ describe("extractKeywords", () => {
     expect(STOP_WORDS.has("this")).toBe(true);
     expect(STOP_WORDS.has("would")).toBe(true);
     expect(STOP_WORDS.has("function")).toBe(false);
+  });
+});
+
+// ── extractToolCallPaths ──────────────────────────────────────────────
+
+describe("extractToolCallPaths", () => {
+  it("extracts common file path params", () => {
+    expect(extractToolCallPaths({ path: "/src/a.ts" })).toEqual(["/src/a.ts"]);
+    expect(extractToolCallPaths({ file: "b.ts" })).toEqual(["b.ts"]);
+    expect(extractToolCallPaths({ file_path: "c.ts" })).toEqual(["c.ts"]);
+    expect(extractToolCallPaths({ filePath: "d.ts" })).toEqual(["d.ts"]);
+    expect(extractToolCallPaths({ filename: "e.ts" })).toEqual(["e.ts"]);
+    expect(extractToolCallPaths({ file_name: "f.ts" })).toEqual(["f.ts"]);
+  });
+
+  it("extracts multiple paths from one args object", () => {
+    const paths = extractToolCallPaths({ path: "/a.ts", file: "/b.ts" });
+    expect(paths).toContain("/a.ts");
+    expect(paths).toContain("/b.ts");
+    expect(paths).toHaveLength(2);
+  });
+
+  it("ignores non-string and empty values", () => {
+    expect(extractToolCallPaths({ path: 42 })).toEqual([]);
+    expect(extractToolCallPaths({ path: "" })).toEqual([]);
+    expect(extractToolCallPaths({ path: null })).toEqual([]);
+  });
+
+  it("handles null/undefined/non-object args", () => {
+    expect(extractToolCallPaths(null as any)).toEqual([]);
+    expect(extractToolCallPaths(undefined as any)).toEqual([]);
+    expect(extractToolCallPaths("string" as any)).toEqual([]);
+  });
+
+  it("ignores unknown param names", () => {
+    expect(extractToolCallPaths({ command: "ls -la", query: "search" })).toEqual([]);
   });
 });
 
@@ -353,6 +392,54 @@ describe("rehydrateStatePure", () => {
     const state = rehydrateStatePure(entries);
     expect(state.clearSet.size).toBe(0);
   });
+
+  it("restores lastAutoClearUserCount from clear state", () => {
+    const entries = [{
+      type: "custom",
+      customType: "acm-clear-state",
+      data: {
+        clearedToolCallIds: [],
+        toolCallIdToEntryId: {},
+        totalTokensSaved: 0,
+        compactedEntryIds: [],
+        lastAutoClearUserCount: 42,
+      },
+    }];
+    const state = rehydrateStatePure(entries);
+    expect(state.lastAutoClearUserCount).toBe(42);
+  });
+
+  it("defaults lastAutoClearUserCount to 0 when missing", () => {
+    const entries = [{
+      type: "custom",
+      customType: "acm-clear-state",
+      data: { clearedToolCallIds: [], toolCallIdToEntryId: {}, totalTokensSaved: 0 },
+    }];
+    const state = rehydrateStatePure(entries);
+    expect(state.lastAutoClearUserCount).toBe(0);
+  });
+
+  it("restores fault-pin TTL from pin events", () => {
+    const entries = [
+      { type: "custom", customType: "acm-pin", data: { entryId: "e1", action: "pin", isFault: true, pinnedAtTurn: 10 } },
+      { type: "custom", customType: "acm-pin", data: { entryId: "e2", action: "pin" } }, // manual pin, no isFault
+    ];
+    const state = rehydrateStatePure(entries);
+    expect(state.pinnedSet.size).toBe(2);
+    expect(state.faultPinTurns.size).toBe(1);
+    expect(state.faultPinTurns.get("e1")).toBe(10);
+    expect(state.faultPinTurns.has("e2")).toBe(false);
+  });
+
+  it("clears fault-pin TTL on unpin", () => {
+    const entries = [
+      { type: "custom", customType: "acm-pin", data: { entryId: "e1", action: "pin", isFault: true, pinnedAtTurn: 5 } },
+      { type: "custom", customType: "acm-pin", data: { entryId: "e1", action: "unpin" } },
+    ];
+    const state = rehydrateStatePure(entries);
+    expect(state.pinnedSet.size).toBe(0);
+    expect(state.faultPinTurns.size).toBe(0);
+  });
 });
 
 // ── Context handler: turn-boundary pruning & fault-driven pinning ────
@@ -590,5 +677,152 @@ describe("context handler — eviction strategy", () => {
     const pinnedMsg = result.messages.find((m: any) => m.toolCallId === "tc-pinned");
     // Content should NOT be a stub — pin protects it
     expect(pinnedMsg.content[0].text).not.toMatch(/\[cleared:/);
+  });
+
+  it("fault-pin persisted with isFault flag on appendEntry", () => {
+    // Setup: evict + re-read to create fault-pin
+    const messages = [
+      { role: "user", content: "read file A" },
+      { role: "assistant", content: [
+        { type: "toolCall", id: "tc1", name: "Read", arguments: { path: "/src/a.ts" } },
+      ] },
+      { role: "toolResult", toolCallId: "tc1", toolName: "Read",
+        content: [{ type: "text", text: "file A content" }] },
+      ...paddingTurns(4),
+    ];
+
+    // Evict
+    handlers["context"]({ messages }, createCtx(buildBranch(messages)));
+
+    // Re-read → fault-pin
+    const messages2 = [
+      ...messages,
+      { role: "user", content: "read A again" },
+      { role: "assistant", content: [
+        { type: "toolCall", id: "tc-reread", name: "Read", arguments: { path: "/src/a.ts" } },
+      ] },
+      { role: "toolResult", toolCallId: "tc-reread", toolName: "Read",
+        content: [{ type: "text", text: "file A content again" }] },
+    ];
+    handlers["context"]({ messages: messages2 }, createCtx(buildBranch(messages2)));
+
+    // Check appendEntry was called with isFault + pinnedAtTurn
+    const pinCalls = mockAppendEntry.mock.calls.filter(
+      ([type, data]: any) => type === "acm-pin" && data?.action === "pin" && data?.isFault === true
+    );
+    expect(pinCalls.length).toBeGreaterThanOrEqual(1);
+    const pinData = pinCalls[0][1];
+    expect(pinData.isFault).toBe(true);
+    expect(typeof pinData.pinnedAtTurn).toBe("number");
+  });
+
+  it("fault-pin survives rehydration and expires correctly", () => {
+    // Simulate restart: rehydrate with fault-pin at turn 3
+    const pinEntries = [
+      { type: "custom", customType: "acm-pin", data: { entryId: "e2", action: "pin", isFault: true, pinnedAtTurn: 3 } },
+      { type: "custom", customType: "acm-clear-state", data: {
+        clearedToolCallIds: ["tc-old"],
+        toolCallIdToEntryId: { "tc-old": "e0" },
+        totalTokensSaved: 100,
+        compactedEntryIds: [],
+        lastAutoClearUserCount: 5,
+      } },
+    ];
+    const sessionStartCtx = {
+      sessionManager: { getEntries: () => pinEntries },
+      ui: { notify: vi.fn(), setStatus: vi.fn() },
+    };
+    handlers["session_start"]({}, sessionStartCtx);
+
+    // Build conversation with enough turns to expire the fault-pin
+    // pinnedAtTurn=3, FAULT_PIN_TTL=5, so need currentUserCount >= 8
+    const messages = [
+      { role: "user", content: "turn 1" },
+      { role: "assistant", content: [
+        { type: "toolCall", id: "tc-pinned", name: "Read", arguments: { path: "/fp.ts" } },
+      ] },
+      { role: "toolResult", toolCallId: "tc-pinned", toolName: "Read",
+        content: [{ type: "text", text: "fault pinned content" }] },
+      // Need 7 more user turns to reach count 8 (>= 3 + 5)
+      ...paddingTurns(7),
+    ];
+    const branch = buildBranch(messages);
+
+    notifications = [];
+    handlers["context"]({ messages }, createCtx(branch));
+
+    // Fault-pin from rehydration should have expired
+    expect(notifications.some(n => n.includes("Fault-pin expired"))).toBe(true);
+  });
+
+  it("lastAutoClearUserCount rehydration prevents mass eviction on restart", () => {
+    // Rehydrate with lastAutoClearUserCount = 5
+    const entries = [
+      { type: "custom", customType: "acm-clear-state", data: {
+        clearedToolCallIds: [],
+        toolCallIdToEntryId: {},
+        totalTokensSaved: 0,
+        compactedEntryIds: [],
+        lastAutoClearUserCount: 5,
+      } },
+    ];
+    const sessionStartCtx = {
+      sessionManager: { getEntries: () => entries },
+      ui: { notify: vi.fn(), setStatus: vi.fn() },
+    };
+    handlers["session_start"]({}, sessionStartCtx);
+
+    // Send context with exactly 5 user messages (same count — no turn boundary)
+    const messages = [
+      { role: "user", content: "old turn 1" },
+      { role: "assistant", content: [
+        { type: "toolCall", id: "tc1", name: "Read", arguments: { path: "/a.ts" } },
+      ] },
+      { role: "toolResult", toolCallId: "tc1", toolName: "Read",
+        content: [{ type: "text", text: "content A" }] },
+      ...paddingTurns(4), // 4 more user msgs = 5 total
+    ];
+    const branch = buildBranch(messages);
+
+    notifications = [];
+    handlers["context"]({ messages }, createCtx(branch));
+
+    // Should NOT auto-clear: currentUserCount (5) === lastAutoClearUserCount (5)
+    expect(notifications.filter(n => n.includes("Auto-cleared"))).toHaveLength(0);
+  });
+
+  it("detects fault via filePath param (not just path)", () => {
+    // Turn 1: read via filePath param
+    const messages = [
+      { role: "user", content: "read file" },
+      { role: "assistant", content: [
+        { type: "toolCall", id: "tc1", name: "CustomRead", arguments: { filePath: "/src/x.ts" } },
+      ] },
+      { role: "toolResult", toolCallId: "tc1", toolName: "CustomRead",
+        content: [{ type: "text", text: "file x content" }] },
+      ...paddingTurns(4),
+    ];
+
+    // Evict
+    handlers["context"]({ messages }, createCtx(buildBranch(messages)));
+
+    // Re-read via filePath
+    const messages2 = [
+      ...messages,
+      { role: "user", content: "read x again" },
+      { role: "assistant", content: [
+        { type: "toolCall", id: "tc-reread", name: "CustomRead", arguments: { filePath: "/src/x.ts" } },
+      ] },
+      { role: "toolResult", toolCallId: "tc-reread", toolName: "CustomRead",
+        content: [{ type: "text", text: "file x content again" }] },
+    ];
+
+    notifications = [];
+    handlers["context"]({ messages: messages2 }, createCtx(buildBranch(messages2)));
+
+    // Fault-pin should fire for /src/x.ts (detected via filePath param)
+    expect(notifications.some(n =>
+      n.includes("Fault-pin") && n.includes("/src/x.ts")
+    )).toBe(true);
   });
 });
