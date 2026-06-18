@@ -42,6 +42,7 @@ import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import { Type } from "@sinclair/typebox";
 import { writeFileSync, mkdirSync, readdirSync, statSync, existsSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -647,7 +648,7 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("session_start" as any, (_event: any, ctx: any) => {
     // Load config + discover local tools from runtime
-    const config = loadAcmConfig(dirname(import.meta.url.replace("file://", "")));
+    const config = loadAcmConfig(dirname(fileURLToPath(import.meta.url)));
     discoverLocalTools(ctx.getAllTools?.() ?? [], config);
     const stats = rehydrateState(ctx.sessionManager.getEntries());
     // Rehydrate cachedToFile map from existing cache files
