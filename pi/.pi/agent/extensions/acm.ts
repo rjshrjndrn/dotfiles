@@ -24,6 +24,11 @@
  * [3] CWL (Context Window Lifecycle) — episode typing heuristic:
  *     Action episodes (writes/edits) safe to evict first (effects persisted).
  *     Exploration episodes (reads/searches) evict last (LLM needs for reasoning).
+ *
+ * [4] InfiAgent 2025 — File-centric state abstraction:
+ *     External tool outputs cached to disk, LLM self-serves via bash.
+ *     "Long context is NOT a substitute for persistent state."
+ *     Only internet/external content needs caching; local files re-readable.
  */
 
 import { complete } from "@earendil-works/pi-ai";
@@ -35,6 +40,8 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import { Type } from "@sinclair/typebox";
+import { writeFileSync, mkdirSync, readdirSync, statSync, existsSync } from "node:fs";
+import { join, dirname } from "node:path";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -102,6 +109,93 @@ export function extractToolCallPaths(args: Record<string, any>): string[] {
   return paths;
 }
 
+// ── External Tool Caching (InfiAgent-inspired) ────────────────────
+// Only tools that fetch from internet/external APIs get cached to disk.
+// Local tools (Read/Write/Edit/Bash/gitnexus/memory) are re-derivable.
+
+/** Tools whose output comes from external/internet sources — must be cached. */
+export const EXTERNAL_TOOLS = new Set([
+  "web_fetch", "exa_web_search_exa", "exa_find_similar_exa", "exa_get_contents_exa",
+]);
+
+/** Check if a tool name is an external MCP tool (not a known local one). */
+export function isExternalTool(toolName: string): boolean {
+  if (EXTERNAL_TOOLS.has(toolName)) return true;
+  // MCP tools from external servers (exa, yahoo, etc.) — but NOT local tools
+  // Local MCP servers that are re-runnable: cc, linear, lp, notion, tinyfish
+  const LOCAL_MCP_PREFIXES = ["cc_", "linear_", "lp_", "notion_", "tinyfish_"];
+  if (toolName.startsWith("exa_") || toolName.startsWith("yahoo_")) return true;
+  // Generic mcp calls — check if tool name suggests external
+  return false;
+}
+
+/** Get the cache directory for a session. */
+export function getCacheDir(sessionDir: string): string {
+  return join(sessionDir, ".acm", "cache");
+}
+
+/** Write tool output to cache file. Returns the cache file path. */
+export function writeCacheFile(
+  sessionDir: string,
+  toolName: string,
+  toolCallId: string,
+  content: string,
+): string {
+  const cacheDir = getCacheDir(sessionDir);
+  mkdirSync(cacheDir, { recursive: true });
+  // Sanitize toolCallId for filename
+  const safeId = toolCallId.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 40);
+  const ext = isJsonLike(content) ? ".json" : ".md";
+  const filename = `${toolName}-${safeId}${ext}`;
+  const filePath = join(cacheDir, filename);
+  // Truncate at 100KB
+  const maxBytes = 100 * 1024;
+  const truncated = content.length > maxBytes
+    ? content.slice(0, maxBytes) + "\n\n[...truncated at 100KB]"
+    : content;
+  writeFileSync(filePath, truncated, "utf-8");
+  return filePath;
+}
+
+/** Extract text content from a tool result message. */
+export function extractToolResultText(msg: any): string {
+  if (typeof msg.content === "string") return msg.content;
+  if (Array.isArray(msg.content)) {
+    return msg.content
+      .filter((b: any) => b.type === "text")
+      .map((b: any) => b.text)
+      .join("\n");
+  }
+  return JSON.stringify(msg.content);
+}
+
+function isJsonLike(text: string): boolean {
+  const trimmed = text.trimStart();
+  return trimmed.startsWith("{") || trimmed.startsWith("[");
+}
+
+/** Build a cached stub with file path for external tool results. */
+export function buildCachedStub(toolName: string, cachePath: string, keyTerms: string): string {
+  return `[cached: ${cachePath} | ${toolName} | ${extractKeywords(keyTerms, 10)} | use: bash rg/grep/head]`;
+}
+
+/** Get cache stats for acm_status. */
+export function getCacheStats(sessionDir: string): { files: number; totalBytes: number } {
+  const cacheDir = getCacheDir(sessionDir);
+  if (!existsSync(cacheDir)) return { files: 0, totalBytes: 0 };
+  try {
+    const entries = readdirSync(cacheDir);
+    let totalBytes = 0;
+    for (const entry of entries) {
+      try { totalBytes += statSync(join(cacheDir, entry)).size; } catch {}
+    }
+    return { files: entries.length, totalBytes };
+  } catch { return { files: 0, totalBytes: 0 }; }
+}
+
+// Track which toolCallIds have been cached to disk
+const cachedToFile = new Map<string, string>(); // toolCallId → cachePath
+
 /** @internal — reset module-level state for test isolation */
 export function _resetState() {
   clearSet.clear();
@@ -113,6 +207,7 @@ export function _resetState() {
   lastAutoClearUserCount = 0;
   evictedPaths.clear();
   faultPinTurns.clear();
+  cachedToFile.clear();
 }
 
 // ── Persistence ──────────────────────────────────────────────────────
@@ -401,6 +496,13 @@ function inventoryToolResults(messages: AgentMessage[]) {
 function buildStub(msg: any): string {
   const toolName = msg.toolName || "unknown";
   const entryId = toolCallIdToEntryId.get(msg.toolCallId) || "?";
+  // If cached to file, use cached stub format with filepath
+  const cachePath = cachedToFile.get(msg.toolCallId);
+  if (cachePath) {
+    const recall = recallIndex.get(msg.toolCallId);
+    const source = recall?.keyTerms ?? getTextPreview(msg);
+    return buildCachedStub(toolName, cachePath, source);
+  }
   const recall = recallIndex.get(msg.toolCallId);
   const source = recall?.keyTerms ?? getTextPreview(msg);
   return `[cleared: ${toolName} | id: ${entryId} | ${extractKeywords(source, 10)}]`;
@@ -424,6 +526,7 @@ function clearToolResults(
   toolResults: Array<{ toolCallId: string; toolName: string; tokens: number; keyTerms: string }>,
   notify: (msg: string) => void,
   contextMessages: AgentMessage[],
+  sessionDir?: string,
 ): number {
   let saved = 0;
   for (const tr of toolResults) {
@@ -432,6 +535,22 @@ function clearToolResults(
     if (entryId && pinnedSet.has(entryId)) {
       notify(`📌 ${tr.toolName} (${Math.round(tr.tokens / 1000)}k) — pinned, skip`);
       continue;
+    }
+    // Cache external tool outputs to disk before clearing
+    if (sessionDir && isExternalTool(tr.toolName)) {
+      const toolResultMsg = contextMessages.find((m: any) => m.toolCallId === tr.toolCallId) as any;
+      if (toolResultMsg) {
+        const text = extractToolResultText(toolResultMsg);
+        if (text.length > 0) {
+          try {
+            const cachePath = writeCacheFile(sessionDir, tr.toolName, tr.toolCallId, text);
+            cachedToFile.set(tr.toolCallId, cachePath);
+            notify(`💾 ${tr.toolName} (${Math.round(tr.tokens / 1000)}k) → cached: ${cachePath}`);
+          } catch (e) {
+            notify(`⚠️ ${tr.toolName} cache write failed: ${e instanceof Error ? e.message : e}`);
+          }
+        }
+      }
     }
     clearSet.add(tr.toolCallId);
     const tokensSaved = tr.tokens - 50;
@@ -454,8 +573,30 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("session_start" as any, (_event: any, ctx: any) => {
     const stats = rehydrateState(ctx.sessionManager.getEntries());
+    // Rehydrate cachedToFile map from existing cache files
+    const sessionDir = ctx.sessionManager.getSessionDir();
+    const cacheDir = getCacheDir(sessionDir);
+    if (existsSync(cacheDir)) {
+      try {
+        for (const file of readdirSync(cacheDir)) {
+          // Extract toolCallId from filename: toolName-toolCallId.ext
+          const match = file.match(/^(.+?)-(.+)\.(md|json)$/);
+          if (match) {
+            const cachePath = join(cacheDir, file);
+            // Find matching recall entry
+            for (const recall of recallIndex.values()) {
+              const safeId = recall.toolCallId.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 40);
+              if (file.includes(safeId)) {
+                cachedToFile.set(recall.toolCallId, cachePath);
+                break;
+              }
+            }
+          }
+        }
+      } catch {}
+    }
     if (stats.cleared > 0 || stats.pinned > 0) {
-      ctx.ui.notify(`[ACM] Restored: ${stats.cleared} cleared, ${stats.pinned} pinned, ${stats.recalled} in recall`, "info");
+      ctx.ui.notify(`[ACM] Restored: ${stats.cleared} cleared, ${stats.pinned} pinned, ${stats.recalled} in recall, ${cachedToFile.size} cached`, "info");
       ctx.ui.setStatus("acm", statusText());
     }
   });
@@ -512,14 +653,19 @@ export default function (pi: ExtensionAPI) {
 
     // Inject ACM context into first user message
     if (clearSet.size > 0 || compactSet.size > 0) {
+      const cachedCount = cachedToFile.size;
       const acmText = [
         `<acm-context>`,
-        `${clearSet.size} tool results cleared, ${compactSet.size} messages compacted, ${pinnedSet.size} pinned, ${recallIndex.size} recallable.`,
+        `${clearSet.size} tool results cleared, ${compactSet.size} messages compacted, ${pinnedSet.size} pinned, ${cachedCount} cached to disk.`,
         `Thinking blocks stripped from old messages (last ${recentTurns} turns preserved).`,
-        `To retrieve [cleared/compacted] content: acm_recall(entryId: "<id>") or acm_recall(query: "keywords"). Or re-read file from disk.`,
+        cachedCount > 0
+          ? `To retrieve cached content: use bash (rg, grep, head, jq) on the filepath shown in [cached:...] stubs.`
+          : ``,
+        `For file content: prefer \`bash rg/grep\` on source files over Read. Use Read as fallback.`,
+        `To find what's cached: acm_recall(query: "keywords") returns paths only, NO content.`,
         `Do NOT guess cleared content.`,
         `</acm-context>`,
-      ].join("\n");
+      ].filter(Boolean).join("\n");
 
       for (let i = 0; i < messages.length; i++) {
         if ((messages[i] as any).role === "user") {
@@ -596,6 +742,7 @@ export default function (pi: ExtensionAPI) {
       }
 
       let autoClearCount = 0;
+      const sessionDir = ctx.sessionManager.getSessionDir();
       for (const entry of branch) {
         if (entry.type !== "message" || !entry.message) continue;
         const msg = entry.message as any;
@@ -604,6 +751,20 @@ export default function (pi: ExtensionAPI) {
         if (pinnedSet.has(entry.id)) continue;
         if (recentToolCallIds.has(msg.toolCallId)) continue; // protect recent
         const tokens = estimateTokens(msg);
+        // Cache external tool outputs to disk before clearing
+        const toolName = msg.toolName || "unknown";
+        if (isExternalTool(toolName)) {
+          try {
+            const text = extractToolResultText(msg);
+            if (text.length > 0) {
+              const cachePath = writeCacheFile(sessionDir, toolName, msg.toolCallId, text);
+              cachedToFile.set(msg.toolCallId, cachePath);
+              ctx.ui.notify(`[ACM] 💾 ${toolName} → cached: ${cachePath}`, "info");
+            }
+          } catch (e) {
+            ctx.ui.notify(`[ACM] ⚠️ ${toolName} cache write failed: ${e instanceof Error ? e.message : e}`, "info");
+          }
+        }
         clearSet.add(msg.toolCallId);
         totalTokensSaved += Math.max(tokens - 50, 0);
         const textContent = Array.isArray(msg.content)
@@ -647,12 +808,14 @@ export default function (pi: ExtensionAPI) {
       buildToolCallMapping(branch);
       const clearable = inventoryToolResults(getBranchMessages(branch));
       const est = Math.round(clearable.reduce((s, r) => s + r.tokens, 0) * 0.4);
+      const cacheStats = getCacheStats(ctx.sessionManager.getSessionDir());
 
       const report = [
         `── ACM Status ──`,
         `Context: ${usage?.tokens ? Math.round(usage.tokens / 1000) + "k" : "?"} / ${usage?.contextWindow ? Math.round(usage.contextWindow / 1000) + "k" : "?"} (${usage?.percent != null ? Math.round(usage.percent) + "%" : "?"})`,
         `Cleared: ${clearSet.size} tool results, ${compactSet.size} compacted`,
         `Saved: ~${Math.round(totalTokensSaved * 0.4 / 1000)}k`,
+        `Cache: ${cacheStats.files} files (${Math.round(cacheStats.totalBytes / 1024)}KB) in .acm/cache/`,
         ``,
         `── Clearable: ${clearable.length} (~${Math.round(est / 1000)}k) ──`,
         ...clearable.slice(0, 10).map((r) => `  ${r.toolName} (${Math.round(r.tokens / 1000)}k) [${r.keyTerms.slice(0, 60)}...]`),
@@ -707,7 +870,8 @@ export default function (pi: ExtensionAPI) {
         return { content: [{ type: "text" as const, text: "[ACM] Nothing to clear." }], details: { count: 0 } };
       }
 
-      const saved = clearToolResults(candidates, (msg) => ctx.ui.notify(`[ACM] ${msg}`, "info"), branchMessages);
+      const sessionDir = ctx.sessionManager.getSessionDir();
+      const saved = clearToolResults(candidates, (msg) => ctx.ui.notify(`[ACM] ${msg}`, "info"), branchMessages, sessionDir);
       persist(pi.appendEntry.bind(pi));
 
       const report = `[ACM] ✅ Cleared ${candidates.length} tool results (~${Math.round(saved * 0.4 / 1000)}k freed, ${clearSet.size} total). Effect on next turn.`;
@@ -747,7 +911,8 @@ export default function (pi: ExtensionAPI) {
 
       // Clear all tool results + compact old messages
       const clearedBefore = clearSet.size;
-      clearToolResults(inventoryToolResults(getBranchMessages(branch)), (msg) => ctx.ui.notify(`[ACM] ${msg}`, "info"), getBranchMessages(branch));
+      const sessionDir = ctx.sessionManager.getSessionDir();
+      clearToolResults(inventoryToolResults(getBranchMessages(branch)), (msg) => ctx.ui.notify(`[ACM] ${msg}`, "info"), getBranchMessages(branch), sessionDir);
       const toolResultsCleared = clearSet.size - clearedBefore;
 
       let messagesCompacted = 0;
@@ -779,25 +944,35 @@ export default function (pi: ExtensionAPI) {
     name: "acm_recall",
     label: "ACM Recall",
     description:
-      "Retrieve original content of cleared/compacted tool results. " +
-      "Search by entryId (exact) or keywords (fuzzy match against recall index). " +
-      "Returns full or truncated content based on context pressure.",
-    promptSnippet: "acm_recall: Retrieve original content of cleared tool results by ID or keyword search.",
+      "Search the index of cleared/cached tool results. Returns file paths and metadata only — no content. " +
+      "Use bash (rg, grep, head, jq) on returned file paths to retrieve actual content.",
+    promptSnippet: "acm_recall: Search index of cached/cleared results. Returns paths + keywords, NO content. Use bash to read cache files.",
     parameters: Type.Object({
-      entryId: Type.Optional(Type.String({ description: "Exact session entry ID to recall." })),
+      entryId: Type.Optional(Type.String({ description: "Exact session entry ID to look up." })),
       query: Type.Optional(Type.String({ description: "Keyword search across cleared tool results." })),
     }),
-    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+    async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
+      // Index-only: return metadata + file paths, never content
+      const formatEntry = (recall: RecallMetadata) => {
+        const cachePath = cachedToFile.get(recall.toolCallId);
+        const age = Math.round((Date.now() - recall.timestamp) / 60000);
+        return [
+          `  tool: ${recall.toolName}`,
+          `  keywords: ${recall.keyTerms.slice(0, 100)}`,
+          cachePath ? `  cached: ${cachePath}` : `  entryId: ${recall.entryId} (session-only, no cache file)`,
+          `  age: ${age}m ago | size: ${Math.round(recall.charCount / 1024)}KB`,
+        ].join("\n");
+      };
+
       if (params.entryId) {
-        const entry = ctx.sessionManager.getEntry(params.entryId) as any;
-        if (!entry) return { content: [{ type: "text" as const, text: `[ACM] Entry ${params.entryId} not found.` }], details: { found: false } };
-        const content = extractEntryContent(entry);
-        // Truncate under high context pressure
-        const usage = ctx.getContextUsage?.();
-        const truncated = (usage?.percent ?? 0) > 70 && content.length > 2000
-          ? `${content.slice(0, 2000)}\n\n[...truncated, ${content.length - 2000} chars omitted, ${Math.round(usage!.percent!)}% pressure]`
-          : content;
-        return { content: [{ type: "text" as const, text: truncated }], details: { source: "entryId", entryId: params.entryId } };
+        // Look up by entryId
+        const recall = [...recallIndex.values()].find(r => r.entryId === params.entryId);
+        if (!recall) return { content: [{ type: "text" as const, text: `[ACM] Entry ${params.entryId} not in recall index.` }], details: { found: false } };
+        const info = formatEntry(recall);
+        return {
+          content: [{ type: "text" as const, text: `[ACM Recall] Found:\n${info}\n\nUse bash to read the cached file.` }],
+          details: { source: "entryId", entryId: params.entryId },
+        };
       }
 
       if (params.query) {
@@ -810,26 +985,39 @@ export default function (pi: ExtensionAPI) {
         }
         matches.sort((a, b) => b.score - a.score);
 
-        if (matches.length > 0) {
-          const best = matches[0].entry;
-          const entry = ctx.sessionManager.getEntry(best.entryId) as any;
-          if (entry) {
-            const content = extractEntryContent(entry);
-            const usage = ctx.getContextUsage?.();
-            const truncated = (usage?.percent ?? 0) > 70 && content.length > 2000
-              ? `${content.slice(0, 2000)}\n\n[...truncated]`
-              : content;
-            return {
-              content: [{ type: "text" as const, text: `[ACM Recall] ${matches.length} matches. Best: ${best.toolName} | ${best.filePaths.join(", ") || "no files"} | ${best.entryId}\n---\n${truncated}` }],
-              details: { source: "keyword", entryId: best.entryId, matches: matches.length },
-            };
-          }
+        if (matches.length === 0) {
+          return { content: [{ type: "text" as const, text: `[ACM] No results for: "${params.query}"` }], details: { found: false } };
         }
 
-        return { content: [{ type: "text" as const, text: `[ACM] No results for: "${params.query}"` }], details: { found: false } };
+        const lines = matches.slice(0, 10).map((m, i) => `${i + 1}. ${formatEntry(m.entry)}`);
+        const report = [
+          `[ACM Recall] ${matches.length} match${matches.length > 1 ? "es" : ""}:`,
+          ...lines,
+          ``,
+          `Use bash (rg, grep, head) on cached file paths to retrieve content.`,
+        ].join("\n");
+
+        return {
+          content: [{ type: "text" as const, text: report }],
+          details: { source: "keyword", matches: matches.length },
+        };
       }
 
-      return { content: [{ type: "text" as const, text: "[ACM] Provide entryId or query." }], details: {} };
+      // No params: list all cached entries
+      const all = [...recallIndex.values()].sort((a, b) => b.timestamp - a.timestamp);
+      if (all.length === 0) {
+        return { content: [{ type: "text" as const, text: "[ACM] Recall index empty." }], details: {} };
+      }
+      const lines = all.slice(0, 15).map((r, i) => `${i + 1}. ${formatEntry(r)}`);
+      const report = [
+        `[ACM Recall] ${all.length} entries in index:`,
+        ...lines,
+        all.length > 15 ? `  ... +${all.length - 15} more` : "",
+        ``,
+        `Use bash (rg, grep, head) on cached file paths to retrieve content.`,
+      ].filter(Boolean).join("\n");
+
+      return { content: [{ type: "text" as const, text: report }], details: { total: all.length } };
     },
   });
 
@@ -959,7 +1147,8 @@ export default function (pi: ExtensionAPI) {
     ctx.ui.notify(`[ACM] Need ~${Math.round(tokensToFree / 1000)}k free. Clearable: ${toolResults.length} results (~${Math.round(conservativeSavings / 1000)}k)`, "info");
 
     // ── Phase 1: Clear all tool results ──
-    clearToolResults(toolResults, (msg) => ctx.ui.notify(`[ACM] ${msg}`, "info"), allMessages);
+    const sessionDir = ctx.sessionManager.getSessionDir();
+    clearToolResults(toolResults, (msg) => ctx.ui.notify(`[ACM] ${msg}`, "info"), allMessages, sessionDir);
 
     if (conservativeSavings >= tokensToFree) {
       ctx.ui.notify(`[ACM] ✅ Phase 1 sufficient — cancelled default compaction`, "info");

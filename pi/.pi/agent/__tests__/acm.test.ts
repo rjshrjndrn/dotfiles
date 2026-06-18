@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach, afterAll } from "vitest";
 
 // Mock external deps that acm.ts imports but tests don't need
 vi.mock("@earendil-works/pi-ai", () => ({ complete: vi.fn() }));
@@ -34,7 +34,18 @@ import registerExtension, {
   STOP_WORDS,
   FAULT_PIN_TTL,
   _resetState,
+  EXTERNAL_TOOLS,
+  isExternalTool,
+  getCacheDir,
+  writeCacheFile,
+  extractToolResultText,
+  buildCachedStub,
+  getCacheStats,
 } from "../extensions/acm.ts";
+
+import { existsSync, readFileSync, rmSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 // ── extractKeywords ──────────────────────────────────────────────────
 
@@ -462,6 +473,7 @@ describe("context handler — eviction strategy", () => {
       sessionManager: {
         getBranch: () => branch,
         getEntries: () => [],
+        getSessionDir: () => join(tmpdir(), `acm-test-ctx-${Date.now()}`),
       },
       ui: {
         notify: (msg: string) => notifications.push(msg),
@@ -650,7 +662,7 @@ describe("context handler — eviction strategy", () => {
       { type: "custom", customType: "acm-pin", data: { entryId: "e2", action: "pin" } },
     ];
     const sessionStartCtx = {
-      sessionManager: { getEntries: () => pinEntries },
+      sessionManager: { getEntries: () => pinEntries, getSessionDir: () => join(tmpdir(), "acm-test") },
       ui: { notify: vi.fn(), setStatus: vi.fn() },
     };
     handlers["session_start"]({}, sessionStartCtx);
@@ -729,7 +741,7 @@ describe("context handler — eviction strategy", () => {
       } },
     ];
     const sessionStartCtx = {
-      sessionManager: { getEntries: () => pinEntries },
+      sessionManager: { getEntries: () => pinEntries, getSessionDir: () => join(tmpdir(), "acm-test") },
       ui: { notify: vi.fn(), setStatus: vi.fn() },
     };
     handlers["session_start"]({}, sessionStartCtx);
@@ -767,7 +779,7 @@ describe("context handler — eviction strategy", () => {
       } },
     ];
     const sessionStartCtx = {
-      sessionManager: { getEntries: () => entries },
+      sessionManager: { getEntries: () => entries, getSessionDir: () => join(tmpdir(), "acm-test") },
       ui: { notify: vi.fn(), setStatus: vi.fn() },
     };
     handlers["session_start"]({}, sessionStartCtx);
@@ -824,5 +836,265 @@ describe("context handler — eviction strategy", () => {
     expect(notifications.some(n =>
       n.includes("Fault-pin") && n.includes("/src/x.ts")
     )).toBe(true);
+  });
+});
+
+// ── External Tool Detection ──────────────────────────────────────────
+
+describe("isExternalTool", () => {
+  it("identifies web_fetch as external", () => {
+    expect(isExternalTool("web_fetch")).toBe(true);
+  });
+
+  it("identifies exa tools as external", () => {
+    expect(isExternalTool("exa_web_search_exa")).toBe(true);
+    expect(isExternalTool("exa_find_similar_exa")).toBe(true);
+    expect(isExternalTool("exa_get_contents_exa")).toBe(true);
+  });
+
+  it("identifies yahoo tools as external", () => {
+    expect(isExternalTool("yahoo_get_quote")).toBe(true);
+  });
+
+  it("does NOT identify local tools as external", () => {
+    expect(isExternalTool("Read")).toBe(false);
+    expect(isExternalTool("Write")).toBe(false);
+    expect(isExternalTool("Edit")).toBe(false);
+    expect(isExternalTool("Bash")).toBe(false);
+    expect(isExternalTool("gitnexus_query")).toBe(false);
+    expect(isExternalTool("memory_search")).toBe(false);
+  });
+
+  it("EXTERNAL_TOOLS set contains expected tools", () => {
+    expect(EXTERNAL_TOOLS.has("web_fetch")).toBe(true);
+    expect(EXTERNAL_TOOLS.has("Read")).toBe(false);
+  });
+});
+
+// ── extractToolResultText ────────────────────────────────────────────
+
+describe("extractToolResultText", () => {
+  it("extracts from string content", () => {
+    expect(extractToolResultText({ content: "raw text" })).toBe("raw text");
+  });
+
+  it("extracts from array content with text blocks", () => {
+    const msg = { content: [
+      { type: "text", text: "line1" },
+      { type: "text", text: "line2" },
+    ] };
+    expect(extractToolResultText(msg)).toBe("line1\nline2");
+  });
+
+  it("skips non-text blocks", () => {
+    const msg = { content: [
+      { type: "text", text: "hello" },
+      { type: "image", data: "..." },
+    ] };
+    expect(extractToolResultText(msg)).toBe("hello");
+  });
+
+  it("falls back to JSON for unknown content", () => {
+    const msg = { content: { custom: true } };
+    expect(extractToolResultText(msg)).toBe('{"custom":true}');
+  });
+});
+
+// ── File Caching ─────────────────────────────────────────────────────
+
+describe("file caching", () => {
+  const testDir = join(tmpdir(), `acm-test-${Date.now()}`);
+
+  afterEach(() => {
+    try { rmSync(testDir, { recursive: true, force: true }); } catch {}
+  });
+
+  it("getCacheDir returns correct path", () => {
+    expect(getCacheDir("/sessions/abc")).toBe("/sessions/abc/.acm/cache");
+  });
+
+  it("writeCacheFile creates file with content", () => {
+    const path = writeCacheFile(testDir, "web_fetch", "tc_123", "Hello world");
+    expect(existsSync(path)).toBe(true);
+    expect(readFileSync(path, "utf-8")).toBe("Hello world");
+    expect(path).toContain("web_fetch-tc_123");
+    expect(path).toMatch(/\.md$/);
+  });
+
+  it("writeCacheFile uses .json extension for JSON content", () => {
+    const path = writeCacheFile(testDir, "exa_web_search_exa", "tc_456", '{"results": []}');
+    expect(path).toMatch(/\.json$/);
+    expect(readFileSync(path, "utf-8")).toBe('{"results": []}');
+  });
+
+  it("writeCacheFile truncates at 100KB", () => {
+    const bigContent = "x".repeat(200 * 1024);
+    const path = writeCacheFile(testDir, "web_fetch", "tc_big", bigContent);
+    const saved = readFileSync(path, "utf-8");
+    expect(saved.length).toBeLessThan(bigContent.length);
+    expect(saved).toContain("[...truncated at 100KB]");
+  });
+
+  it("writeCacheFile sanitizes toolCallId for filename", () => {
+    const path = writeCacheFile(testDir, "web_fetch", "tc/with:special!chars", "test");
+    expect(existsSync(path)).toBe(true);
+    // Filename part should have no special chars (path separators OK in directory)
+    const filename = path.split("/").pop()!;
+    expect(filename).not.toMatch(/[/:!]/);
+  });
+
+  it("getCacheStats returns correct counts", () => {
+    // Empty dir
+    expect(getCacheStats(testDir)).toEqual({ files: 0, totalBytes: 0 });
+
+    // Write some files
+    writeCacheFile(testDir, "web_fetch", "tc1", "hello");
+    writeCacheFile(testDir, "exa_search", "tc2", "world");
+
+    const stats = getCacheStats(testDir);
+    expect(stats.files).toBe(2);
+    expect(stats.totalBytes).toBeGreaterThan(0);
+  });
+
+  it("buildCachedStub includes filepath and keywords", () => {
+    const stub = buildCachedStub("web_fetch", "/cache/web_fetch-tc1.md", "InfiAgent paper file-centric");
+    expect(stub).toContain("/cache/web_fetch-tc1.md");
+    expect(stub).toContain("web_fetch");
+    expect(stub).toContain("bash rg/grep/head");
+    expect(stub).toMatch(/^\[cached:/);
+  });
+});
+
+// ── Context handler: external tool caching ────────────────────────────
+
+describe("context handler — external tool caching", () => {
+  const handlers: Record<string, Function> = {};
+  let mockAppendEntry: ReturnType<typeof vi.fn>;
+  let notifications: string[];
+  const testSessionDir = join(tmpdir(), `acm-cache-test-${Date.now()}`);
+
+  function buildBranch(messages: any[]): any[] {
+    return messages.map((m, i) => ({
+      type: "message",
+      id: `e${i}`,
+      message: m,
+    }));
+  }
+
+  function createCtx(branch: any[]) {
+    return {
+      sessionManager: {
+        getBranch: () => branch,
+        getEntries: () => [],
+        getSessionDir: () => testSessionDir,
+      },
+      ui: {
+        notify: (msg: string) => notifications.push(msg),
+        setStatus: vi.fn(),
+      },
+      getContextUsage: () => ({ percent: 50 }),
+    };
+  }
+
+  function paddingTurns(n: number): any[] {
+    const msgs: any[] = [];
+    for (let i = 0; i < n; i++) {
+      msgs.push({ role: "user", content: `padding turn ${i}` });
+      msgs.push({ role: "assistant", content: [{ type: "text", text: "ok" }] });
+    }
+    return msgs;
+  }
+
+  beforeAll(() => {
+    mockAppendEntry = vi.fn();
+    const mockPi = {
+      on: vi.fn((event: string, handler: Function) => {
+        handlers[event] = handler;
+      }),
+      appendEntry: mockAppendEntry,
+      registerTool: vi.fn(),
+    };
+    registerExtension(mockPi);
+  });
+
+  beforeEach(() => {
+    _resetState();
+    notifications = [];
+    mockAppendEntry.mockClear();
+    try { rmSync(testSessionDir, { recursive: true, force: true }); } catch {}
+  });
+
+  afterAll(() => {
+    try { rmSync(testSessionDir, { recursive: true, force: true }); } catch {}
+  });
+
+  it("caches external tool (web_fetch) output to disk on auto-clear", () => {
+    const messages = [
+      { role: "user", content: "fetch page" },
+      { role: "assistant", content: [
+        { type: "toolCall", id: "tc-web", name: "web_fetch", arguments: { url: "https://example.com" } },
+      ] },
+      { role: "toolResult", toolCallId: "tc-web", toolName: "web_fetch",
+        content: [{ type: "text", text: "Example Domain\nThis domain is for use in illustrative examples." }] },
+      ...paddingTurns(4),
+    ];
+    const branch = buildBranch(messages);
+
+    handlers["context"]({ messages }, createCtx(branch));
+
+    // Should have cached to disk
+    expect(notifications.some(n => n.includes("💾") && n.includes("web_fetch"))).toBe(true);
+
+    // Cache file should exist
+    const cacheStats = getCacheStats(testSessionDir);
+    expect(cacheStats.files).toBeGreaterThan(0);
+
+    // Stub should use cached format
+    const result = handlers["context"]({ messages }, createCtx(branch));
+    const webMsg = result.messages.find((m: any) => m.toolCallId === "tc-web");
+    expect(webMsg.content[0].text).toMatch(/^\[cached:/);
+    expect(webMsg.content[0].text).toContain("bash rg/grep/head");
+  });
+
+  it("does NOT cache local tool (Read) output to disk", () => {
+    const messages = [
+      { role: "user", content: "read file" },
+      { role: "assistant", content: [
+        { type: "toolCall", id: "tc-read", name: "Read", arguments: { path: "/src/a.ts" } },
+      ] },
+      { role: "toolResult", toolCallId: "tc-read", toolName: "Read",
+        content: [{ type: "text", text: "file content here" }] },
+      ...paddingTurns(4),
+    ];
+    const branch = buildBranch(messages);
+
+    handlers["context"]({ messages }, createCtx(branch));
+
+    // No cache file for local tools
+    expect(notifications.some(n => n.includes("💾"))).toBe(false);
+
+    // Stub should use regular cleared format
+    const result = handlers["context"]({ messages }, createCtx(branch));
+    const readMsg = result.messages.find((m: any) => m.toolCallId === "tc-read");
+    expect(readMsg.content[0].text).toMatch(/^\[cleared:/);
+  });
+
+  it("caches exa search results to disk", () => {
+    const messages = [
+      { role: "user", content: "search web" },
+      { role: "assistant", content: [
+        { type: "toolCall", id: "tc-exa", name: "exa_web_search_exa", arguments: { query: "test" } },
+      ] },
+      { role: "toolResult", toolCallId: "tc-exa", toolName: "exa_web_search_exa",
+        content: [{ type: "text", text: '{"results": [{"title": "Test", "url": "https://test.com"}]}' }] },
+      ...paddingTurns(4),
+    ];
+    const branch = buildBranch(messages);
+
+    handlers["context"]({ messages }, createCtx(branch));
+
+    expect(notifications.some(n => n.includes("💾") && n.includes("exa_web_search_exa"))).toBe(true);
+    const cacheStats = getCacheStats(testSessionDir);
+    expect(cacheStats.files).toBe(1);
   });
 });
