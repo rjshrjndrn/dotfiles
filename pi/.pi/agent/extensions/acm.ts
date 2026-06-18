@@ -670,7 +670,7 @@ export default function (pi: ExtensionAPI) {
     try {
       const cachePath = writeCacheFile(sessionDir, toolName, event.toolCallId, content);
       cachedToFile.set(event.toolCallId, cachePath);
-      ctx.ui.notify(`[ACM] 💾 ${toolName} → cached: ${cachePath}`, "info");
+      ctx.ui.notify(`[ACM] 💾 ${toolName} → intercepted, cached to: ${cachePath} (content not sent to LLM)`, "info");
 
       // Replace content with stub — full result never enters context
       const keyTerms = content.slice(0, 200);
