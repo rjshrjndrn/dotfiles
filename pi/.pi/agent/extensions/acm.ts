@@ -239,7 +239,7 @@ function findToolCallArgs(branch: any[], toolCallId: string): Record<string, any
 
 /** Build a cached stub with file path for external tool results. */
 export function buildCachedStub(toolName: string, cachePath: string, keyTerms: string): string {
-  return `[cached: ${cachePath} | ${toolName} | ${extractKeywords(keyTerms, 10)} | use: bash rg/grep/head]`;
+  return `[cached: ${cachePath} | ${toolName} | ${extractKeywords(keyTerms, 10)}]\nFull content saved to file above. Read it with \`bash head -200 ${cachePath}\` or \`bash rg 'pattern' ${cachePath}\` before proceeding.`;
 }
 
 /** Get cache stats for acm_status. */
@@ -734,14 +734,14 @@ export default function (pi: ExtensionAPI) {
     });
 
     // Inject ACM context into first user message
-    if (clearSet.size > 0 || compactSet.size > 0) {
-      const cachedCount = cachedToFile.size;
+    const cachedCount = cachedToFile.size;
+    if (clearSet.size > 0 || compactSet.size > 0 || cachedCount > 0) {
       const acmText = [
         `<acm-context>`,
         `${clearSet.size} tool results cleared, ${compactSet.size} messages compacted, ${pinnedSet.size} pinned, ${cachedCount} cached to disk.`,
         `Thinking blocks stripped from old messages (last ${recentTurns} turns preserved).`,
         cachedCount > 0
-          ? `To retrieve cached content: use bash (rg, grep, head, jq) on the filepath shown in [cached:...] stubs.`
+          ? `CACHED RESULTS: ${cachedCount} tool results were intercepted and saved to disk instead of entering context. When you see a [cached: /path/...] stub, you MUST read the file (bash head/rg/grep) to get the actual content. Do NOT skip or guess.`
           : ``,
         `For file content: prefer \`bash rg/grep\` on source files over Read. Use Read as fallback.`,
         `To find what's cached: acm_recall(query: "keywords") returns paths only, NO content.`,
