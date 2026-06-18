@@ -1090,73 +1090,69 @@ describe("context handler — external tool caching", () => {
     try { rmSync(testSessionDir, { recursive: true, force: true }); } catch {}
   });
 
-  it("caches external tool (web_fetch) output to disk on auto-clear", () => {
-    const messages = [
-      { role: "user", content: "fetch page" },
-      { role: "assistant", content: [
-        { type: "toolCall", id: "tc-web", name: "web_fetch", arguments: { url: "https://example.com" } },
-      ] },
-      { role: "toolResult", toolCallId: "tc-web", toolName: "web_fetch",
-        content: [{ type: "text", text: "Example Domain\nThis domain is for use in illustrative examples." }] },
-      ...paddingTurns(4),
-    ];
-    const branch = buildBranch(messages);
-
-    handlers["context"]({ messages }, createCtx(branch));
+  it("caches external tool (web_fetch) at tool_result, never enters context", async () => {
+    const ctx = createCtx([]);
+    const result = await handlers["tool_result"]({
+      toolName: "web_fetch",
+      toolCallId: "tc-web",
+      input: { url: "https://example.com" },
+      content: [{ type: "text", text: "Example Domain\nThis domain is for use in illustrative examples." }],
+    }, ctx);
 
     // Should have cached to disk
     expect(notifications.some(n => n.includes("💾") && n.includes("web_fetch"))).toBe(true);
-
-    // Cache file should exist
-    const cacheStats = getCacheStats(testSessionDir);
-    expect(cacheStats.files).toBeGreaterThan(0);
-
-    // Stub should use cached format
-    const result = handlers["context"]({ messages }, createCtx(branch));
-    const webMsg = result.messages.find((m: any) => m.toolCallId === "tc-web");
-    expect(webMsg.content[0].text).toMatch(/^\[cached:/);
-    expect(webMsg.content[0].text).toContain("bash rg/grep/head");
-  });
-
-  it("does NOT cache local tool (Read) output to disk", () => {
-    const messages = [
-      { role: "user", content: "read file" },
-      { role: "assistant", content: [
-        { type: "toolCall", id: "tc-read", name: "Read", arguments: { path: "/src/a.ts" } },
-      ] },
-      { role: "toolResult", toolCallId: "tc-read", toolName: "Read",
-        content: [{ type: "text", text: "file content here" }] },
-      ...paddingTurns(4),
-    ];
-    const branch = buildBranch(messages);
-
-    handlers["context"]({ messages }, createCtx(branch));
-
-    // No cache file for local tools
-    expect(notifications.some(n => n.includes("💾"))).toBe(false);
-
-    // Stub should use regular cleared format
-    const result = handlers["context"]({ messages }, createCtx(branch));
-    const readMsg = result.messages.find((m: any) => m.toolCallId === "tc-read");
-    expect(readMsg.content[0].text).toMatch(/^\[cleared:/);
-  });
-
-  it("caches MCP sub-tool (exa) results to disk", () => {
-    const messages = [
-      { role: "user", content: "search web" },
-      { role: "assistant", content: [
-        { type: "toolCall", id: "tc-exa", name: "mcp", arguments: { tool: "exa_web_search_exa", args: '{"query": "test"}' } },
-      ] },
-      { role: "toolResult", toolCallId: "tc-exa", toolName: "mcp",
-        content: [{ type: "text", text: '{"results": [{"title": "Test", "url": "https://test.com"}]}' }] },
-      ...paddingTurns(4),
-    ];
-    const branch = buildBranch(messages);
-
-    handlers["context"]({ messages }, createCtx(branch));
-
-    expect(notifications.some(n => n.includes("💾") && n.includes("mcp"))).toBe(true);
     const cacheStats = getCacheStats(testSessionDir);
     expect(cacheStats.files).toBe(1);
+
+    // Result should be a stub, not the full content
+    expect(result).toBeDefined();
+    expect(result.content[0].text).toMatch(/^\[cached:/);
+    expect(result.content[0].text).toContain("bash rg/grep/head");
+    expect(result.content[0].text).not.toContain("Example Domain");
+  });
+
+  it("does NOT cache local tool (Read) at tool_result", async () => {
+    const ctx = createCtx([]);
+    const result = await handlers["tool_result"]({
+      toolName: "Read",
+      toolCallId: "tc-read",
+      input: { path: "/src/a.ts" },
+      content: [{ type: "text", text: "file content here" }],
+    }, ctx);
+
+    // Should pass through — no caching, no modification
+    expect(result).toBeUndefined();
+    expect(notifications.some(n => n.includes("💾"))).toBe(false);
+    const cacheStats = getCacheStats(testSessionDir);
+    expect(cacheStats.files).toBe(0);
+  });
+
+  it("caches MCP sub-tool (exa) at tool_result", async () => {
+    const ctx = createCtx([]);
+    const result = await handlers["tool_result"]({
+      toolName: "mcp",
+      toolCallId: "tc-exa",
+      input: { tool: "exa_web_search_exa", args: '{"query": "test"}' },
+      content: [{ type: "text", text: '{"results": [{"title": "Test", "url": "https://test.com"}]}' }],
+    }, ctx);
+
+    expect(notifications.some(n => n.includes("💾") && n.includes("mcp"))).toBe(true);
+    expect(result).toBeDefined();
+    expect(result.content[0].text).toMatch(/^\[cached:/);
+    const cacheStats = getCacheStats(testSessionDir);
+    expect(cacheStats.files).toBe(1);
+  });
+
+  it("does NOT cache MCP meta calls (no sub-tool)", async () => {
+    const ctx = createCtx([]);
+    const result = await handlers["tool_result"]({
+      toolName: "mcp",
+      toolCallId: "tc-meta",
+      input: { describe: "some_tool" },
+      content: [{ type: "text", text: "tool description..." }],
+    }, ctx);
+
+    expect(result).toBeUndefined();
+    expect(getCacheStats(testSessionDir).files).toBe(0);
   });
 });

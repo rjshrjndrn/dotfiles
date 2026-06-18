@@ -589,7 +589,6 @@ function clearToolResults(
   toolResults: Array<{ toolCallId: string; toolName: string; tokens: number; keyTerms: string }>,
   notify: (msg: string) => void,
   contextMessages: AgentMessage[],
-  sessionDir?: string,
 ): number {
   let saved = 0;
   for (const tr of toolResults) {
@@ -598,34 +597,6 @@ function clearToolResults(
     if (entryId && pinnedSet.has(entryId)) {
       notify(`📌 ${tr.toolName} (${Math.round(tr.tokens / 1000)}k) — pinned, skip`);
       continue;
-    }
-    // Cache external tool outputs to disk before clearing
-    // Look up tool call args from context (needed for MCP sub-tool detection)
-    let toolArgs: Record<string, any> | undefined;
-    for (const m of contextMessages) {
-      const cm = m as any;
-      if (cm.role === "assistant" && Array.isArray(cm.content)) {
-        for (const block of cm.content) {
-          if (block.type === "toolCall" && block.id === tr.toolCallId && block.arguments) {
-            toolArgs = typeof block.arguments === "string" ? JSON.parse(block.arguments) : block.arguments;
-          }
-        }
-      }
-    }
-    if (sessionDir && isExternalTool(tr.toolName, toolArgs)) {
-      const toolResultMsg = contextMessages.find((m: any) => m.toolCallId === tr.toolCallId) as any;
-      if (toolResultMsg) {
-        const text = extractToolResultText(toolResultMsg);
-        if (text.length > 0) {
-          try {
-            const cachePath = writeCacheFile(sessionDir, tr.toolName, tr.toolCallId, text);
-            cachedToFile.set(tr.toolCallId, cachePath);
-            notify(`💾 ${tr.toolName} (${Math.round(tr.tokens / 1000)}k) → cached: ${cachePath}`);
-          } catch (e) {
-            notify(`⚠️ ${tr.toolName} cache write failed: ${e instanceof Error ? e.message : e}`);
-          }
-        }
-      }
     }
     clearSet.add(tr.toolCallId);
     const tokensSaved = tr.tokens - 50;
@@ -676,6 +647,39 @@ export default function (pi: ExtensionAPI) {
     if (stats.cleared > 0 || stats.pinned > 0) {
       ctx.ui.notify(`[ACM] Restored: ${stats.cleared} cleared, ${stats.pinned} pinned, ${stats.recalled} in recall, ${cachedToFile.size} cached`, "info");
       ctx.ui.setStatus("acm", statusText());
+    }
+  });
+
+  // ── Tool result intercept: cache external tool outputs to disk ─────
+  // External tool results never enter context. Written to .acm/cache/,
+  // LLM gets stub with filepath, self-serves via bash.
+
+  pi.on("tool_result" as any, async (event: any, ctx: any) => {
+    const toolName = event.toolName || "unknown";
+    const toolArgs = event.input;
+    if (!isExternalTool(toolName, toolArgs)) return; // local tool, pass through
+
+    // Extract text content from the result
+    const content = Array.isArray(event.content)
+      ? event.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n")
+      : typeof event.content === "string" ? event.content : "";
+    if (!content) return;
+
+    // Write to cache file
+    const sessionDir = ctx.sessionManager.getSessionDir();
+    try {
+      const cachePath = writeCacheFile(sessionDir, toolName, event.toolCallId, content);
+      cachedToFile.set(event.toolCallId, cachePath);
+      ctx.ui.notify(`[ACM] 💾 ${toolName} → cached: ${cachePath}`, "info");
+
+      // Replace content with stub — full result never enters context
+      const keyTerms = content.slice(0, 200);
+      return {
+        content: [{ type: "text" as const, text: buildCachedStub(toolName, cachePath, keyTerms) }],
+      };
+    } catch (e) {
+      ctx.ui.notify(`[ACM] ⚠️ ${toolName} cache write failed: ${e instanceof Error ? e.message : e}`, "info");
+      // Fall through — full result enters context as fallback
     }
   });
 
@@ -829,21 +833,6 @@ export default function (pi: ExtensionAPI) {
         if (pinnedSet.has(entry.id)) continue;
         if (recentToolCallIds.has(msg.toolCallId)) continue; // protect recent
         const tokens = estimateTokens(msg);
-        // Cache external tool outputs to disk before clearing
-        const toolName = msg.toolName || "unknown";
-        const toolArgs = findToolCallArgs(branch, msg.toolCallId);
-        if (isExternalTool(toolName, toolArgs)) {
-          try {
-            const text = extractToolResultText(msg);
-            if (text.length > 0) {
-              const cachePath = writeCacheFile(sessionDir, toolName, msg.toolCallId, text);
-              cachedToFile.set(msg.toolCallId, cachePath);
-              ctx.ui.notify(`[ACM] 💾 ${toolName} → cached: ${cachePath}`, "info");
-            }
-          } catch (e) {
-            ctx.ui.notify(`[ACM] ⚠️ ${toolName} cache write failed: ${e instanceof Error ? e.message : e}`, "info");
-          }
-        }
         clearSet.add(msg.toolCallId);
         totalTokensSaved += Math.max(tokens - 50, 0);
         const textContent = Array.isArray(msg.content)
@@ -949,8 +938,7 @@ export default function (pi: ExtensionAPI) {
         return { content: [{ type: "text" as const, text: "[ACM] Nothing to clear." }], details: { count: 0 } };
       }
 
-      const sessionDir = ctx.sessionManager.getSessionDir();
-      const saved = clearToolResults(candidates, (msg) => ctx.ui.notify(`[ACM] ${msg}`, "info"), branchMessages, sessionDir);
+      const saved = clearToolResults(candidates, (msg) => ctx.ui.notify(`[ACM] ${msg}`, "info"), branchMessages);
       persist(pi.appendEntry.bind(pi));
 
       const report = `[ACM] ✅ Cleared ${candidates.length} tool results (~${Math.round(saved * 0.4 / 1000)}k freed, ${clearSet.size} total). Effect on next turn.`;
@@ -990,8 +978,7 @@ export default function (pi: ExtensionAPI) {
 
       // Clear all tool results + compact old messages
       const clearedBefore = clearSet.size;
-      const sessionDir = ctx.sessionManager.getSessionDir();
-      clearToolResults(inventoryToolResults(getBranchMessages(branch)), (msg) => ctx.ui.notify(`[ACM] ${msg}`, "info"), getBranchMessages(branch), sessionDir);
+      clearToolResults(inventoryToolResults(getBranchMessages(branch)), (msg) => ctx.ui.notify(`[ACM] ${msg}`, "info"), getBranchMessages(branch));
       const toolResultsCleared = clearSet.size - clearedBefore;
 
       let messagesCompacted = 0;
@@ -1226,8 +1213,7 @@ export default function (pi: ExtensionAPI) {
     ctx.ui.notify(`[ACM] Need ~${Math.round(tokensToFree / 1000)}k free. Clearable: ${toolResults.length} results (~${Math.round(conservativeSavings / 1000)}k)`, "info");
 
     // ── Phase 1: Clear all tool results ──
-    const sessionDir = ctx.sessionManager.getSessionDir();
-    clearToolResults(toolResults, (msg) => ctx.ui.notify(`[ACM] ${msg}`, "info"), allMessages, sessionDir);
+    clearToolResults(toolResults, (msg) => ctx.ui.notify(`[ACM] ${msg}`, "info"), allMessages);
 
     if (conservativeSavings >= tokensToFree) {
       ctx.ui.notify(`[ACM] ✅ Phase 1 sufficient — cancelled default compaction`, "info");
