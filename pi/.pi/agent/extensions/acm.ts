@@ -113,20 +113,42 @@ export function extractToolCallPaths(args: Record<string, any>): string[] {
 // Only tools that fetch from internet/external APIs get cached to disk.
 // Local tools (Read/Write/Edit/Bash/gitnexus/memory) are re-derivable.
 
-/** Tools whose output comes from external/internet sources — must be cached. */
-export const EXTERNAL_TOOLS = new Set([
-  "web_fetch", "exa_web_search_exa", "exa_find_similar_exa", "exa_get_contents_exa",
-]);
+/**
+ * Local tool set — populated at boot from pi.getAllTools().
+ * Tools in this set are re-derivable (on disk or re-runnable).
+ * Anything NOT in this set is treated as external and cached to disk.
+ *
+ * NOTE: MCP calls come through toolName="mcp" with the actual tool in args.tool.
+ * MCP sub-tools that make API calls are always cached (cheap to store, expensive to re-fetch).
+ */
+export const localToolSet = new Set<string>();
 
-/** Check if a tool name is an external MCP tool (not a known local one). */
-export function isExternalTool(toolName: string): boolean {
-  if (EXTERNAL_TOOLS.has(toolName)) return true;
-  // MCP tools from external servers (exa, yahoo, etc.) — but NOT local tools
-  // Local MCP servers that are re-runnable: cc, linear, lp, notion, tinyfish
-  const LOCAL_MCP_PREFIXES = ["cc_", "linear_", "lp_", "notion_", "tinyfish_"];
-  if (toolName.startsWith("exa_") || toolName.startsWith("yahoo_")) return true;
-  // Generic mcp calls — check if tool name suggests external
-  return false;
+/** Populate localToolSet from registered tools at boot. */
+export function discoverLocalTools(allTools: Array<{ name: string }>): void {
+  localToolSet.clear();
+  for (const tool of allTools) {
+    // All registered tools are local by default
+    localToolSet.add(tool.name);
+  }
+}
+
+/** Tools that are registered locally but fetch from internet — always cache. */
+const INTERNET_TOOLS = new Set(["web_fetch"]);
+
+/** Check if a tool result should be cached to disk (external/internet content). */
+export function isExternalTool(toolName: string, toolArgs?: Record<string, any>): boolean {
+  // MCP gateway: sub-tool calls always go to external APIs — cache them
+  if (toolName === "mcp") {
+    // status/describe/list/connect calls are meta, not content
+    if (!toolArgs?.tool) return false;
+    return true;
+  }
+  // Locally registered but internet-sourced — always cache
+  if (INTERNET_TOOLS.has(toolName)) return true;
+  // Tools discovered at boot are local
+  if (localToolSet.has(toolName)) return false;
+  // Unknown tools: default to caching (safe side — better to cache than lose)
+  return true;
 }
 
 /** Get the cache directory for a session. */
@@ -172,6 +194,21 @@ export function extractToolResultText(msg: any): string {
 function isJsonLike(text: string): boolean {
   const trimmed = text.trimStart();
   return trimmed.startsWith("{") || trimmed.startsWith("[");
+}
+
+/** Look up tool call arguments from branch for a given toolCallId. */
+function findToolCallArgs(branch: any[], toolCallId: string): Record<string, any> | undefined {
+  for (const entry of branch) {
+    if (entry.type !== "message" || !entry.message) continue;
+    const msg = entry.message as any;
+    if (msg.role !== "assistant" || !Array.isArray(msg.content)) continue;
+    for (const block of msg.content) {
+      if (block.type === "toolCall" && block.id === toolCallId && block.arguments) {
+        return typeof block.arguments === "string" ? JSON.parse(block.arguments) : block.arguments;
+      }
+    }
+  }
+  return undefined;
 }
 
 /** Build a cached stub with file path for external tool results. */
@@ -537,7 +574,19 @@ function clearToolResults(
       continue;
     }
     // Cache external tool outputs to disk before clearing
-    if (sessionDir && isExternalTool(tr.toolName)) {
+    // Look up tool call args from context (needed for MCP sub-tool detection)
+    let toolArgs: Record<string, any> | undefined;
+    for (const m of contextMessages) {
+      const cm = m as any;
+      if (cm.role === "assistant" && Array.isArray(cm.content)) {
+        for (const block of cm.content) {
+          if (block.type === "toolCall" && block.id === tr.toolCallId && block.arguments) {
+            toolArgs = typeof block.arguments === "string" ? JSON.parse(block.arguments) : block.arguments;
+          }
+        }
+      }
+    }
+    if (sessionDir && isExternalTool(tr.toolName, toolArgs)) {
       const toolResultMsg = contextMessages.find((m: any) => m.toolCallId === tr.toolCallId) as any;
       if (toolResultMsg) {
         const text = extractToolResultText(toolResultMsg);
@@ -572,6 +621,8 @@ export default function (pi: ExtensionAPI) {
   // ── Rehydrate on session load ──────────────────────────────────────
 
   pi.on("session_start" as any, (_event: any, ctx: any) => {
+    // Discover local tools from runtime — anything registered is local/re-derivable
+    discoverLocalTools(ctx.getAllTools?.() ?? []);
     const stats = rehydrateState(ctx.sessionManager.getEntries());
     // Rehydrate cachedToFile map from existing cache files
     const sessionDir = ctx.sessionManager.getSessionDir();
@@ -753,7 +804,8 @@ export default function (pi: ExtensionAPI) {
         const tokens = estimateTokens(msg);
         // Cache external tool outputs to disk before clearing
         const toolName = msg.toolName || "unknown";
-        if (isExternalTool(toolName)) {
+        const toolArgs = findToolCallArgs(branch, msg.toolCallId);
+        if (isExternalTool(toolName, toolArgs)) {
           try {
             const text = extractToolResultText(msg);
             if (text.length > 0) {

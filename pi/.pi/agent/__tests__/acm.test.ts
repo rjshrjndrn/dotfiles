@@ -34,7 +34,8 @@ import registerExtension, {
   STOP_WORDS,
   FAULT_PIN_TTL,
   _resetState,
-  EXTERNAL_TOOLS,
+  localToolSet,
+  discoverLocalTools,
   isExternalTool,
   getCacheDir,
   writeCacheFile,
@@ -508,6 +509,11 @@ describe("context handler — eviction strategy", () => {
 
   beforeEach(() => {
     _resetState();
+    // Simulate boot: discover local tools so Read/Write etc. aren't treated as external
+    discoverLocalTools([
+      { name: "Read" }, { name: "Write" }, { name: "Edit" }, { name: "Bash" },
+      { name: "web_fetch" }, { name: "mcp" },
+    ]);
     notifications = [];
     mockAppendEntry.mockClear();
   });
@@ -842,32 +848,51 @@ describe("context handler — eviction strategy", () => {
 // ── External Tool Detection ──────────────────────────────────────────
 
 describe("isExternalTool", () => {
-  it("identifies web_fetch as external", () => {
-    expect(isExternalTool("web_fetch")).toBe(true);
+  beforeEach(() => {
+    // Simulate boot: discover local tools like pi would
+    discoverLocalTools([
+      { name: "Read" }, { name: "Write" }, { name: "Edit" }, { name: "Bash" },
+      { name: "grep" }, { name: "find" }, { name: "ls" },
+      { name: "gitnexus_query" }, { name: "gitnexus_context" },
+      { name: "memory_search" }, { name: "memory_save" },
+      { name: "acm_status" }, { name: "acm_recall" },
+      { name: "spawn_agent" }, { name: "web_fetch" },
+      { name: "mcp" },
+    ]);
   });
 
-  it("identifies exa tools as external", () => {
-    expect(isExternalTool("exa_web_search_exa")).toBe(true);
-    expect(isExternalTool("exa_find_similar_exa")).toBe(true);
-    expect(isExternalTool("exa_get_contents_exa")).toBe(true);
-  });
-
-  it("identifies yahoo tools as external", () => {
-    expect(isExternalTool("yahoo_get_quote")).toBe(true);
-  });
-
-  it("does NOT identify local tools as external", () => {
+  it("local tools discovered at boot are NOT external", () => {
     expect(isExternalTool("Read")).toBe(false);
     expect(isExternalTool("Write")).toBe(false);
-    expect(isExternalTool("Edit")).toBe(false);
     expect(isExternalTool("Bash")).toBe(false);
     expect(isExternalTool("gitnexus_query")).toBe(false);
     expect(isExternalTool("memory_search")).toBe(false);
   });
 
-  it("EXTERNAL_TOOLS set contains expected tools", () => {
-    expect(EXTERNAL_TOOLS.has("web_fetch")).toBe(true);
-    expect(EXTERNAL_TOOLS.has("Read")).toBe(false);
+  it("web_fetch is external despite being registered locally (internet content)", () => {
+    expect(isExternalTool("web_fetch")).toBe(true);
+  });
+
+  it("MCP sub-tool calls are always external (API calls)", () => {
+    expect(isExternalTool("mcp", { tool: "exa_web_search_exa", args: '{}' })).toBe(true);
+    expect(isExternalTool("mcp", { tool: "yahoo_get_quote", args: '{}' })).toBe(true);
+    expect(isExternalTool("mcp", { tool: "cc_query-docs", args: '{}' })).toBe(true);
+  });
+
+  it("MCP meta calls (no sub-tool) are NOT external", () => {
+    expect(isExternalTool("mcp", { search: "query" })).toBe(false);
+    expect(isExternalTool("mcp", { describe: "tool" })).toBe(false);
+    expect(isExternalTool("mcp")).toBe(false);
+  });
+
+  it("unknown tools default to external (safe side)", () => {
+    expect(isExternalTool("some_random_tool")).toBe(true);
+  });
+
+  it("discoverLocalTools populates localToolSet", () => {
+    expect(localToolSet.has("Read")).toBe(true);
+    expect(localToolSet.has("mcp")).toBe(true);
+    expect(localToolSet.has("nonexistent")).toBe(false);
   });
 });
 
@@ -1019,6 +1044,12 @@ describe("context handler — external tool caching", () => {
 
   beforeEach(() => {
     _resetState();
+    // Simulate boot: discover local tools
+    discoverLocalTools([
+      { name: "Read" }, { name: "Write" }, { name: "Edit" }, { name: "Bash" },
+      { name: "web_fetch" }, { name: "mcp" },
+      { name: "gitnexus_query" }, { name: "memory_search" },
+    ]);
     notifications = [];
     mockAppendEntry.mockClear();
     try { rmSync(testSessionDir, { recursive: true, force: true }); } catch {}
