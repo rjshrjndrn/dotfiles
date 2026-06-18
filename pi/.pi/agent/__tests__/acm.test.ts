@@ -37,6 +37,8 @@ import registerExtension, {
   localToolSet,
   discoverLocalTools,
   isExternalTool,
+  loadAcmConfig,
+  acmConfig,
   getCacheDir,
   writeCacheFile,
   extractToolResultText,
@@ -44,7 +46,7 @@ import registerExtension, {
   getCacheStats,
 } from "../extensions/acm.ts";
 
-import { existsSync, readFileSync, rmSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -509,11 +511,10 @@ describe("context handler — eviction strategy", () => {
 
   beforeEach(() => {
     _resetState();
-    // Simulate boot: discover local tools so Read/Write etc. aren't treated as external
     discoverLocalTools([
       { name: "Read" }, { name: "Write" }, { name: "Edit" }, { name: "Bash" },
       { name: "web_fetch" }, { name: "mcp" },
-    ]);
+    ], { cacheTools: ["web_fetch"] });
     notifications = [];
     mockAppendEntry.mockClear();
   });
@@ -849,7 +850,7 @@ describe("context handler — eviction strategy", () => {
 
 describe("isExternalTool", () => {
   beforeEach(() => {
-    // Simulate boot: discover local tools like pi would
+    // Simulate boot: discover local tools with config
     discoverLocalTools([
       { name: "Read" }, { name: "Write" }, { name: "Edit" }, { name: "Bash" },
       { name: "grep" }, { name: "find" }, { name: "ls" },
@@ -858,7 +859,7 @@ describe("isExternalTool", () => {
       { name: "acm_status" }, { name: "acm_recall" },
       { name: "spawn_agent" }, { name: "web_fetch" },
       { name: "mcp" },
-    ]);
+    ], { cacheTools: ["web_fetch"] });
   });
 
   it("local tools discovered at boot are NOT external", () => {
@@ -869,7 +870,7 @@ describe("isExternalTool", () => {
     expect(isExternalTool("memory_search")).toBe(false);
   });
 
-  it("web_fetch is external despite being registered locally (internet content)", () => {
+  it("web_fetch is external via cacheTools config", () => {
     expect(isExternalTool("web_fetch")).toBe(true);
   });
 
@@ -885,14 +886,45 @@ describe("isExternalTool", () => {
     expect(isExternalTool("mcp")).toBe(false);
   });
 
-  it("unknown tools default to external (safe side)", () => {
-    expect(isExternalTool("some_random_tool")).toBe(true);
+  it("unknown tools default to NOT caching", () => {
+    expect(isExternalTool("some_random_tool")).toBe(false);
   });
 
   it("discoverLocalTools populates localToolSet", () => {
     expect(localToolSet.has("Read")).toBe(true);
     expect(localToolSet.has("mcp")).toBe(true);
     expect(localToolSet.has("nonexistent")).toBe(false);
+  });
+
+  it("config localTools forces unknown tools as local", () => {
+    discoverLocalTools([], { localTools: ["my_custom_tool"] });
+    expect(isExternalTool("my_custom_tool")).toBe(false);
+  });
+
+  it("config cacheTools forces registered tools as external", () => {
+    discoverLocalTools(
+      [{ name: "my_api" }],
+      { cacheTools: ["my_api"] },
+    );
+    expect(isExternalTool("my_api")).toBe(true);
+  });
+
+  it("loadAcmConfig returns empty for missing file", () => {
+    const config = loadAcmConfig("/nonexistent/path");
+    expect(config).toEqual({});
+  });
+
+  it("loadAcmConfig reads valid config", () => {
+    const testDir = join(tmpdir(), `acm-config-test-${Date.now()}`);
+    mkdirSync(testDir, { recursive: true });
+    writeFileSync(join(testDir, "acm.json"), JSON.stringify({
+      cacheTools: ["web_fetch", "custom_api"],
+      localTools: ["my_tool"],
+    }));
+    const config = loadAcmConfig(testDir);
+    expect(config.cacheTools).toEqual(["web_fetch", "custom_api"]);
+    expect(config.localTools).toEqual(["my_tool"]);
+    rmSync(testDir, { recursive: true, force: true });
   });
 });
 
@@ -1044,12 +1076,11 @@ describe("context handler — external tool caching", () => {
 
   beforeEach(() => {
     _resetState();
-    // Simulate boot: discover local tools
     discoverLocalTools([
       { name: "Read" }, { name: "Write" }, { name: "Edit" }, { name: "Bash" },
       { name: "web_fetch" }, { name: "mcp" },
       { name: "gitnexus_query" }, { name: "memory_search" },
-    ]);
+    ], { cacheTools: ["web_fetch"] });
     notifications = [];
     mockAppendEntry.mockClear();
     try { rmSync(testSessionDir, { recursive: true, force: true }); } catch {}
@@ -1110,13 +1141,13 @@ describe("context handler — external tool caching", () => {
     expect(readMsg.content[0].text).toMatch(/^\[cleared:/);
   });
 
-  it("caches exa search results to disk", () => {
+  it("caches MCP sub-tool (exa) results to disk", () => {
     const messages = [
       { role: "user", content: "search web" },
       { role: "assistant", content: [
-        { type: "toolCall", id: "tc-exa", name: "exa_web_search_exa", arguments: { query: "test" } },
+        { type: "toolCall", id: "tc-exa", name: "mcp", arguments: { tool: "exa_web_search_exa", args: '{"query": "test"}' } },
       ] },
-      { role: "toolResult", toolCallId: "tc-exa", toolName: "exa_web_search_exa",
+      { role: "toolResult", toolCallId: "tc-exa", toolName: "mcp",
         content: [{ type: "text", text: '{"results": [{"title": "Test", "url": "https://test.com"}]}' }] },
       ...paddingTurns(4),
     ];
@@ -1124,7 +1155,7 @@ describe("context handler — external tool caching", () => {
 
     handlers["context"]({ messages }, createCtx(branch));
 
-    expect(notifications.some(n => n.includes("💾") && n.includes("exa_web_search_exa"))).toBe(true);
+    expect(notifications.some(n => n.includes("💾") && n.includes("mcp"))).toBe(true);
     const cacheStats = getCacheStats(testSessionDir);
     expect(cacheStats.files).toBe(1);
   });

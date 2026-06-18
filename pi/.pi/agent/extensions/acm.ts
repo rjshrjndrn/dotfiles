@@ -40,7 +40,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import { Type } from "@sinclair/typebox";
-import { writeFileSync, mkdirSync, readdirSync, statSync, existsSync } from "node:fs";
+import { writeFileSync, mkdirSync, readdirSync, statSync, existsSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -116,39 +116,64 @@ export function extractToolCallPaths(args: Record<string, any>): string[] {
 /**
  * Local tool set — populated at boot from pi.getAllTools().
  * Tools in this set are re-derivable (on disk or re-runnable).
- * Anything NOT in this set is treated as external and cached to disk.
  *
  * NOTE: MCP calls come through toolName="mcp" with the actual tool in args.tool.
  * MCP sub-tools that make API calls are always cached (cheap to store, expensive to re-fetch).
  */
 export const localToolSet = new Set<string>();
 
-/** Populate localToolSet from registered tools at boot. */
-export function discoverLocalTools(allTools: Array<{ name: string }>): void {
-  localToolSet.clear();
-  for (const tool of allTools) {
-    // All registered tools are local by default
-    localToolSet.add(tool.name);
+/**
+ * Config-driven overrides from acm.json:
+ *   { "cacheTools": ["web_fetch", "custom_api"], "localTools": ["my_idempotent_tool"] }
+ *
+ * - cacheTools: force these tools to be cached (even if registered locally)
+ * - localTools: force these tools to be treated as local (even if unknown)
+ */
+export interface AcmConfig {
+  cacheTools?: string[];
+  localTools?: string[];
+}
+
+/** Loaded config overrides. */
+export let acmConfig: AcmConfig = {};
+
+/** Load acm.json config from extension directory. */
+export function loadAcmConfig(extensionDir: string): AcmConfig {
+  const configPath = join(extensionDir, "acm.json");
+  if (!existsSync(configPath)) return {};
+  try {
+    return JSON.parse(readFileSync(configPath, "utf-8"));
+  } catch {
+    return {};
   }
 }
 
-/** Tools that are registered locally but fetch from internet — always cache. */
-const INTERNET_TOOLS = new Set(["web_fetch"]);
+/** Populate localToolSet from registered tools at boot. */
+export function discoverLocalTools(allTools: Array<{ name: string }>, config?: AcmConfig): void {
+  localToolSet.clear();
+  for (const tool of allTools) {
+    localToolSet.add(tool.name);
+  }
+  // Apply config overrides
+  if (config?.localTools) {
+    for (const t of config.localTools) localToolSet.add(t);
+  }
+  if (config) acmConfig = config;
+}
 
 /** Check if a tool result should be cached to disk (external/internet content). */
 export function isExternalTool(toolName: string, toolArgs?: Record<string, any>): boolean {
   // MCP gateway: sub-tool calls always go to external APIs — cache them
   if (toolName === "mcp") {
-    // status/describe/list/connect calls are meta, not content
-    if (!toolArgs?.tool) return false;
+    if (!toolArgs?.tool) return false; // meta calls (status/describe/list)
     return true;
   }
-  // Locally registered but internet-sourced — always cache
-  if (INTERNET_TOOLS.has(toolName)) return true;
-  // Tools discovered at boot are local
+  // Config override: explicitly marked for caching
+  if (acmConfig.cacheTools?.includes(toolName)) return true;
+  // Tools discovered at boot are local — don't cache
   if (localToolSet.has(toolName)) return false;
-  // Unknown tools: default to caching (safe side — better to cache than lose)
-  return true;
+  // Unknown tools: default to NOT caching (keep normal clear/stub behavior)
+  return false;
 }
 
 /** Get the cache directory for a session. */
@@ -621,8 +646,9 @@ export default function (pi: ExtensionAPI) {
   // ── Rehydrate on session load ──────────────────────────────────────
 
   pi.on("session_start" as any, (_event: any, ctx: any) => {
-    // Discover local tools from runtime — anything registered is local/re-derivable
-    discoverLocalTools(ctx.getAllTools?.() ?? []);
+    // Load config + discover local tools from runtime
+    const config = loadAcmConfig(dirname(import.meta.url.replace("file://", "")));
+    discoverLocalTools(ctx.getAllTools?.() ?? [], config);
     const stats = rehydrateState(ctx.sessionManager.getEntries());
     // Rehydrate cachedToFile map from existing cache files
     const sessionDir = ctx.sessionManager.getSessionDir();
