@@ -253,7 +253,8 @@ describe("findHybridCutoff", () => {
     };
   }
 
-  it("returns 0 for short sessions (<10)", () => {
+  it("returns 0 for short sessions with defaults (no old entries)", () => {
+    // 5 recent user messages, all within 30min default window
     const branch = Array.from({ length: 5 }, () => mkEntry("message", "user"));
     expect(findHybridCutoff(branch)).toBe(0);
   });
@@ -273,15 +274,17 @@ describe("findHybridCutoff", () => {
     expect(cutoff).toBeLessThan(branch.length);
   });
 
-  it("keeps at least 10 recent user messages by default", () => {
-    // 30 user messages, each 1 min ago from newest. All within 30 min window.
-    // ageMs: entry 0 = 29 min ago, entry 29 = 0 min ago
-    const branch = Array.from({ length: 30 }, (_, i) =>
-      mkEntry("message", "user", (29 - i) * 60 * 1000),
-    );
-    const cutoff = findHybridCutoff(branch);
-    const keptUsers = branch.slice(cutoff).filter((e: any) => e.message?.role === "user").length;
-    expect(keptUsers).toBe(10);
+  it("time-only: slides even with few user messages", () => {
+    // 2 user messages + 50 tool calls, all old except last 5 entries
+    const branch = [
+      mkEntry("message", "user", hour),
+      ...Array.from({ length: 45 }, () => mkEntry("message", "assistant", hour)),
+      mkEntry("message", "user", 2 * 60 * 1000), // 2 min ago
+      ...Array.from({ length: 4 }, () => mkEntry("message", "assistant", 60 * 1000)),
+    ];
+    // keepMinutes=5 → should slide old stuff even though only 2 user messages
+    const cutoff = findHybridCutoff(branch, { keepMinutes: 5 });
+    expect(cutoff).toBeGreaterThan(0); // Old bug: returned 0 because <10 user messages
   });
 
   it("respects keepMessages override (counts user messages)", () => {
@@ -290,10 +293,8 @@ describe("findHybridCutoff", () => {
     const branch = Array.from({ length: 20 }, (_, i) =>
       mkEntry("message", i % 2 === 0 ? "user" : "assistant", 0),
     );
-    // keepMessages=5 → keep last 5 user msgs. 5th-from-end user is at index 10.
-    // Cutoff should be at that user message index.
+    // keepMessages=5 → keep last 5 user msgs
     const cut5 = findHybridCutoff(branch, { keepMessages: 5 });
-    // Count user messages after cutoff — should be 5
     const keptUsers = branch.slice(cut5).filter((e: any) => e.message?.role === "user").length;
     expect(keptUsers).toBe(5);
 
@@ -311,11 +312,23 @@ describe("findHybridCutoff", () => {
     const branch = Array.from({ length: 20 }, (_, i) =>
       mkEntry("message", "user", (20 - i) * 5 * 60 * 1000),
     );
-    // Keep last 10 min → fewer messages kept
     const cut10 = findHybridCutoff(branch, { keepMinutes: 10 });
-    // Keep last 120 min → more messages kept
     const cut120 = findHybridCutoff(branch, { keepMinutes: 120 });
     expect(cut10).toBeGreaterThanOrEqual(cut120);
+  });
+
+  it("union semantics: keeps if in EITHER window (Math.min)", () => {
+    // 30 user messages, each 2 min apart. Total span = 58 min.
+    // Entry 0 = 58 min ago, Entry 29 = 0 min ago.
+    const branch = Array.from({ length: 30 }, (_, i) =>
+      mkEntry("message", "user", (29 - i) * 2 * 60 * 1000),
+    );
+    // keepMinutes=10 → timeCutoff keeps last ~5 entries
+    // keepMessages=20 → msgCutoff keeps last 20 entries
+    // Union (Math.min) → should keep 20 (the more conservative of the two)
+    const cutoff = findHybridCutoff(branch, { keepMinutes: 10, keepMessages: 20 });
+    const kept = branch.length - cutoff;
+    expect(kept).toBeGreaterThanOrEqual(20); // union keeps the larger window
   });
 
   it("snaps to valid cut point", () => {

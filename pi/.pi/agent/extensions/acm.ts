@@ -449,9 +449,54 @@ export function compactMessage(msg: any, entryId: string): { content: any[]; sav
 }
 
 export function findHybridCutoff(branch: any[], opts?: { keepMessages?: number; keepMinutes?: number }): number {
-  const keepMessages = opts?.keepMessages ?? 10;
-  const keepMinutes = opts?.keepMinutes ?? 30;
+  const keepMessages = opts?.keepMessages;
+  const keepMinutes = opts?.keepMinutes;
 
+  // Default: keepMinutes=30 if neither specified
+  const effectiveMinutes = (keepMessages == null && keepMinutes == null) ? 30 : keepMinutes;
+  const effectiveMessages = (keepMessages == null && keepMinutes == null) ? 10 : keepMessages;
+
+  const now = Date.now();
+
+  // Time-based cutoff: first entry to KEEP (everything before gets slid)
+  let timeCutoff = 0;
+  if (effectiveMinutes != null) {
+    const windowMs = effectiveMinutes * 60 * 1000;
+    for (let i = branch.length - 1; i >= 0; i--) {
+      const ts = branch[i].timestamp;
+      const t = typeof ts === "number" ? ts : typeof ts === "string" ? new Date(ts).getTime() : 0;
+      if (now - t > windowMs) { timeCutoff = i + 1; break; }
+    }
+  }
+
+  // Message-based cutoff: walk backwards counting user messages
+  let msgCutoff = 0;
+  if (effectiveMessages != null) {
+    let userCount = 0;
+    for (let i = branch.length - 1; i >= 0; i--) {
+      const e = branch[i];
+      if (e.type === "message" && e.message?.role === "user") {
+        userCount++;
+        if (userCount >= effectiveMessages) { msgCutoff = i; break; }
+      }
+    }
+    // If not enough user messages, msgCutoff stays 0 (no message-based sliding)
+  }
+
+  // Union semantics: keep if in EITHER window.
+  // Math.min = more conservative = keeps more = respects whichever window is larger.
+  // When only one param specified, the other stays 0 (no constraint from that axis).
+  let cutoff: number;
+  if (timeCutoff > 0 && msgCutoff > 0) {
+    cutoff = Math.min(timeCutoff, msgCutoff);
+  } else {
+    // One or both are 0 — use whichever is non-zero
+    cutoff = Math.max(timeCutoff, msgCutoff);
+  }
+
+  if (cutoff <= 0 || cutoff >= branch.length) return 0;
+
+  // Snap to valid cut point (user/assistant message or compaction boundary)
   const validCuts: number[] = [];
   for (let i = 0; i < branch.length; i++) {
     const e = branch[i];
@@ -463,35 +508,6 @@ export function findHybridCutoff(branch: any[], opts?: { keepMessages?: number; 
     }
   }
   if (validCuts.length === 0) return 0;
-
-  // keepMessages = last N user messages + all associated responses/tool calls
-  // Walk backwards counting user messages to find the message-based cutoff
-  let msgCutoff = 0;
-  let userCount = 0;
-  for (let i = branch.length - 1; i >= 0; i--) {
-    const e = branch[i];
-    if (e.type === "message" && e.message?.role === "user") {
-      userCount++;
-      if (userCount >= keepMessages) { msgCutoff = i; break; }
-    }
-  }
-  if (userCount < keepMessages) return 0; // not enough messages to slide
-
-  // keepMinutes = keep everything from last N minutes
-  // timeCutoff = index of first entry to KEEP (everything before it gets slid)
-  // Default 0 = all within window = keep everything (no time-based eviction)
-  const now = Date.now();
-  const windowMs = keepMinutes * 60 * 1000;
-  let timeCutoff = 0;
-  for (let i = branch.length - 1; i >= 0; i--) {
-    const ts = branch[i].timestamp;
-    const t = typeof ts === "number" ? ts : typeof ts === "string" ? new Date(ts).getTime() : 0;
-    if (now - t > windowMs) { timeCutoff = i + 1; break; }
-  }
-
-  // Both are irrelevance thresholds: anything outside EITHER window is stale.
-  // Higher cutoff index = more aggressive (keep less). Take the max.
-  let cutoff = Math.max(timeCutoff, msgCutoff);
 
   const before = validCuts.filter((i) => i <= cutoff);
   cutoff = before.length > 0 ? before[before.length - 1] : validCuts[0];
@@ -981,18 +997,18 @@ export default function (pi: ExtensionAPI) {
     name: "acm_slide",
     label: "ACM Slide",
     description:
-      "Trigger a sliding window compaction. Summarizes old context and keeps recent. " +
-      "Fires session_before_compact where ACM generates a custom summary.",
-    promptSnippet: "acm_slide: Trigger sliding window compaction to summarize old context.",
+      "Sliding window compaction. Generates LLM summary of old context, resets branch head " +
+      "to cutoff point. Old messages fully removed from LLM context but searchable via acm_recall.",
+    promptSnippet: "acm_slide: Sliding window — summarize old context and reset branch head. Truly frees context.",
     parameters: Type.Object({
       customInstructions: Type.Optional(Type.String({ description: "Custom instructions for the summary generation." })),
       keepMessages: Type.Optional(Type.Number({ description: "Keep last N messages (default 10). E.g. 20 keeps more context." })),
       keepMinutes: Type.Optional(Type.Number({ description: "Keep messages from last N minutes (default 30). E.g. 10 for aggressive slide." })),
     }),
-    async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
+    async execute(_toolCallId, _params, signal, _onUpdate, ctx) {
       const branch = ctx.sessionManager.getBranch() as any[];
       buildToolCallMapping(branch);
-      const params = _params as { keepMessages?: number; keepMinutes?: number };
+      const params = _params as { keepMessages?: number; keepMinutes?: number; customInstructions?: string };
 
       const cutoff = findHybridCutoff(branch, {
         keepMessages: params.keepMessages,
@@ -1002,31 +1018,51 @@ export default function (pi: ExtensionAPI) {
         return { content: [{ type: "text" as const, text: "[ACM] Session too short to slide." }], details: { success: false } };
       }
 
-      // Clear all tool results + compact old messages
-      const clearedBefore = clearSet.size;
-      clearToolResults(inventoryToolResults(getBranchMessages(branch)), (msg) => ctx.ui.notify(`[ACM] ${msg}`, "info"), getBranchMessages(branch));
-      const toolResultsCleared = clearSet.size - clearedBefore;
+      // Find firstKeptEntryId
+      const firstKeptEntry = branch[cutoff];
+      if (!firstKeptEntry?.id) {
+        return { content: [{ type: "text" as const, text: "[ACM] Cannot find entry at cutoff." }], details: { success: false } };
+      }
+      const firstKeptEntryId = firstKeptEntry.id;
 
-      let messagesCompacted = 0;
+      const usage = ctx.getContextUsage();
+      const tokensBefore = usage?.tokens ?? 0;
+
+      // Count discarded entries
+      let discardedCount = 0;
       for (let i = 0; i < cutoff; i++) {
-        const e = branch[i];
-        if (e.type === "message" && e.message && !pinnedSet.has(e.id)) {
-          compactSet.add(e.id);
-          messagesCompacted++;
-        }
+        if (branch[i].type === "message") discardedCount++;
       }
 
+      // Build minimal summary: pinned content only (no LLM call)
+      let summary = "[Context before this point was slid away. Use acm_recall to search old context.]";
+      const pinnedContent: string[] = [];
+      for (let i = 0; i < cutoff; i++) {
+        const e = branch[i] as any;
+        if (pinnedSet.has(e.id) && e.message) pinnedContent.push(extractEntryContent(e));
+      }
+      if (pinnedContent.length > 0) summary += `\n\n## Pinned Context\n\n${pinnedContent.join("\n\n---\n\n")}`;
+
+      // Commit compaction — resets branch head. No LLM call.
+      ctx.sessionManager.appendCompaction(summary, firstKeptEntryId, tokensBefore, { source: "acm_slide" }, true);
+
+      // Clean up ACM cosmetic state for discarded entries
+      for (let i = 0; i < cutoff; i++) {
+        const e = branch[i] as any;
+        if (e.id) { clearSet.delete(e.id); compactSet.delete(e.id); }
+      }
       persist(pi.appendEntry.bind(pi));
       ctx.ui.setStatus("acm", `${statusText()} | slid`);
 
       const kept = branch.length - cutoff;
+      const report = `[ACM] ✅ Slide complete: ${discardedCount} messages discarded, ${kept} recent entries kept, branch head reset. Old context searchable via acm_recall.`;
+      ctx.ui.notify(report, "info");
+
       return {
-        content: [{
-          type: "text" as const,
-          text: `[ACM] ✅ Slide: ${toolResultsCleared} tool results cleared, ${messagesCompacted} messages compacted (shrunk to keyword stubs), ${kept} recent messages kept intact, ${pinnedSet.size} pinned. All recallable via acm_recall.`,
-        }],
-        details: { success: true, cutoff, kept, toolResultsCleared, messagesCompacted },
+        content: [{ type: "text" as const, text: report }],
+        details: { success: true, cutoff, kept, discardedCount },
       };
+
     },
   });
 
