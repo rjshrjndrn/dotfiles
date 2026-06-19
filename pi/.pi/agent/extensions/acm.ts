@@ -665,6 +665,10 @@ export default function (pi: ExtensionAPI) {
       : typeof event.content === "string" ? event.content : "";
     if (!content) return;
 
+    // Small results: pass through directly — not worth caching to disk
+    // LLM can consume <2000 chars in-context cheaper than bash-reading a file
+    if (content.length < 2000) return;
+
     // Write to cache file
     const sessionDir = ctx.sessionManager.getSessionDir();
     try {

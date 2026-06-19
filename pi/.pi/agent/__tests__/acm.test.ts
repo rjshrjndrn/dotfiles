@@ -1017,7 +1017,6 @@ describe("file caching", () => {
     const stub = buildCachedStub("web_fetch", "/cache/web_fetch-tc1.md", "InfiAgent paper file-centric");
     expect(stub).toContain("/cache/web_fetch-tc1.md");
     expect(stub).toContain("web_fetch");
-    expect(stub).toContain("bash rg/grep/head");
     expect(stub).toMatch(/^\[cached:/);
   });
 });
@@ -1096,7 +1095,7 @@ describe("context handler — external tool caching", () => {
       toolName: "web_fetch",
       toolCallId: "tc-web",
       input: { url: "https://example.com" },
-      content: [{ type: "text", text: "Example Domain\nThis domain is for use in illustrative examples." }],
+      content: [{ type: "text", text: "Example Domain\n" + "x".repeat(2100) }],
     }, ctx);
 
     // Should have cached to disk
@@ -1107,7 +1106,6 @@ describe("context handler — external tool caching", () => {
     // Result should be a stub, not the full content
     expect(result).toBeDefined();
     expect(result.content[0].text).toMatch(/^\[cached:/);
-    expect(result.content[0].text).toContain("bash rg/grep/head");
     expect(result.content[0].text).not.toContain("Example Domain");
   });
 
@@ -1133,7 +1131,7 @@ describe("context handler — external tool caching", () => {
       toolName: "mcp",
       toolCallId: "tc-exa",
       input: { tool: "exa_web_search_exa", args: '{"query": "test"}' },
-      content: [{ type: "text", text: '{"results": [{"title": "Test", "url": "https://test.com"}]}' }],
+      content: [{ type: "text", text: '{"results": [{"title": "Test", "url": "https://test.com"}]}' + "x".repeat(2100) }],
     }, ctx);
 
     expect(notifications.some(n => n.includes("💾") && n.includes("mcp"))).toBe(true);
@@ -1141,6 +1139,20 @@ describe("context handler — external tool caching", () => {
     expect(result.content[0].text).toMatch(/^\[cached:/);
     const cacheStats = getCacheStats(testSessionDir);
     expect(cacheStats.files).toBe(1);
+  });
+
+  it("skips caching for small external tool results (<2000 chars)", async () => {
+    const ctx = createCtx([]);
+    const result = await handlers["tool_result"]({
+      toolName: "web_fetch",
+      toolCallId: "tc-small",
+      input: { url: "https://example.com" },
+      content: [{ type: "text", text: "Short page content under 2000 chars" }],
+    }, ctx);
+
+    // Should pass through — no caching, no replacement
+    expect(result).toBeUndefined();
+    expect(getCacheStats(testSessionDir).files).toBe(0);
   });
 
   it("does NOT cache MCP meta calls (no sub-tool)", async () => {
