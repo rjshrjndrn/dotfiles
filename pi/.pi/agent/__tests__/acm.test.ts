@@ -822,6 +822,47 @@ describe("context handler — eviction strategy", () => {
     expect(notifications.filter(n => n.includes("Auto-cleared"))).toHaveLength(0);
   });
 
+  it("auto-clear works after acm_slide resets lastAutoClearUserCount", () => {
+    // Simulate: session had 15 user messages, then acm_slide happened.
+    // Post-slide branch has only 3 user messages.
+    // Bug: lastAutoClearUserCount=15 persisted, currentUserCount=3, so 3 < 15 → auto-clear never fires.
+    // Fix: acm_slide resets lastAutoClearUserCount to 0.
+
+    // Rehydrate with high lastAutoClearUserCount (simulating post-slide persist with reset)
+    const entries = [{
+      type: "custom", customType: "acm-clear-state", data: {
+        clearedToolCallIds: [],
+        toolCallIdToEntryId: {},
+        totalTokensSaved: 0,
+        compactedEntryIds: [],
+        lastAutoClearUserCount: 0, // After fix, slide resets this to 0
+      },
+    }];
+    const sessionStartCtx = {
+      sessionManager: { getEntries: () => entries, getSessionDir: () => join(tmpdir(), "acm-test") },
+      ui: { notify: vi.fn(), setStatus: vi.fn() },
+    };
+    handlers["session_start"]({}, sessionStartCtx);
+
+    // Post-slide context: only 3 user messages remain
+    const messages = [
+      { role: "user", content: "old surviving turn" },
+      { role: "assistant", content: [
+        { type: "toolCall", id: "tc-old", name: "Read", arguments: { path: "/old.ts" } },
+      ] },
+      { role: "toolResult", toolCallId: "tc-old", toolName: "Read",
+        content: [{ type: "text", text: "old file content" }] },
+      ...paddingTurns(4), // push tc-old beyond recentThreshold
+    ];
+    const branch = buildBranch(messages);
+
+    notifications = [];
+    handlers["context"]({ messages }, createCtx(branch));
+
+    // With reset to 0, currentUserCount (5) > 0 → auto-clear fires
+    expect(notifications.some(n => n.includes("Auto-cleared"))).toBe(true);
+  });
+
   it("detects fault via filePath param (not just path)", () => {
     // Turn 1: read via filePath param
     const messages = [

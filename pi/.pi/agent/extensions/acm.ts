@@ -1053,6 +1053,9 @@ export default function (pi: ExtensionAPI) {
         const e = branch[i] as any;
         if (e.id) { clearSet.delete(e.id); compactSet.delete(e.id); }
       }
+      // Reset auto-clear counter — post-slide branch has fewer user messages,
+      // so old count would block auto-clear from ever firing again.
+      lastAutoClearUserCount = 0;
       persist(pi.appendEntry.bind(pi));
       ctx.ui.setStatus("acm", `${statusText()} | slid`);
 
@@ -1363,6 +1366,7 @@ ${conversationText}
       if (modifiedFiles.length > 0) summary += `\n\n<modified-files>\n${modifiedFiles.join("\n")}\n</modified-files>`;
 
       ctx.ui.notify(`[ACM] ✅ Slide: ~${Math.round(summary.length / 4)} token summary, ${clearSet.size} cleared`, "info");
+      lastAutoClearUserCount = 0; // Reset so auto-clear works after compaction
       persist(pi.appendEntry.bind(pi));
 
       return { compaction: { summary, firstKeptEntryId, tokensBefore, details: { readFiles, modifiedFiles } } };
