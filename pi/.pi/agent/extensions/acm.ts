@@ -1,48 +1,15 @@
 /**
  * ACM — Adaptive Context Manager
  *
- * LLM-driven context management. No slash commands — LLM decides when
- * and what to prune using registered tools.
+ * LLM-driven context management. No slash commands — LLM decides when and
+ * what to prune using registered tools.
  *
  * Automatic: session_before_compact hijacks pi's compaction with two-phase
  * strategy (clear tool results → slide if needed).
  *
  * Manual: user says "acm prune" → LLM inspects context, calls acm_clear/acm_status.
  *
- * Eviction strategy draws from research:
- *
- * [1] Pichay 2025 — "Missing Pages: Demand Paging for LLM Context Windows"
- *     https://arxiv.org/abs/2603.09023
- *     Fault-driven pinning: evict aggressively, auto-pin on re-read.
- *     Production fault rate <0.03% across 1.4M evictions, 93% context reduction.
- *
- * [2] Lodha et al. 2025 — "Less Context, Better Agents"
- *     https://arxiv.org/abs/2606.10209
- *     Keep last N tool-call pairs (N=5). Pruned agents outperform full-context
- *     (63.9% fewer tokens, better accuracy). Summarize instead of hard-delete.
- *     C4 (prune+summarize) = 91.6% vs C2 (full context) = 71.0%.
- *
- * [3] CWL (Context Window Lifecycle) — episode typing heuristic:
- *     Action episodes (writes/edits) safe to evict first (effects persisted).
- *     Exploration episodes (reads/searches) evict last (LLM needs for reasoning).
- *
- * [4] InfiAgent 2025 — File-centric state abstraction:
- *     External tool outputs cached to disk, LLM self-serves via bash.
- *     "Long context is NOT a substitute for persistent state."
- *     Only internet/external content needs caching; local files re-readable.
- *
- * [5] Jha et al. 2024 — "Characterizing Prompt Compression Methods" (ICML)
- *     https://arxiv.org/abs/2407.08892
- *     Extractive compression (keep verbatim chunks) beats abstractive (LLM
- *     summary) by 3-15 pts on QA. Weaker summarizers omit info or hallucinate.
- *     Validates our preview-based approach over LLM summarization of tool results.
- *
- * [6] Kang et al. 2025 — "ACON: Optimizing Context Compression" (ICML 2026)
- *     https://arxiv.org/abs/2510.00615
- *     Compress only above threshold: history >4096 tok, observation >1024 tok.
- *     Smaller thresholds = more compression calls + accuracy degradation.
- *     Failure-driven guideline optimization > static heuristics.
- *     Distilled compressors retain 95% of full-model compression quality.
+ * See acm-lib/ for extracted modules (types, config, helpers, cache, state).
  */
 
 import { complete } from "@earendil-works/pi-ai";
@@ -52,603 +19,115 @@ import {
   estimateTokens,
   serializeConversation,
 } from "@earendil-works/pi-coding-agent";
-import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import { Type } from "@sinclair/typebox";
-import { writeFileSync, mkdirSync, readdirSync, statSync, existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// ── Types ────────────────────────────────────────────────────────────
-
-interface RecallMetadata {
-  entryId: string;
-  toolCallId: string;
-  toolName: string;
-  filePaths: string[];
-  keyTerms: string;
-  timestamp: number;
-  charCount: number;
-}
-
-export interface RehydrateInput {
-  type: string;
-  customType?: string;
-  data?: any;
-}
-
-export interface RehydrateResult {
-  clearSet: Set<string>;
-  toolCallIdToEntryId: Map<string, string>;
-  recallIndex: Map<string, any>;
-  pinnedSet: Set<string>;
-  compactSet: Set<string>;
-  totalTokensSaved: number;
-  lastAutoClearUserCount: number;
-  faultPinTurns: Map<string, number>;
-}
-
-// ── State ────────────────────────────────────────────────────────────
-
-const clearSet = new Set<string>();
-const toolCallIdToEntryId = new Map<string, string>();
-const recallIndex = new Map<string, RecallMetadata>();
-const pinnedSet = new Set<string>();
-const compactSet = new Set<string>();
-let totalTokensSaved = 0;
-
-// Turn-boundary pruning: only auto-clear between user turns, not mid-LLM-action.
-// Prevents evicting tool results the LLM is actively using for multi-step reasoning.
-let lastAutoClearUserCount = 0;
-
-// Fault-driven pinning (Pichay 2025, "Missing Pages" §3.2):
-// Track evicted file paths. If LLM re-reads same path → auto-pin to stop thrashing.
-// Production data shows <0.03% fault rate with this approach.
-const evictedPaths = new Map<string, string>(); // filePath → evicted toolCallId
-
-// Fault-pin TTL: auto-unpin fault-pins after N turn boundaries.
-// Manual pins (user-requested via acm_pin) are permanent — only fault-pins decay.
-// If LLM still needs content after expiry, re-read triggers re-fault-pin (self-correcting).
-export const FAULT_PIN_TTL = 5; // turns before fault-pin expires
-const faultPinTurns = new Map<string, number>(); // entryId → turn count when fault-pinned
-export const MAX_EVICTED_PATHS = 200; // cap evictedPaths to prevent unbounded growth
-
-/** Parameter names that commonly contain file paths in tool call arguments. */
-export const FILE_PATH_PARAMS = ["path", "file", "file_path", "filePath", "filename", "file_name"] as const;
-
-export function extractToolCallPaths(args: Record<string, any>): string[] {
-  const paths: string[] = [];
-  if (!args || typeof args !== "object") return paths;
-  for (const key of FILE_PATH_PARAMS) {
-    if (typeof args[key] === "string" && args[key]) paths.push(args[key]);
-  }
-  return paths;
-}
-
-// ── External Tool Caching (InfiAgent-inspired) ────────────────────
-// Only tools that fetch from internet/external APIs get cached to disk.
-// Local tools (Read/Write/Edit/Bash/gitnexus/memory) are re-derivable.
-
-/**
- * Local tool set — populated at boot from pi.getAllTools().
- * Tools in this set are re-derivable (on disk or re-runnable).
- *
- * NOTE: MCP calls come through toolName="mcp" with the actual tool in args.tool.
- * MCP sub-tools that make API calls are always cached (cheap to store, expensive to re-fetch).
- */
-export const localToolSet = new Set<string>();
-
-/**
- * Config-driven overrides from acm.json:
- *   { "cacheTools": ["web_fetch", "custom_api"], "localTools": ["my_idempotent_tool"] }
- *
- * - cacheTools: force these tools to be cached (even if registered locally)
- * - localTools: force these tools to be treated as local (even if unknown)
- */
-export interface AcmConfig {
-  cacheTools?: string[];
-  localTools?: string[];
-  /** Skip caching for tool results smaller than this (chars). Default: 2000 */
-  cacheMinChars?: number;
-  /** Include first N chars as preview in cached stubs. Default: 1000 */
-  previewChars?: number;
-}
-
-/** Loaded config overrides. */
-export let acmConfig: AcmConfig = {};
-
-/** Load acm.json config from extension directory. */
-export function loadAcmConfig(extensionDir: string): AcmConfig {
-  const configPath = join(extensionDir, "acm.json");
-  if (!existsSync(configPath)) return {};
-  try {
-    return JSON.parse(readFileSync(configPath, "utf-8"));
-  } catch {
-    return {};
-  }
-}
-
-/** Populate localToolSet from registered tools at boot. */
-export function discoverLocalTools(allTools: Array<{ name: string }>, config?: AcmConfig): void {
-  localToolSet.clear();
-  for (const tool of allTools) {
-    localToolSet.add(tool.name);
-  }
-  // Apply config overrides
-  if (config?.localTools) {
-    for (const t of config.localTools) localToolSet.add(t);
-  }
-  if (config) acmConfig = config;
-}
-
-/** Check if a tool result should be cached to disk (external/internet content). */
-export function isExternalTool(toolName: string, toolArgs?: Record<string, any>): boolean {
-  // MCP gateway: sub-tool calls always go to external APIs — cache them
-  if (toolName === "mcp") {
-    if (!toolArgs?.tool) return false; // meta calls (status/describe/list)
-    return true;
-  }
-  // Config override: explicitly marked for caching
-  if (acmConfig.cacheTools?.includes(toolName)) return true;
-  // Tools discovered at boot are local — don't cache
-  if (localToolSet.has(toolName)) return false;
-  // Unknown tools: default to NOT caching (keep normal clear/stub behavior)
-  return false;
-}
-
-/** Get the cache directory for a session. */
-export function getCacheDir(sessionDir: string): string {
-  return join(sessionDir, ".acm", "cache");
-}
-
-/** Write tool output to cache file. Returns the cache file path. */
-export function writeCacheFile(
-  sessionDir: string,
-  toolName: string,
-  toolCallId: string,
-  content: string,
-): string {
-  const cacheDir = getCacheDir(sessionDir);
-  mkdirSync(cacheDir, { recursive: true });
-  // Sanitize toolCallId for filename
-  const safeId = toolCallId.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 40);
-  const ext = isJsonLike(content) ? ".json" : ".md";
-  const filename = `${toolName}-${safeId}${ext}`;
-  const filePath = join(cacheDir, filename);
-  // Truncate at 100KB
-  const maxBytes = 100 * 1024;
-  const truncated = content.length > maxBytes
-    ? content.slice(0, maxBytes) + "\n\n[...truncated at 100KB]"
-    : content;
-  writeFileSync(filePath, truncated, "utf-8");
-  return filePath;
-}
-
-/** Extract text content from a tool result message. */
-export function extractToolResultText(msg: any): string {
-  if (typeof msg.content === "string") return msg.content;
-  if (Array.isArray(msg.content)) {
-    return msg.content
-      .filter((b: any) => b.type === "text")
-      .map((b: any) => b.text)
-      .join("\n");
-  }
-  return JSON.stringify(msg.content);
-}
-
-function isJsonLike(text: string): boolean {
-  const trimmed = text.trimStart();
-  return trimmed.startsWith("{") || trimmed.startsWith("[");
-}
-
-/** Look up tool call arguments from branch for a given toolCallId. */
-function findToolCallArgs(branch: any[], toolCallId: string): Record<string, any> | undefined {
-  for (const entry of branch) {
-    if (entry.type !== "message" || !entry.message) continue;
-    const msg = entry.message as any;
-    if (msg.role !== "assistant" || !Array.isArray(msg.content)) continue;
-    for (const block of msg.content) {
-      if (block.type === "toolCall" && block.id === toolCallId && block.arguments) {
-        return typeof block.arguments === "string" ? JSON.parse(block.arguments) : block.arguments;
-      }
-    }
-  }
-  return undefined;
-}
-
-/** Build a cached stub with file path for external tool results. */
-export function buildCachedStub(toolName: string, cachePath: string, keyTerms: string, content?: string): string {
-  const previewLen = acmConfig.previewChars ?? 1000;
-  const preview = content && content.length > 0 && previewLen > 0
-    ? `\n---preview (first ${previewLen} chars)---\n${content.slice(0, previewLen)}\n---end preview---\nFull content: \`bash head -200 ${cachePath}\` or \`bash rg 'pattern' ${cachePath}\``
-    : `\nFull content saved to file above. Read it with \`bash head -200 ${cachePath}\` or \`bash rg 'pattern' ${cachePath}\` before proceeding.`;
-  return `[cached: ${cachePath} | ${toolName} | ${extractKeywords(keyTerms, 10)}]${preview}`;
-}
-
-/** Get cache stats for acm_status. */
-export function getCacheStats(sessionDir: string): { files: number; totalBytes: number } {
-  const cacheDir = getCacheDir(sessionDir);
-  if (!existsSync(cacheDir)) return { files: 0, totalBytes: 0 };
-  try {
-    const entries = readdirSync(cacheDir);
-    let totalBytes = 0;
-    for (const entry of entries) {
-      try { totalBytes += statSync(join(cacheDir, entry)).size; } catch {}
-    }
-    return { files: entries.length, totalBytes };
-  } catch { return { files: 0, totalBytes: 0 }; }
-}
-
-// Track which toolCallIds have been cached to disk
-const cachedToFile = new Map<string, string>(); // toolCallId → cachePath
-
-/** @internal — reset module-level state for test isolation */
-export function _resetState() {
-  clearSet.clear();
-  toolCallIdToEntryId.clear();
-  recallIndex.clear();
-  pinnedSet.clear();
-  compactSet.clear();
-  totalTokensSaved = 0;
-  lastAutoClearUserCount = 0;
-  evictedPaths.clear();
-  faultPinTurns.clear();
-  cachedToFile.clear();
-}
-
-// ── Persistence ──────────────────────────────────────────────────────
-
-function persist(appendEntry: (type: string, data?: any) => void) {
-  appendEntry("acm-clear-state", {
-    clearedToolCallIds: [...clearSet],
-    toolCallIdToEntryId: Object.fromEntries(toolCallIdToEntryId),
-    totalTokensSaved,
-    compactedEntryIds: [...compactSet],
-    lastAutoClearUserCount,
-  });
-  appendEntry("acm-recall-index", { entries: [...recallIndex.values()] });
-}
-
-function persistPin(appendEntry: (type: string, data?: any) => void, entryId: string, action: "pin" | "unpin", opts?: { isFault?: boolean; pinnedAtTurn?: number }) {
-  appendEntry("acm-pin", { entryId, action, ...opts });
-}
-
-function rehydrateState(entries: Array<{ type: string; customType?: string; data?: any }>) {
-  let lastClearState: any;
-  let lastRecallIndex: any;
-  const pinEvents: Array<{ entryId: string; action: "pin" | "unpin"; isFault?: boolean; pinnedAtTurn?: number }> = [];
-
-  for (const entry of entries) {
-    if (entry.type !== "custom") continue;
-    if (entry.customType === "acm-clear-state") lastClearState = entry.data;
-    else if (entry.customType === "acm-recall-index") lastRecallIndex = entry.data;
-    else if (entry.customType === "acm-pin" && entry.data) pinEvents.push(entry.data);
-  }
-
-  if (lastClearState) {
-    clearSet.clear();
-    for (const id of lastClearState.clearedToolCallIds) clearSet.add(id);
-    toolCallIdToEntryId.clear();
-    for (const [k, v] of Object.entries(lastClearState.toolCallIdToEntryId)) {
-      toolCallIdToEntryId.set(k, v as string);
-    }
-    totalTokensSaved = lastClearState.totalTokensSaved ?? 0;
-    lastAutoClearUserCount = lastClearState.lastAutoClearUserCount ?? 0;
-    compactSet.clear();
-    for (const id of lastClearState.compactedEntryIds ?? []) compactSet.add(id);
-  }
-
-  if (lastRecallIndex) {
-    recallIndex.clear();
-    for (const entry of lastRecallIndex.entries) recallIndex.set(entry.toolCallId, entry);
-  }
-
-  pinnedSet.clear();
-  faultPinTurns.clear();
-  for (const { entryId, action, isFault, pinnedAtTurn } of pinEvents) {
-    if (action === "pin") {
-      pinnedSet.add(entryId);
-      if (isFault && pinnedAtTurn != null) faultPinTurns.set(entryId, pinnedAtTurn);
-    } else {
-      pinnedSet.delete(entryId);
-      faultPinTurns.delete(entryId);
-    }
-  }
-
-  // Rebuild evictedPaths from recall index for fault detection across restarts
-  evictedPaths.clear();
-  for (const recall of recallIndex.values()) {
-    for (const fp of recall.filePaths) evictedPaths.set(fp, recall.toolCallId);
-  }
-  // Cap evictedPaths to prevent unbounded growth
-  while (evictedPaths.size > MAX_EVICTED_PATHS) {
-    const first = evictedPaths.keys().next().value;
-    if (first) evictedPaths.delete(first); else break;
-  }
-
-  return { cleared: clearSet.size, recalled: recallIndex.size, pinned: pinnedSet.size };
-}
-
-// ── Exported Pure Helpers (tested independently) ─────────────────────
-
-export const STOP_WORDS = new Set([
-  "this", "that", "with", "from", "have", "will", "been", "they", "then",
-  "than", "when", "what", "which", "would", "should", "could", "also",
-  "just", "like", "into", "each", "make", "here", "need", "some",
-]);
-
-export function extractKeywords(text: string, max = 15): string {
-  const words = text.replace(/[^a-zA-Z0-9_./\-]/g, " ").split(/\s+/).filter(Boolean);
-  const seen = new Set<string>();
-  const keywords: string[] = [];
-  for (const word of words) {
-    if (word.length < 4 || STOP_WORDS.has(word.toLowerCase()) || seen.has(word.toLowerCase())) continue;
-    seen.add(word.toLowerCase());
-    keywords.push(word);
-    if (keywords.length >= max) break;
-  }
-  return keywords.join(", ");
-}
-
-export function getBranchMessages(branch: any[]): any[] {
-  return branch
-    .filter((e: any) => e.type === "message" && e.message)
-    .map((e: any) => e.message);
-}
-
-export function getTextPreview(msg: any, maxLen = 500): string {
-  if (!Array.isArray(msg.content)) return "";
-  for (const block of msg.content) {
-    if (block.type === "text" && block.text) return block.text.slice(0, maxLen);
-    if (block.type === "image") return "[image]";
-  }
-  return "";
-}
-
-export function extractEntryContent(entry: any): string {
-  const c = entry?.message?.content;
-  if (typeof c === "string") return c;
-  if (Array.isArray(c)) {
-    return c.map((b: any) => b.type === "text" ? b.text : b.type === "image" ? "[image]" : JSON.stringify(b)).join("\n");
-  }
-  return JSON.stringify(entry);
-}
-
-export function compactMessage(msg: any, entryId: string): { content: any[]; saved: number } | null {
-  if (!Array.isArray(msg.content)) return null;
-
-  let totalChars = 0;
-  let textContent = "";
-  const hasToolCalls = msg.content.some((b: any) => b.type === "toolCall");
-
-  for (const block of msg.content) {
-    if (block.type === "text") { totalChars += block.text?.length || 0; textContent += block.text + " "; }
-    else if (block.type === "thinking") totalChars += block.thinking?.length || 0;
-  }
-
-  if (totalChars < 1000) return null;
-
-  const stub = `[compacted: ${extractKeywords(textContent)} | id: ${entryId}]`;
-
-  if (hasToolCalls) {
-    let stubInserted = false;
-    const newContent: any[] = [];
-    for (const block of msg.content) {
-      if (block.type === "text" || block.type === "thinking") {
-        if (!stubInserted) {
-          newContent.push({ type: "text", text: stub });
-          stubInserted = true;
-        }
-      } else {
-        newContent.push(block);
-      }
-    }
-    return { content: newContent, saved: totalChars - stub.length };
-  }
-
-  return { content: [{ type: "text", text: stub }], saved: totalChars - stub.length };
-}
-
-export function findHybridCutoff(branch: any[], opts?: { keepMessages?: number; keepMinutes?: number }): number {
-  const keepMessages = opts?.keepMessages;
-  const keepMinutes = opts?.keepMinutes;
-
-  // Default: keepMinutes=30 if neither specified
-  const effectiveMinutes = (keepMessages == null && keepMinutes == null) ? 30 : keepMinutes;
-  const effectiveMessages = (keepMessages == null && keepMinutes == null) ? 10 : keepMessages;
-
-  const now = Date.now();
-
-  // Time-based cutoff: first entry to KEEP (everything before gets slid)
-  let timeCutoff = 0;
-  if (effectiveMinutes != null) {
-    const windowMs = effectiveMinutes * 60 * 1000;
-    for (let i = branch.length - 1; i >= 0; i--) {
-      const ts = branch[i].timestamp;
-      const t = typeof ts === "number" ? ts : typeof ts === "string" ? new Date(ts).getTime() : 0;
-      if (now - t > windowMs) { timeCutoff = i + 1; break; }
-    }
-  }
-
-  // Message-based cutoff: walk backwards counting user messages
-  let msgCutoff = 0;
-  if (effectiveMessages != null) {
-    let userCount = 0;
-    for (let i = branch.length - 1; i >= 0; i--) {
-      const e = branch[i];
-      if (e.type === "message" && e.message?.role === "user") {
-        userCount++;
-        if (userCount >= effectiveMessages) { msgCutoff = i; break; }
-      }
-    }
-    // If not enough user messages, msgCutoff stays 0 (no message-based sliding)
-  }
-
-  // Union semantics: keep if in EITHER window.
-  // Math.min = more conservative = keeps more = respects whichever window is larger.
-  // When only one param specified, the other stays 0 (no constraint from that axis).
-  let cutoff: number;
-  if (timeCutoff > 0 && msgCutoff > 0) {
-    cutoff = Math.min(timeCutoff, msgCutoff);
-  } else {
-    // One or both are 0 — use whichever is non-zero
-    cutoff = Math.max(timeCutoff, msgCutoff);
-  }
-
-  if (cutoff <= 0 || cutoff >= branch.length) return 0;
-
-  // Snap to valid cut point (user/assistant message or compaction boundary)
-  const validCuts: number[] = [];
-  for (let i = 0; i < branch.length; i++) {
-    const e = branch[i];
-    if (e.type === "compaction" || e.type === "branch_summary" || e.type === "custom") {
-      validCuts.push(i);
-    } else if (e.type === "message") {
-      const role = e.message?.role;
-      if (role === "user" || role === "assistant") validCuts.push(i);
-    }
-  }
-  if (validCuts.length === 0) return 0;
-
-  const before = validCuts.filter((i) => i <= cutoff);
-  cutoff = before.length > 0 ? before[before.length - 1] : validCuts[0];
-
-  return cutoff;
-}
-
-/** Pure version of rehydrateState for testing — returns new state instead of mutating globals */
-export function rehydrateStatePure(entries: RehydrateInput[]): RehydrateResult {
-  const result: RehydrateResult = {
-    clearSet: new Set(),
-    toolCallIdToEntryId: new Map(),
-    recallIndex: new Map(),
-    pinnedSet: new Set(),
-    compactSet: new Set(),
-    totalTokensSaved: 0,
-    lastAutoClearUserCount: 0,
-    faultPinTurns: new Map(),
-  };
-
-  let lastClearState: any;
-  let lastRecallIndex: any;
-  const pinEvents: Array<{ entryId: string; action: "pin" | "unpin"; isFault?: boolean; pinnedAtTurn?: number }> = [];
-
-  for (const entry of entries) {
-    if (entry.type !== "custom") continue;
-    if (entry.customType === "acm-clear-state") lastClearState = entry.data;
-    else if (entry.customType === "acm-recall-index") lastRecallIndex = entry.data;
-    else if (entry.customType === "acm-pin" && entry.data) pinEvents.push(entry.data);
-  }
-
-  if (lastClearState) {
-    for (const id of lastClearState.clearedToolCallIds ?? []) result.clearSet.add(id);
-    for (const [k, v] of Object.entries(lastClearState.toolCallIdToEntryId ?? {})) {
-      result.toolCallIdToEntryId.set(k, v as string);
-    }
-    result.totalTokensSaved = lastClearState.totalTokensSaved ?? 0;
-    result.lastAutoClearUserCount = lastClearState.lastAutoClearUserCount ?? 0;
-    for (const id of lastClearState.compactedEntryIds ?? []) result.compactSet.add(id);
-  }
-
-  if (lastRecallIndex) {
-    for (const entry of lastRecallIndex.entries ?? []) result.recallIndex.set(entry.toolCallId, entry);
-  }
-
-  for (const { entryId, action, isFault, pinnedAtTurn } of pinEvents) {
-    if (action === "pin") {
-      result.pinnedSet.add(entryId);
-      if (isFault && pinnedAtTurn != null) result.faultPinTurns.set(entryId, pinnedAtTurn);
-    } else {
-      result.pinnedSet.delete(entryId);
-      result.faultPinTurns.delete(entryId);
-    }
-  }
-
-  return result;
-}
-
-// ── Internal Helpers ─────────────────────────────────────────────────
-
-function buildToolCallMapping(branch: any[]) {
-  toolCallIdToEntryId.clear();
-  for (const entry of branch) {
-    if (entry.type === "message" && entry.message?.role === "toolResult" && entry.message.toolCallId) {
-      toolCallIdToEntryId.set(entry.message.toolCallId, entry.id);
-    }
-  }
-}
-
-function inventoryToolResults(messages: AgentMessage[]) {
-  const results: Array<{ toolCallId: string; toolName: string; tokens: number; keyTerms: string }> = [];
-  for (const msg of messages) {
-    const m = msg as any;
-    if (m.role !== "toolResult" || !m.toolCallId || clearSet.has(m.toolCallId)) continue;
-    let keyTerms = "";
-    if (Array.isArray(m.content)) {
-      for (const block of m.content) {
-        if (block.type === "text" && block.text) { keyTerms = block.text.slice(0, 150).replace(/\n/g, " "); break; }
-        if (block.type === "image") { keyTerms = "[image]"; break; }
-      }
-    }
-    results.push({ toolCallId: m.toolCallId, toolName: m.toolName || "unknown", tokens: estimateTokens(msg), keyTerms });
-  }
-  return results.sort((a, b) => b.tokens - a.tokens);
-}
-
-function buildStub(msg: any): string {
-  const toolName = msg.toolName || "unknown";
-  const entryId = toolCallIdToEntryId.get(msg.toolCallId) || "?";
-  // If cached to file, use cached stub format with filepath
-  const cachePath = cachedToFile.get(msg.toolCallId);
-  if (cachePath) {
-    const recall = recallIndex.get(msg.toolCallId);
-    const source = recall?.keyTerms ?? getTextPreview(msg);
-    return buildCachedStub(toolName, cachePath, source, getTextPreview(msg, acmConfig.previewChars ?? 1000));
-  }
-  const recall = recallIndex.get(msg.toolCallId);
-  const source = recall?.keyTerms ?? getTextPreview(msg);
-  return `[cleared: ${toolName} | id: ${entryId} | ${extractKeywords(source, 10)}]`;
-}
-
-function buildRecallEntry(toolCallId: string, toolName: string, keyTerms: string, charCount: number, messages: AgentMessage[]): RecallMetadata {
-  const filePaths: string[] = [];
-  for (const msg of messages) {
-    const m = msg as any;
-    if (m.role !== "assistant" || !Array.isArray(m.content)) continue;
-    for (const block of m.content) {
-      if (block.type === "toolCall" && block.id === toolCallId && block.arguments) {
-        filePaths.push(...extractToolCallPaths(block.arguments));
-      }
-    }
-  }
-  return { entryId: toolCallIdToEntryId.get(toolCallId) || "", toolCallId, toolName, filePaths, keyTerms, timestamp: Date.now(), charCount };
-}
-
-function clearToolResults(
-  toolResults: Array<{ toolCallId: string; toolName: string; tokens: number; keyTerms: string }>,
-  notify: (msg: string) => void,
-  contextMessages: AgentMessage[],
-): number {
-  let saved = 0;
-  for (const tr of toolResults) {
-    if (clearSet.has(tr.toolCallId)) continue;
-    const entryId = toolCallIdToEntryId.get(tr.toolCallId);
-    if (entryId && pinnedSet.has(entryId)) {
-      notify(`📌 ${tr.toolName} (${Math.round(tr.tokens / 1000)}k) — pinned, skip`);
-      continue;
-    }
-    clearSet.add(tr.toolCallId);
-    const tokensSaved = tr.tokens - 50;
-    totalTokensSaved += tokensSaved;
-    saved += tokensSaved;
-    recallIndex.set(tr.toolCallId, buildRecallEntry(tr.toolCallId, tr.toolName, tr.keyTerms, tr.tokens * 4, contextMessages));
-    notify(`✂ ${tr.toolName} (${Math.round(tr.tokens / 1000)}k) → stub [id: ${entryId || "?"}]`);
-  }
-  return saved;
-}
-
-function statusText() {
-  return `ACM: ${clearSet.size} cleared, ${compactSet.size} compacted | ~${Math.round(totalTokensSaved * 0.4 / 1000)}k saved`;
-}
+// ── ACM lib imports ──────────────────────────────────────────────────
+
+import type { RecallMetadata } from "../acm-lib/types.ts";
+import {
+  loadAcmConfig,
+  discoverLocalTools,
+  isExternalTool,
+  acmConfig,
+  extractToolCallPaths,
+} from "../acm-lib/config.ts";
+import {
+  extractKeywords,
+  getBranchMessages,
+  getTextPreview,
+  extractEntryContent,
+  compactMessage,
+  findHybridCutoff,
+} from "../acm-lib/helpers.ts";
+import {
+  getCacheDir,
+  writeCacheFile,
+  buildCachedStub,
+  getCacheStats,
+} from "../acm-lib/cache.ts";
+import {
+  clearSet,
+  toolCallIdToEntryId,
+  recallIndex,
+  pinnedSet,
+  compactSet,
+  acmState,
+  evictedPaths,
+  FAULT_PIN_TTL,
+  faultPinTurns,
+  MAX_EVICTED_PATHS,
+  cachedToFile,
+  persist,
+  persistPin,
+  rehydrateState,
+  buildToolCallMapping,
+  inventoryToolResults,
+  buildStub,
+  buildRecallEntry,
+  clearToolResults,
+  statusText,
+} from "../acm-lib/state.ts";
+
+// ── Re-exports for backward compatibility (tests import from acm.ts) ──
+
+export {
+  type RecallMetadata,
+  type RehydrateInput,
+  type RehydrateResult,
+  type AcmConfig,
+} from "../acm-lib/types.ts";
+export {
+  extractKeywords,
+  getBranchMessages,
+  getTextPreview,
+  extractEntryContent,
+  compactMessage,
+  findHybridCutoff,
+  STOP_WORDS,
+} from "../acm-lib/helpers.ts";
+export {
+  FILE_PATH_PARAMS,
+  extractToolCallPaths,
+  localToolSet,
+  loadAcmConfig,
+  discoverLocalTools,
+  isExternalTool,
+  acmConfig,
+} from "../acm-lib/config.ts";
+export {
+  getCacheDir,
+  writeCacheFile,
+  extractToolResultText,
+  buildCachedStub,
+  getCacheStats,
+} from "../acm-lib/cache.ts";
+export {
+  clearSet,
+  toolCallIdToEntryId,
+  recallIndex,
+  pinnedSet,
+  compactSet,
+  acmState,
+  evictedPaths,
+  FAULT_PIN_TTL,
+  faultPinTurns,
+  MAX_EVICTED_PATHS,
+  cachedToFile,
+  _resetState,
+  persist,
+  persistPin,
+  rehydrateState,
+  rehydrateStatePure,
+  buildToolCallMapping,
+  inventoryToolResults,
+  buildStub,
+  buildRecallEntry,
+  clearToolResults,
+  statusText,
+} from "../acm-lib/state.ts";
 
 // ── Extension ────────────────────────────────────────────────────────
 
@@ -792,8 +271,8 @@ export default function (pi: ExtensionAPI) {
     // Runs BEFORE message mapping so stubs apply in same turn (no 1-turn delay).
     // Only evict when a NEW user message arrives (turn boundary).
     // Mid-turn tool results stay — LLM may still need them for reasoning.
-    if (currentUserCount > lastAutoClearUserCount) {
-      lastAutoClearUserCount = currentUserCount;
+    if (currentUserCount > acmState.lastAutoClearUserCount) {
+      acmState.lastAutoClearUserCount = currentUserCount;
 
       // ── Fault-pin TTL: expire stale fault-pins ──
       // Manual pins (acm_pin) are permanent. Only fault-pins decay after FAULT_PIN_TTL turns.
@@ -823,7 +302,7 @@ export default function (pi: ExtensionAPI) {
         if (recentToolCallIds.has(msg.toolCallId)) continue; // protect recent
         const tokens = estimateTokens(msg);
         clearSet.add(msg.toolCallId);
-        totalTokensSaved += Math.max(tokens - 50, 0);
+        acmState.totalTokensSaved += Math.max(tokens - 50, 0);
         const textContent = Array.isArray(msg.content)
           ? msg.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join(" ").slice(0, 200)
           : "";
@@ -926,7 +405,7 @@ export default function (pi: ExtensionAPI) {
         `── ACM Status ──`,
         `Context: ${usage?.tokens ? Math.round(usage.tokens / 1000) + "k" : "?"} / ${usage?.contextWindow ? Math.round(usage.contextWindow / 1000) + "k" : "?"} (${usage?.percent != null ? Math.round(usage.percent) + "%" : "?"})`,
         `Cleared: ${clearSet.size} tool results, ${compactSet.size} compacted`,
-        `Saved: ~${Math.round(totalTokensSaved * 0.4 / 1000)}k`,
+        `Saved: ~${Math.round(acmState.totalTokensSaved * 0.4 / 1000)}k`,
         `Cache: ${cacheStats.files} files (${Math.round(cacheStats.totalBytes / 1024)}KB) in .acm/cache/`,
         ``,
         `── Clearable: ${clearable.length} (~${Math.round(est / 1000)}k) ──`,
@@ -1055,7 +534,7 @@ export default function (pi: ExtensionAPI) {
       }
       // Reset auto-clear counter — post-slide branch has fewer user messages,
       // so old count would block auto-clear from ever firing again.
-      lastAutoClearUserCount = 0;
+      acmState.lastAutoClearUserCount = 0;
       persist(pi.appendEntry.bind(pi));
       ctx.ui.setStatus("acm", `${statusText()} | slid`);
 
@@ -1366,7 +845,7 @@ ${conversationText}
       if (modifiedFiles.length > 0) summary += `\n\n<modified-files>\n${modifiedFiles.join("\n")}\n</modified-files>`;
 
       ctx.ui.notify(`[ACM] ✅ Slide: ~${Math.round(summary.length / 4)} token summary, ${clearSet.size} cleared`, "info");
-      lastAutoClearUserCount = 0; // Reset so auto-clear works after compaction
+      acmState.lastAutoClearUserCount = 0; // Reset so auto-clear works after compaction
       persist(pi.appendEntry.bind(pi));
 
       return { compaction: { summary, firstKeptEntryId, tokensBefore, details: { readFiles, modifiedFiles } } };
