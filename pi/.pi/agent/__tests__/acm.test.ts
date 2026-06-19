@@ -546,13 +546,12 @@ describe("context handler — eviction strategy", () => {
     ];
     const branch = buildBranch(messages);
 
-    handlers["context"]({ messages }, createCtx(branch));
+    const result = handlers["context"]({ messages }, createCtx(branch));
 
     // tc1 should be auto-cleared (beyond recentThreshold)
     expect(notifications.some(n => n.includes("Auto-cleared"))).toBe(true);
 
-    // Second call: stubs appear (clearSet populated on first call)
-    const result = handlers["context"]({ messages }, createCtx(branch));
+    // Stubs apply in SAME turn (auto-clear runs before message mapping)
     const tc1Msg = result.messages.find((m: any) => m.toolCallId === "tc1");
     expect(tc1Msg.content[0].text).toMatch(/\[cleared:/);
   });

@@ -750,6 +750,102 @@ export default function (pi: ExtensionAPI) {
       if (turnCount > recentTurns) { recentThreshold = i; break; }
     }
 
+    // Count user messages (needed by fault detection and auto-clear)
+    let currentUserCount = 0;
+    for (const m of event.messages) {
+      if ((m as any).role === "user") currentUserCount++;
+    }
+
+    // ── Fault-driven pinning: detect re-reads of evicted content ──
+    // If LLM re-reads a file that was previously evicted, auto-pin the new result
+    // to prevent read→evict→re-read thrashing (Pichay 2025, fault rate <0.03%)
+    const recentToolPaths = new Map<string, string>(); // toolCallId → filePath
+    for (let i = recentThreshold; i < event.messages.length; i++) {
+      const m = event.messages[i] as any;
+      if (m.role === "assistant" && Array.isArray(m.content)) {
+        for (const block of m.content) {
+          if (block.type === "toolCall" && block.arguments) {
+            const fps = extractToolCallPaths(block.arguments);
+            if (fps.length > 0) recentToolPaths.set(block.id, fps[0]);
+          }
+        }
+      }
+    }
+    for (let i = recentThreshold; i < event.messages.length; i++) {
+      const m = event.messages[i] as any;
+      if (m.role !== "toolResult" || !m.toolCallId) continue;
+      if (clearSet.has(m.toolCallId)) continue;
+      const filePath = recentToolPaths.get(m.toolCallId);
+      if (filePath && evictedPaths.has(filePath)) {
+        const entryId = tcEntryId.get(m.toolCallId);
+        if (entryId && !pinnedSet.has(entryId)) {
+          pinnedSet.add(entryId);
+          faultPinTurns.set(entryId, currentUserCount);
+          persistPin(pi.appendEntry.bind(pi), entryId, "pin", { isFault: true, pinnedAtTurn: currentUserCount });
+          ctx.ui.notify(`[ACM] 📌 Fault-pin: ${filePath} (re-read of evicted content)`, "info");
+          evictedPaths.delete(filePath);
+        }
+      }
+    }
+
+    // ── Auto-clear: turn-boundary only ──
+    // Runs BEFORE message mapping so stubs apply in same turn (no 1-turn delay).
+    // Only evict when a NEW user message arrives (turn boundary).
+    // Mid-turn tool results stay — LLM may still need them for reasoning.
+    if (currentUserCount > lastAutoClearUserCount) {
+      lastAutoClearUserCount = currentUserCount;
+
+      // ── Fault-pin TTL: expire stale fault-pins ──
+      // Manual pins (acm_pin) are permanent. Only fault-pins decay after FAULT_PIN_TTL turns.
+      for (const [entryId, pinnedAtTurn] of faultPinTurns) {
+        if (currentUserCount - pinnedAtTurn >= FAULT_PIN_TTL) {
+          pinnedSet.delete(entryId);
+          faultPinTurns.delete(entryId);
+          persistPin(pi.appendEntry.bind(pi), entryId, "unpin");
+          ctx.ui.notify(`[ACM] 📌 Fault-pin expired: ${entryId} (${FAULT_PIN_TTL} turns)`, "info");
+        }
+      }
+
+      // Collect toolCallIds from recent turns (protected)
+      const recentToolCallIds = new Set<string>();
+      for (let i = recentThreshold; i < event.messages.length; i++) {
+        const m = event.messages[i] as any;
+        if (m.role === "toolResult" && m.toolCallId) recentToolCallIds.add(m.toolCallId);
+      }
+
+      let autoClearCount = 0;
+      for (const entry of branch) {
+        if (entry.type !== "message" || !entry.message) continue;
+        const msg = entry.message as any;
+        if (msg.role !== "toolResult" || !msg.toolCallId) continue;
+        if (clearSet.has(msg.toolCallId)) continue;
+        if (pinnedSet.has(entry.id)) continue;
+        if (recentToolCallIds.has(msg.toolCallId)) continue; // protect recent
+        const tokens = estimateTokens(msg);
+        clearSet.add(msg.toolCallId);
+        totalTokensSaved += Math.max(tokens - 50, 0);
+        const textContent = Array.isArray(msg.content)
+          ? msg.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join(" ").slice(0, 200)
+          : "";
+        const recall = buildRecallEntry(msg.toolCallId, msg.toolName || "unknown", textContent, tokens * 4, getBranchMessages(branch));
+        recallIndex.set(msg.toolCallId, recall);
+        // Track evicted file paths for fault detection
+        for (const fp of recall.filePaths) evictedPaths.set(fp, msg.toolCallId);
+        autoClearCount++;
+      }
+      // Cap evictedPaths to prevent unbounded growth
+      while (evictedPaths.size > MAX_EVICTED_PATHS) {
+        const first = evictedPaths.keys().next().value;
+        if (first) evictedPaths.delete(first); else break;
+      }
+      if (autoClearCount > 0) {
+        persist(pi.appendEntry.bind(pi));
+        ctx.ui.notify(`[ACM] Auto-cleared ${autoClearCount} old tool results`, "info");
+      }
+    }
+
+    // ── Build messages: apply stubs, strip thinking, compact ──
+    // Runs AFTER auto-clear so newly cleared items get stubbed immediately.
     const messages = event.messages.map((msg: any, idx: number) => {
       // Clear tool results
       if (msg.role === "toolResult" && msg.toolCallId && clearSet.has(msg.toolCallId)) {
@@ -800,100 +896,6 @@ export default function (pi: ExtensionAPI) {
           };
           break;
         }
-      }
-    }
-
-    // Count user messages (needed by both fault detection and auto-clear)
-    let currentUserCount = 0;
-    for (const m of event.messages) {
-      if ((m as any).role === "user") currentUserCount++;
-    }
-
-    // ── Fault-driven pinning: detect re-reads of evicted content ──
-    // If LLM re-reads a file that was previously evicted, auto-pin the new result
-    // to prevent read→evict→re-read thrashing (Pichay 2025, fault rate <0.03%)
-    const recentToolPaths = new Map<string, string>(); // toolCallId → filePath
-    for (let i = recentThreshold; i < event.messages.length; i++) {
-      const m = event.messages[i] as any;
-      if (m.role === "assistant" && Array.isArray(m.content)) {
-        for (const block of m.content) {
-          if (block.type === "toolCall" && block.arguments) {
-            const fps = extractToolCallPaths(block.arguments);
-            if (fps.length > 0) recentToolPaths.set(block.id, fps[0]);
-          }
-        }
-      }
-    }
-    for (let i = recentThreshold; i < event.messages.length; i++) {
-      const m = event.messages[i] as any;
-      if (m.role !== "toolResult" || !m.toolCallId) continue;
-      if (clearSet.has(m.toolCallId)) continue;
-      const filePath = recentToolPaths.get(m.toolCallId);
-      if (filePath && evictedPaths.has(filePath)) {
-        const entryId = tcEntryId.get(m.toolCallId);
-        if (entryId && !pinnedSet.has(entryId)) {
-          pinnedSet.add(entryId);
-          faultPinTurns.set(entryId, currentUserCount);
-          persistPin(pi.appendEntry.bind(pi), entryId, "pin", { isFault: true, pinnedAtTurn: currentUserCount });
-          ctx.ui.notify(`[ACM] 📌 Fault-pin: ${filePath} (re-read of evicted content)`, "info");
-          evictedPaths.delete(filePath);
-        }
-      }
-    }
-
-    // ── Auto-clear: turn-boundary only ──
-    // Only evict when a NEW user message arrives (turn boundary).
-    // Mid-turn tool results stay — LLM may still need them for reasoning.
-    if (currentUserCount > lastAutoClearUserCount) {
-      lastAutoClearUserCount = currentUserCount;
-
-      // ── Fault-pin TTL: expire stale fault-pins ──
-      // Manual pins (acm_pin) are permanent. Only fault-pins decay after FAULT_PIN_TTL turns.
-      for (const [entryId, pinnedAtTurn] of faultPinTurns) {
-        if (currentUserCount - pinnedAtTurn >= FAULT_PIN_TTL) {
-          pinnedSet.delete(entryId);
-          faultPinTurns.delete(entryId);
-          persistPin(pi.appendEntry.bind(pi), entryId, "unpin");
-          ctx.ui.notify(`[ACM] 📌 Fault-pin expired: ${entryId} (${FAULT_PIN_TTL} turns)`, "info");
-        }
-      }
-
-      // Collect toolCallIds from recent turns (protected)
-      const recentToolCallIds = new Set<string>();
-      for (let i = recentThreshold; i < event.messages.length; i++) {
-        const m = event.messages[i] as any;
-        if (m.role === "toolResult" && m.toolCallId) recentToolCallIds.add(m.toolCallId);
-      }
-
-      let autoClearCount = 0;
-      const sessionDir = ctx.sessionManager.getSessionDir();
-      for (const entry of branch) {
-        if (entry.type !== "message" || !entry.message) continue;
-        const msg = entry.message as any;
-        if (msg.role !== "toolResult" || !msg.toolCallId) continue;
-        if (clearSet.has(msg.toolCallId)) continue;
-        if (pinnedSet.has(entry.id)) continue;
-        if (recentToolCallIds.has(msg.toolCallId)) continue; // protect recent
-        const tokens = estimateTokens(msg);
-        clearSet.add(msg.toolCallId);
-        totalTokensSaved += Math.max(tokens - 50, 0);
-        const textContent = Array.isArray(msg.content)
-          ? msg.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join(" ").slice(0, 200)
-          : "";
-        const recall = buildRecallEntry(msg.toolCallId, msg.toolName || "unknown", textContent, tokens * 4, getBranchMessages(branch));
-        recallIndex.set(msg.toolCallId, recall);
-        // Track evicted file paths for fault detection
-        for (const fp of recall.filePaths) evictedPaths.set(fp, msg.toolCallId);
-        autoClearCount++;
-      }
-      // Cap evictedPaths to prevent unbounded growth
-      while (evictedPaths.size > MAX_EVICTED_PATHS) {
-        const first = evictedPaths.keys().next().value;
-        if (first) evictedPaths.delete(first); else break;
-      }
-      if (autoClearCount > 0) {
-        persist(pi.appendEntry.bind(pi));
-        ctx.ui.notify(`[ACM] Auto-cleared ${autoClearCount} old tool results`, "info");
       }
     }
 
