@@ -27,6 +27,7 @@ const HEALTH_POLL_MS = 200;
 export default function (pi: ExtensionAPI) {
   let proxyProcess: ChildProcess | null = null;
   let proxyPort: number = DEFAULT_PORT;
+  let sessionGeneration = 0;  // bumped on each session_start, stale callbacks check this
 
   // Register /headroom command to check status and stats
   pi.registerCommand("headroom", {
@@ -73,6 +74,7 @@ export default function (pi: ExtensionAPI) {
   pi.on("session_start", async (_event, ctx) => {
     if (process.env.HEADROOM_DISABLED === "1") return;
 
+    const gen = ++sessionGeneration;  // capture generation for this session
     proxyPort = parseInt(process.env.HEADROOM_PORT || String(DEFAULT_PORT), 10);
 
     // Fast path: proxy already running (another session, external start, or persistent service)
@@ -142,16 +144,21 @@ export default function (pi: ExtensionAPI) {
     overrideProvider();
     ctx.ui.setStatus("headroom", "⚡ headroom (starting…)");
 
-    // Background: confirm proxy is healthy, update status
+    // Background: confirm proxy is healthy, update status.
+    // If session is replaced before proxy is ready, gen will mismatch → skip stale update.
     waitForProxy(proxyPort, 15_000).then((ready) => {
-      if (ready) {
-        ctx.ui.setStatus("headroom", "⚡ headroom");
-      } else {
-        ctx.ui.setStatus("headroom", "⚠ headroom (failed)");
-        ctx.ui.notify("Headroom proxy failed to start", "error");
-        killProxy();
-        // Remove override so requests go direct to Anthropic
-        pi.unregisterProvider("anthropic");
+      if (gen !== sessionGeneration) return;  // session was replaced, new one handles it
+      try {
+        if (ready) {
+          ctx.ui.setStatus("headroom", "⚡ headroom");
+        } else {
+          ctx.ui.setStatus("headroom", "⚠ headroom (failed)");
+          ctx.ui.notify("Headroom proxy failed to start", "error");
+          killProxy();
+          pi.unregisterProvider("anthropic");
+        }
+      } catch {
+        // ctx went stale (session replaced/reloaded between gen check and ui access) — safe to ignore
       }
     });
   });
