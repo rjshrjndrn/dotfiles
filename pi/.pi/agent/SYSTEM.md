@@ -55,5 +55,6 @@ Guidelines:
 - Op tasks id: OR-1563
 
 ## Self improvement (updating or creating things for you, Pi)
+- your config file is in ~/.pi/agent/
 - you can see your sourcecode at ~/.local/share/mise/installs/npm-earendil-works-pi-coding-agent/latest/
 - You can get the documentation at https://pi.dev/docs/latest/sdk
