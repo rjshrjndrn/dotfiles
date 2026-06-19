@@ -1106,7 +1106,9 @@ describe("context handler — external tool caching", () => {
     // Result should be a stub, not the full content
     expect(result).toBeDefined();
     expect(result.content[0].text).toMatch(/^\[cached:/);
-    expect(result.content[0].text).not.toContain("Example Domain");
+    // Preview includes first 1000 chars, but full content is on disk
+    expect(result.content[0].text).toContain("---preview");
+    expect(result.content[0].text).toContain("Example Domain");
   });
 
   it("does NOT cache local tool (Read) at tool_result", async () => {

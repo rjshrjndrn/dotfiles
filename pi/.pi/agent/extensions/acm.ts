@@ -238,8 +238,11 @@ function findToolCallArgs(branch: any[], toolCallId: string): Record<string, any
 }
 
 /** Build a cached stub with file path for external tool results. */
-export function buildCachedStub(toolName: string, cachePath: string, keyTerms: string): string {
-  return `[cached: ${cachePath} | ${toolName} | ${extractKeywords(keyTerms, 10)}]\nFull content saved to file above. Read it with \`bash head -200 ${cachePath}\` or \`bash rg 'pattern' ${cachePath}\` before proceeding.`;
+export function buildCachedStub(toolName: string, cachePath: string, keyTerms: string, content?: string): string {
+  const preview = content && content.length > 0
+    ? `\n---preview (first 1000 chars)---\n${content.slice(0, 1000)}\n---end preview---\nFull content: \`bash head -200 ${cachePath}\` or \`bash rg 'pattern' ${cachePath}\``
+    : `\nFull content saved to file above. Read it with \`bash head -200 ${cachePath}\` or \`bash rg 'pattern' ${cachePath}\` before proceeding.`;
+  return `[cached: ${cachePath} | ${toolName} | ${extractKeywords(keyTerms, 10)}]${preview}`;
 }
 
 /** Get cache stats for acm_status. */
@@ -564,7 +567,7 @@ function buildStub(msg: any): string {
   if (cachePath) {
     const recall = recallIndex.get(msg.toolCallId);
     const source = recall?.keyTerms ?? getTextPreview(msg);
-    return buildCachedStub(toolName, cachePath, source);
+    return buildCachedStub(toolName, cachePath, source, getTextPreview(msg, 1000));
   }
   const recall = recallIndex.get(msg.toolCallId);
   const source = recall?.keyTerms ?? getTextPreview(msg);
@@ -679,7 +682,7 @@ export default function (pi: ExtensionAPI) {
       // Replace content with stub — full result never enters context
       const keyTerms = content.slice(0, 200);
       return {
-        content: [{ type: "text" as const, text: buildCachedStub(toolName, cachePath, keyTerms) }],
+        content: [{ type: "text" as const, text: buildCachedStub(toolName, cachePath, keyTerms, content) }],
       };
     } catch (e) {
       ctx.ui.notify(`[ACM] ⚠️ ${toolName} cache write failed: ${e instanceof Error ? e.message : e}`, "info");
