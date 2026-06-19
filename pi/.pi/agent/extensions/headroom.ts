@@ -100,7 +100,7 @@ export default function (pi: ExtensionAPI) {
       "--code-aware",                    // AST-based code compression
       "--intercept-tool-results",        // compress Read/bash tool results
       "--memory",                        // persistent cross-session memory
-      "--memory-storage", "user",        // single DB per user (proxy cwd != project cwd)
+      "--memory-storage", "global",       // single shared DB across all projects
       "--no-subscription-tracking",      // pi doesn't use Claude Code subscription
       "--no-telemetry",
     ];
