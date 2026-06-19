@@ -133,6 +133,10 @@ export const localToolSet = new Set<string>();
 export interface AcmConfig {
   cacheTools?: string[];
   localTools?: string[];
+  /** Skip caching for tool results smaller than this (chars). Default: 2000 */
+  cacheMinChars?: number;
+  /** Include first N chars as preview in cached stubs. Default: 1000 */
+  previewChars?: number;
 }
 
 /** Loaded config overrides. */
@@ -239,8 +243,9 @@ function findToolCallArgs(branch: any[], toolCallId: string): Record<string, any
 
 /** Build a cached stub with file path for external tool results. */
 export function buildCachedStub(toolName: string, cachePath: string, keyTerms: string, content?: string): string {
-  const preview = content && content.length > 0
-    ? `\n---preview (first 1000 chars)---\n${content.slice(0, 1000)}\n---end preview---\nFull content: \`bash head -200 ${cachePath}\` or \`bash rg 'pattern' ${cachePath}\``
+  const previewLen = acmConfig.previewChars ?? 1000;
+  const preview = content && content.length > 0 && previewLen > 0
+    ? `\n---preview (first ${previewLen} chars)---\n${content.slice(0, previewLen)}\n---end preview---\nFull content: \`bash head -200 ${cachePath}\` or \`bash rg 'pattern' ${cachePath}\``
     : `\nFull content saved to file above. Read it with \`bash head -200 ${cachePath}\` or \`bash rg 'pattern' ${cachePath}\` before proceeding.`;
   return `[cached: ${cachePath} | ${toolName} | ${extractKeywords(keyTerms, 10)}]${preview}`;
 }
@@ -567,7 +572,7 @@ function buildStub(msg: any): string {
   if (cachePath) {
     const recall = recallIndex.get(msg.toolCallId);
     const source = recall?.keyTerms ?? getTextPreview(msg);
-    return buildCachedStub(toolName, cachePath, source, getTextPreview(msg, 1000));
+    return buildCachedStub(toolName, cachePath, source, getTextPreview(msg, acmConfig.previewChars ?? 1000));
   }
   const recall = recallIndex.get(msg.toolCallId);
   const source = recall?.keyTerms ?? getTextPreview(msg);
@@ -670,7 +675,7 @@ export default function (pi: ExtensionAPI) {
 
     // Small results: pass through directly — not worth caching to disk
     // LLM can consume <2000 chars in-context cheaper than bash-reading a file
-    if (content.length < 2000) return;
+    if (content.length < (acmConfig.cacheMinChars ?? 2000)) return;
 
     // Write to cache file
     const sessionDir = ctx.sessionManager.getSessionDir();

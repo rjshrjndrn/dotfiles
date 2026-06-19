@@ -1,4 +1,6 @@
 {
   "cacheTools": ["web_fetch"],
-  "localTools": []
+  "localTools": [],
+  "cacheMinChars": 2000,
+  "previewChars": 1000
 }
