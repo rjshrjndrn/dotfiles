@@ -9,17 +9,18 @@
  *
  * Manual: user says "acm prune" → LLM inspects context, calls acm_clear/acm_status.
  *
- * Eviction strategy draws from three research approaches:
+ * Eviction strategy draws from research:
  *
  * [1] Pichay 2025 — "Missing Pages: Demand Paging for LLM Context Windows"
  *     https://arxiv.org/abs/2603.09023
  *     Fault-driven pinning: evict aggressively, auto-pin on re-read.
  *     Production fault rate <0.03% across 1.4M evictions, 93% context reduction.
  *
- * [2] Qian et al. 2025 — "Less Context, Better Agents"
- *     https://arxiv.org/abs/2506.08338
+ * [2] Lodha et al. 2025 — "Less Context, Better Agents"
+ *     https://arxiv.org/abs/2606.10209
  *     Keep last N tool-call pairs (N=5). Pruned agents outperform full-context
  *     (63.9% fewer tokens, better accuracy). Summarize instead of hard-delete.
+ *     C4 (prune+summarize) = 91.6% vs C2 (full context) = 71.0%.
  *
  * [3] CWL (Context Window Lifecycle) — episode typing heuristic:
  *     Action episodes (writes/edits) safe to evict first (effects persisted).
@@ -29,6 +30,19 @@
  *     External tool outputs cached to disk, LLM self-serves via bash.
  *     "Long context is NOT a substitute for persistent state."
  *     Only internet/external content needs caching; local files re-readable.
+ *
+ * [5] Jha et al. 2024 — "Characterizing Prompt Compression Methods" (ICML)
+ *     https://arxiv.org/abs/2407.08892
+ *     Extractive compression (keep verbatim chunks) beats abstractive (LLM
+ *     summary) by 3-15 pts on QA. Weaker summarizers omit info or hallucinate.
+ *     Validates our preview-based approach over LLM summarization of tool results.
+ *
+ * [6] Kang et al. 2025 — "ACON: Optimizing Context Compression" (ICML 2026)
+ *     https://arxiv.org/abs/2510.00615
+ *     Compress only above threshold: history >4096 tok, observation >1024 tok.
+ *     Smaller thresholds = more compression calls + accuracy degradation.
+ *     Failure-driven guideline optimization > static heuristics.
+ *     Distilled compressors retain 95% of full-model compression quality.
  */
 
 import { complete } from "@earendil-works/pi-ai";
