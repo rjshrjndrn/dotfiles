@@ -63,6 +63,22 @@ export function buildCachedStub(
   return `[cached: ${cachePath} | ${toolName} | ${extractKeywords(keyTerms, 10)}]${preview}`;
 }
 
+/** Cache any tool result (local or external) to disk before clearing. Returns cache path or null. */
+export function cacheToolResult(
+  sessionDir: string,
+  toolName: string,
+  toolCallId: string,
+  msg: any,
+): string | null {
+  const content = extractToolResultText(msg);
+  if (!content || content.length < 200) return null; // too small to bother
+  try {
+    return writeCacheFile(sessionDir, toolName, toolCallId, content);
+  } catch {
+    return null;
+  }
+}
+
 /** Get cache stats for acm_status. */
 export function getCacheStats(sessionDir: string): { files: number; totalBytes: number } {
   const cacheDir = getCacheDir(sessionDir);
