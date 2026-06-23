@@ -163,7 +163,6 @@ export default function (pi: ExtensionAPI) {
     }
     if (stats.cleared > 0 || stats.pinned > 0) {
       ctx.ui.notify(`[ACM] Restored: ${stats.cleared} cleared, ${stats.pinned} pinned, ${stats.recalled} in recall, ${cachedToFile.size} cached`, "info");
-      ctx.ui.setStatus("acm", statusText());
     }
   });
 
@@ -414,7 +413,6 @@ export default function (pi: ExtensionAPI) {
 
     const usage = ctx.getContextUsage();
     const pct = usage?.percent != null ? `${Math.round(usage.percent)}%` : "?";
-    ctx.ui.setStatus("acm", `${statusText()} | ${pct}`);
 
     return { messages };
   });
@@ -500,7 +498,6 @@ export default function (pi: ExtensionAPI) {
 
       const report = `[ACM] ✅ Cleared ${candidates.length} tool results (~${Math.round(saved * 0.4 / 1000)}k freed, ${clearSet.size} total). Effect on next turn.`;
       ctx.ui.notify(report, "info");
-      ctx.ui.setStatus("acm", `${statusText()} | pending…`);
 
       return { content: [{ type: "text" as const, text: report }], details: { count: candidates.length, estimatedTokensSaved: saved } };
     },
@@ -593,7 +590,6 @@ export default function (pi: ExtensionAPI) {
       // so old count would block auto-clear from ever firing again.
       acmState.lastAutoClearUserCount = 0;
       persist(pi.appendEntry.bind(pi));
-      ctx.ui.setStatus("acm", `${statusText()} | slid`);
 
       const kept = branch.length - cutoff;
       const report = `[ACM] ✅ Slide complete: ${discardedCount} messages discarded, ${kept} recent entries kept, branch head reset. Old context searchable via acm_recall.`;
@@ -787,7 +783,6 @@ export default function (pi: ExtensionAPI) {
       const tokensSaved = Math.round(charsSaved * 0.4 / 4);
       const report = `[ACM] ✅ Compacted ${compacted} messages (~${Math.round(charsSaved / 1000)}k chars, ~${Math.round(tokensSaved / 1000)}k tokens freed). Effect on next turn.`;
       ctx.ui.notify(report, "info");
-      ctx.ui.setStatus("acm", `${statusText()} | pending…`);
 
       return { content: [{ type: "text" as const, text: report }], details: { count: compacted, charsSaved, tokensSaved } };
     },
