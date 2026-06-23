@@ -115,6 +115,7 @@ export {
   faultPinTurns,
   MAX_EVICTED_PATHS,
   cachedToFile,
+  pinnedContentStore,
   _resetState,
   persist,
   persistPin,
@@ -576,8 +577,9 @@ export default function (pi: ExtensionAPI) {
       for (let i = 0; i < cutoff; i++) {
         const e = branch[i] as any;
         if (e.id) {
-          clearSet.delete(e.id);
           compactSet.delete(e.id);
+          // clearSet is keyed by toolCallId, not entryId
+          if (e.message?.toolCallId) clearSet.delete(e.message.toolCallId);
           // Don't remove from pinnedSet — content is in pinnedContentStore
         }
       }
