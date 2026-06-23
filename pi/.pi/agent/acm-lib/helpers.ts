@@ -6,7 +6,7 @@ export const STOP_WORDS = new Set([
   "just", "like", "into", "each", "make", "here", "need", "some",
 ]);
 
-export function extractKeywords(text: string, max = 15): string {
+export function extractKeywords(text: string, max = 25): string {
   const words = text.replace(/[^a-zA-Z0-9_./\-]/g, " ").split(/\s+/).filter(Boolean);
   const seen = new Set<string>();
   const keywords: string[] = [];
