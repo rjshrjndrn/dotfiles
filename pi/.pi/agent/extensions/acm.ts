@@ -47,6 +47,7 @@ import {
   writeCacheFile,
   buildCachedStub,
   getCacheStats,
+  cacheToolResult,
 } from "../acm-lib/cache.ts";
 import {
   clearSet,
@@ -304,10 +305,16 @@ export default function (pi: ExtensionAPI) {
         clearSet.add(msg.toolCallId);
         acmState.totalTokensSaved += Math.max(tokens - 50, 0);
         const textContent = Array.isArray(msg.content)
-          ? msg.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join(" ").slice(0, 200)
+          ? msg.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join(" ").slice(0, 2000)
           : "";
         const recall = buildRecallEntry(msg.toolCallId, msg.toolName || "unknown", textContent, tokens * 4, getBranchMessages(branch));
         recallIndex.set(msg.toolCallId, recall);
+        // Cache local tool results to disk before clearing (prevents content loss)
+        if (!cachedToFile.has(msg.toolCallId)) {
+          const sessionDir = ctx.sessionManager.getSessionDir();
+          const cachePath = cacheToolResult(sessionDir, msg.toolName || "unknown", msg.toolCallId, msg);
+          if (cachePath) cachedToFile.set(msg.toolCallId, cachePath);
+        }
         // Track evicted file paths for fault detection
         for (const fp of recall.filePaths) evictedPaths.set(fp, msg.toolCallId);
         autoClearCount++;
