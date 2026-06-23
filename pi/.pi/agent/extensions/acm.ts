@@ -586,6 +586,16 @@ export default function (pi: ExtensionAPI) {
           // Don't remove from pinnedSet — content is in pinnedContentStore
         }
       }
+      // Purge stale clearSet entries not in remaining branch
+      const remainingToolCallIds = new Set<string>();
+      for (let i = cutoff; i < branch.length; i++) {
+        const e = branch[i] as any;
+        if (e.message?.toolCallId) remainingToolCallIds.add(e.message.toolCallId);
+      }
+      for (const tcId of clearSet) {
+        if (!remainingToolCallIds.has(tcId)) clearSet.delete(tcId);
+      }
+
       // Reset auto-clear counter — post-slide branch has fewer user messages,
       // so old count would block auto-clear from ever firing again.
       acmState.lastAutoClearUserCount = 0;
