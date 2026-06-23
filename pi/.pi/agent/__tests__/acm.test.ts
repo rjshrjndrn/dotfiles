@@ -1,11 +1,8 @@
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach, afterAll } from "vitest";
 
 // Mock external deps that acm.ts imports but tests don't need
-vi.mock("@earendil-works/pi-ai", () => ({ complete: vi.fn() }));
 vi.mock("@earendil-works/pi-coding-agent", () => ({
-  convertToLlm: vi.fn(),
   estimateTokens: vi.fn(() => 0),
-  serializeConversation: vi.fn(),
 }));
 vi.mock("@earendil-works/pi-agent-core", () => ({}));
 vi.mock("@sinclair/typebox", () => ({
@@ -317,7 +314,7 @@ describe("findHybridCutoff", () => {
     expect(cut10).toBeGreaterThanOrEqual(cut120);
   });
 
-  it("union semantics: keeps if in EITHER window (Math.min)", () => {
+  it("intersection semantics: discards outside BOTH windows (Math.max)", () => {
     // 30 user messages, each 2 min apart. Total span = 58 min.
     // Entry 0 = 58 min ago, Entry 29 = 0 min ago.
     const branch = Array.from({ length: 30 }, (_, i) =>
@@ -325,10 +322,10 @@ describe("findHybridCutoff", () => {
     );
     // keepMinutes=10 → timeCutoff keeps last ~5 entries
     // keepMessages=20 → msgCutoff keeps last 20 entries
-    // Union (Math.min) → should keep 20 (the more conservative of the two)
+    // Intersection (Math.max) → uses the more aggressive cutoff (time)
     const cutoff = findHybridCutoff(branch, { keepMinutes: 10, keepMessages: 20 });
     const kept = branch.length - cutoff;
-    expect(kept).toBeGreaterThanOrEqual(20); // union keeps the larger window
+    expect(kept).toBeLessThanOrEqual(10); // intersection uses the tighter window
   });
 
   it("snaps to valid cut point", () => {
