@@ -4,8 +4,8 @@
  * LLM-driven context management. No slash commands — LLM decides when and
  * what to prune using registered tools.
  *
- * Automatic: session_before_compact hijacks pi's compaction with two-phase
- * strategy (clear tool results → slide if needed).
+ * Runtime-only context management. Does NOT intercept /compact (stock pi
+ * LLM compaction runs unmodified).
  *
  * Manual: user says "acm prune" → LLM inspects context, calls acm_clear/acm_status.
  *
@@ -793,81 +793,8 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
-  // ── Compaction intercept ───────────────────────────────────────────
-
-  pi.on("session_before_compact", async (event, ctx) => {
-    const { preparation, branchEntries, signal } = event;
-    const { messagesToSummarize, turnPrefixMessages, previousSummary, tokensBefore, firstKeptEntryId, fileOps, isSplitTurn } = preparation;
-
-    if (signal.aborted) return;
-    ctx.ui.notify(`[ACM] ⚡ Compaction intercepted`, "info");
-
-    buildToolCallMapping(branchEntries as any[]);
-    const allMessages = [...messagesToSummarize, ...turnPrefixMessages];
-    const toolResults = inventoryToolResults(allMessages);
-    const savings = toolResults.reduce((s, r) => s + r.tokens - 50, 0);
-
-    const usage = ctx.getContextUsage();
-    const contextWindow = usage?.contextWindow ?? 200_000;
-    const threshold = (preparation as any).settings?.reserveTokens ?? 16384;
-    const tokensToFree = tokensBefore - (contextWindow - threshold);
-    const conservativeSavings = Math.round(savings * 0.4);
-
-    ctx.ui.notify(`[ACM] Need ~${Math.round(tokensToFree / 1000)}k free. Clearable: ${toolResults.length} results (~${Math.round(conservativeSavings / 1000)}k)`, "info");
-
-    // ── Phase 1: Clear all tool results ──
-    clearToolResults(toolResults, (msg) => ctx.ui.notify(`[ACM] ${msg}`, "info"), allMessages);
-
-    if (conservativeSavings >= tokensToFree) {
-      ctx.ui.notify(`[ACM] ✅ Phase 1 sufficient — cancelled default compaction`, "info");
-      persist(pi.appendEntry.bind(pi));
-      return { cancel: true };
-    }
-
-    // ── Phase 2: Slide without LLM summary ──
-    ctx.ui.notify(`[ACM] Phase 1 insufficient (~${Math.round(conservativeSavings / 1000)}k < ${Math.round(tokensToFree / 1000)}k). Sliding window...`, "info");
-    if (signal.aborted) return;
-
-    // Persist pinned content to store before slide
-    const hybridCutoff = findHybridCutoff(branchEntries as any[]);
-    for (let i = 0; i < hybridCutoff; i++) {
-      const e = branchEntries[i] as any;
-      if (pinnedSet.has(e.id) && e.message) {
-        pinnedContentStore.set(e.id, {
-          entryId: e.id,
-          role: e.message.role || "unknown",
-          content: extractEntryContent(e),
-          toolName: e.message.toolName,
-          pinnedAt: Date.now(),
-        });
-      }
-    }
-
-    // Index slid-away messages in recall
-    for (let i = 0; i < hybridCutoff; i++) {
-      const e = branchEntries[i] as any;
-      if (e.type !== "message" || !e.message) continue;
-      if (e.message.toolCallId && !recallIndex.has(e.message.toolCallId)) {
-        const textContent = extractEntryContent(e).slice(0, 2000);
-        const recall = buildRecallEntry(e.message.toolCallId, e.message.toolName || e.message.role || "unknown", textContent, 0, getBranchMessages(branchEntries as any[]));
-        recallIndex.set(e.message.toolCallId, recall);
-      }
-    }
-
-    // Build minimal summary with file ops (no LLM call, no inlined pinned content)
-    let summary = "[Context before this point was slid away. Use acm_recall to search old context.]";
-    const modified = new Set([...(fileOps as any).written, ...(fileOps as any).edited]);
-    const readFiles = [...(fileOps as any).read].filter((f: string) => !modified.has(f)).sort();
-    const modifiedFiles = [...modified].sort();
-    if (readFiles.length > 0) summary += `\n\n<read-files>\n${readFiles.join("\n")}\n</read-files>`;
-    if (modifiedFiles.length > 0) summary += `\n\n<modified-files>\n${modifiedFiles.join("\n")}\n</modified-files>`;
-
-    ctx.ui.notify(`[ACM] ✅ Slide: ${hybridCutoff} messages discarded, ${clearSet.size} cleared`, "info");
-    acmState.lastAutoClearUserCount = 0;
-    persist(pi.appendEntry.bind(pi));
-
-    return { compaction: { summary, firstKeptEntryId, tokensBefore, details: { readFiles, modifiedFiles } } };
-  });
+  // No session_before_compact hook — /compact uses pi's stock LLM compaction.
+  // ACM is runtime-only: auto-clear, slide, pin, prune.
 
   // ── Branch navigation ──────────────────────────────────────────────
 
