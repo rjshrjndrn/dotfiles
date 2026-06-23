@@ -1940,6 +1940,176 @@ describe("pin + prune + slide combinations", () => {
     });
   });
 
+  // ── acm_recall tool ────────────────────────────────────────────────
+
+  describe("acm_recall", () => {
+    it("returns entry by entryId", async () => {
+      recallIndex.set("tc-db", buildRecallEntry("tc-db", "Read", "database schema with users table and roles", 500, []));
+      // Link toolCallId to entryId via the recall metadata
+      const recall = recallIndex.get("tc-db")!;
+      recall.entryId = "e-db";
+
+      const result = await tools["acm_recall"]("tc-r", { entryId: "e-db" }, { aborted: false }, vi.fn(), createCtx());
+      expect(result.content[0].text).toContain("Found");
+      expect(result.content[0].text).toContain("Read");
+      expect(result.details.source).toBe("entryId");
+    });
+
+    it("returns not found for unknown entryId", async () => {
+      const result = await tools["acm_recall"]("tc-r", { entryId: "e-nonexistent" }, { aborted: false }, vi.fn(), createCtx());
+      expect(result.content[0].text).toContain("not in recall index");
+      expect(result.details.found).toBe(false);
+    });
+
+    it("searches by keyword query", async () => {
+      recallIndex.set("tc-auth", buildRecallEntry("tc-auth", "Read", "authentication middleware JWT token validation", 800, []));
+      recallIndex.set("tc-db", buildRecallEntry("tc-db", "Bash", "database migration script postgres", 400, []));
+
+      const result = await tools["acm_recall"]("tc-r", { query: "authentication" }, { aborted: false }, vi.fn(), createCtx());
+      expect(result.content[0].text).toContain("authentication") ;
+      expect(result.details.source).toBe("keyword");
+    });
+
+    it("keyword search returns no matches for unrelated query", async () => {
+      recallIndex.set("tc-x", buildRecallEntry("tc-x", "Read", "react component rendering", 300, []));
+
+      const result = await tools["acm_recall"]("tc-r", { query: "kubernetes deployment" }, { aborted: false }, vi.fn(), createCtx());
+      expect(result.details.found).toBe(false);
+    });
+
+    it("lists all entries when no params given", async () => {
+      recallIndex.set("tc-1", buildRecallEntry("tc-1", "Read", "file one content", 100, []));
+      recallIndex.set("tc-2", buildRecallEntry("tc-2", "Bash", "command output two", 200, []));
+      recallIndex.set("tc-3", buildRecallEntry("tc-3", "Read", "file three content", 300, []));
+
+      const result = await tools["acm_recall"]("tc-r", {}, { aborted: false }, vi.fn(), createCtx());
+      expect(result.content[0].text).toContain("3 entries");
+      expect(result.details.total).toBe(3);
+    });
+
+    it("returns empty index message when nothing recalled", async () => {
+      const result = await tools["acm_recall"]("tc-r", {}, { aborted: false }, vi.fn(), createCtx());
+      expect(result.content[0].text).toContain("empty");
+    });
+
+    it("shows cached file path when available", async () => {
+      recallIndex.set("tc-cached", buildRecallEntry("tc-cached", "web_fetch", "webpage content about API docs", 5000, []));
+      cachedToFile.set("tc-cached", "/tmp/acm-cache/web_fetch-tc-cached.txt");
+
+      const result = await tools["acm_recall"]("tc-r", { entryId: recallIndex.get("tc-cached")!.entryId }, { aborted: false }, vi.fn(), createCtx());
+      expect(result.content[0].text).toContain("/tmp/acm-cache/web_fetch-tc-cached.txt");
+    });
+
+    it("slid-away tool results are recallable", async () => {
+      const now = Date.now();
+      const hour = 60 * 60 * 1000;
+
+      const messages = [
+        mkMsg("user", "check logs"),
+        mkMsg("toolResult", "ERROR: connection timeout to redis cluster at 10.0.0.5", { toolCallId: "tc-logs", toolName: "Bash" }),
+        ...Array.from({ length: 20 }, (_, i) => mkMsg("user", `turn ${i}`)),
+      ];
+      currentBranch = messages.map((m, i) => ({
+        type: "message",
+        id: `e${i}`,
+        message: m,
+        timestamp: i < 2 ? now - hour : now - 1000 + i,
+      }));
+
+      // Slide past the tool result
+      await tools["acm_slide"]("tc-slide", { keepMessages: 5 }, { aborted: false }, vi.fn(), createCtx());
+
+      // Now recall should find it
+      const result = await tools["acm_recall"]("tc-r", { query: "redis" }, { aborted: false }, vi.fn(), createCtx());
+      expect(result.details.matches).toBeGreaterThan(0);
+    });
+  });
+
+  // ── Slide context hint ─────────────────────────────────────────────
+
+  describe("slide context hint", () => {
+    it("acm-context mentions slide when pinnedContentStore has entries", () => {
+      pinnedContentStore.set("e-old", {
+        entryId: "e-old",
+        role: "assistant",
+        content: "old decision",
+        pinnedAt: Date.now(),
+      });
+      pinnedSet.add("e-old");
+      // Need at least one cleared entry to trigger acm-context injection
+      // (or hasSlid must be true — pinnedContentStore.size > 0 triggers it)
+
+      const messages = [
+        mkMsg("user", "what was decided?"),
+        mkMsg("assistant", "checking"),
+      ];
+      currentBranch = mkBranch(messages, 0);
+
+      const result = handlers["context"]({ messages }, createCtx());
+
+      // Find the acm-context block
+      const userMsg = result.messages.find((m: any) => m.role === "user" && typeof m.content === "string" && m.content.includes("acm-context"));
+      if (userMsg) {
+        expect(userMsg.content).toContain("slid away");
+        expect(userMsg.content).toContain("acm_recall");
+      } else {
+        // acm-context might be prepended to array content
+        const userMsgArr = result.messages.find((m: any) =>
+          m.role === "user" && Array.isArray(m.content) &&
+          m.content.some((b: any) => b.text?.includes("acm-context"))
+        );
+        expect(userMsgArr).toBeDefined();
+        const acmBlock = userMsgArr.content.find((b: any) => b.text?.includes("acm-context"));
+        expect(acmBlock.text).toContain("slid away");
+        expect(acmBlock.text).toContain("acm_recall");
+      }
+    });
+
+    it("acm-context mentions slide when compaction summary present", () => {
+      // Simulate post-slide: compaction summary in messages
+      const messages = [
+        { role: "user", content: "[Context before this point was slid away. Use acm_recall to search old context.]" },
+        mkMsg("user", "continue working"),
+        mkMsg("assistant", "ok"),
+      ];
+      currentBranch = mkBranch(messages, 0);
+      // Force clearSet to have something so acm-context gets injected
+      clearSet.add("tc-dummy");
+
+      const result = handlers["context"]({ messages }, createCtx());
+
+      // Find acm-context and verify slide hint
+      const allText = result.messages.map((m: any) => {
+        if (typeof m.content === "string") return m.content;
+        if (Array.isArray(m.content)) return m.content.map((b: any) => b.text || "").join(" ");
+        return "";
+      }).join(" ");
+      expect(allText).toContain("slid away");
+    });
+
+    it("no slide hint when nothing was slid", () => {
+      // No pinnedContentStore entries, no slide summary in messages
+      clearSet.add("tc-x"); // trigger acm-context
+
+      const messages = [
+        mkMsg("user", "hello"),
+        mkMsg("assistant", "hi"),
+      ];
+      currentBranch = mkBranch(messages, 0);
+
+      const result = handlers["context"]({ messages }, createCtx());
+
+      const allText = result.messages.map((m: any) => {
+        if (typeof m.content === "string") return m.content;
+        if (Array.isArray(m.content)) return m.content.map((b: any) => b.text || "").join(" ");
+        return "";
+      }).join(" ");
+      // Should have acm-context but NOT slide hint
+      expect(allText).toContain("acm-context");
+      expect(allText).not.toContain("slid away");
+    });
+  });
+
   // ── Edge cases ────────────────────────────────────────────────────
 
   describe("edge cases", () => {

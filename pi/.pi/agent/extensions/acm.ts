@@ -380,10 +380,16 @@ export default function (pi: ExtensionAPI) {
 
     // Inject ACM context into first user message
     const cachedCount = cachedToFile.size;
-    if (clearSet.size > 0 || compactSet.size > 0 || cachedCount > 0) {
+    const hasSlid = pinnedContentStore.size > 0 || messages.some((m: any) => {
+      if (typeof m.content === "string") return m.content.includes("slid away");
+      if (Array.isArray(m.content)) return m.content.some((b: any) => b.type === "text" && b.text?.includes("slid away"));
+      return false;
+    });
+    if (clearSet.size > 0 || compactSet.size > 0 || cachedCount > 0 || hasSlid) {
       const acmText = [
         `<acm-context>`,
         `${clearSet.size} tool results cleared, ${compactSet.size} messages compacted, ${pinnedSet.size} pinned, ${cachedCount} cached to disk.`,
+        hasSlid ? `Earlier context was slid away. For prior conversation, decisions, or file content: use acm_recall(query: "keywords") or acm_recall(entryId: "id").` : ``,
         `Thinking blocks stripped from old messages (last ${recentTurns} turns preserved).`,
         cachedCount > 0
           ? `CACHED RESULTS: ${cachedCount} tool results were intercepted and saved to disk instead of entering context. When you see a [cached: /path/...] stub, you MUST read the file (bash head/rg/grep) to get the actual content. Do NOT skip or guess.`
