@@ -61,6 +61,7 @@ import {
   faultPinTurns,
   MAX_EVICTED_PATHS,
   cachedToFile,
+  pinnedContentStore,
   persist,
   persistPin,
   rehydrateState,
@@ -485,12 +486,11 @@ export default function (pi: ExtensionAPI) {
     name: "acm_slide",
     label: "ACM Slide",
     description:
-      "Sliding window compaction. Generates LLM summary of old context, resets branch head " +
-      "to cutoff point. Old messages fully removed from LLM context but searchable via acm_recall.",
-    promptSnippet: "acm_slide: Sliding window — summarize old context and reset branch head. Truly frees context.",
+      "Sliding window compaction. Resets branch head to cutoff point. " +
+      "Old messages fully removed from LLM context but searchable via acm_recall.",
+    promptSnippet: "acm_slide: Sliding window — discard old context, reset branch head. Pinned content persisted. Old context searchable via acm_recall.",
     parameters: Type.Object({
-      customInstructions: Type.Optional(Type.String({ description: "Custom instructions for the summary generation." })),
-      keepMessages: Type.Optional(Type.Number({ description: "Keep last N messages (default 10). E.g. 20 keeps more context." })),
+      keepMessages: Type.Optional(Type.Number({ description: "Keep last N user turns (default 10). E.g. 20 keeps more context." })),
       keepMinutes: Type.Optional(Type.Number({ description: "Keep messages from last N minutes (default 30). E.g. 10 for aggressive slide." })),
     }),
     async execute(_toolCallId, _params, signal, _onUpdate, ctx) {
@@ -522,22 +522,45 @@ export default function (pi: ExtensionAPI) {
         if (branch[i].type === "message") discardedCount++;
       }
 
-      // Build minimal summary: pinned content only (no LLM call)
-      let summary = "[Context before this point was slid away. Use acm_recall to search old context.]";
-      const pinnedContent: string[] = [];
+      // Persist pinned content to store before slide (survives branch reset)
       for (let i = 0; i < cutoff; i++) {
         const e = branch[i] as any;
-        if (pinnedSet.has(e.id) && e.message) pinnedContent.push(extractEntryContent(e));
+        if (pinnedSet.has(e.id) && e.message) {
+          pinnedContentStore.set(e.id, {
+            entryId: e.id,
+            role: e.message.role || "unknown",
+            content: extractEntryContent(e),
+            toolName: e.message.toolName,
+            pinnedAt: Date.now(),
+          });
+        }
       }
-      if (pinnedContent.length > 0) summary += `\n\n## Pinned Context\n\n${pinnedContent.join("\n\n---\n\n")}`;
 
-      // Commit compaction — resets branch head. No LLM call.
+      // Index slid-away messages in recall before discarding
+      for (let i = 0; i < cutoff; i++) {
+        const e = branch[i] as any;
+        if (e.type !== "message" || !e.message) continue;
+        if (e.message.toolCallId && !recallIndex.has(e.message.toolCallId)) {
+          const textContent = extractEntryContent(e).slice(0, 2000);
+          const recall = buildRecallEntry(e.message.toolCallId, e.message.toolName || e.message.role || "unknown", textContent, 0, getBranchMessages(branch));
+          recallIndex.set(e.message.toolCallId, recall);
+        }
+      }
+
+      // Build minimal summary (no LLM call, no inlined pinned content)
+      const summary = "[Context before this point was slid away. Use acm_recall to search old context.]";
+
+      // Commit compaction — resets branch head.
       ctx.sessionManager.appendCompaction(summary, firstKeptEntryId, tokensBefore, { source: "acm_slide" }, true);
 
-      // Clean up ACM cosmetic state for discarded entries
+      // Clean up ACM state for discarded entries + stale pins
       for (let i = 0; i < cutoff; i++) {
         const e = branch[i] as any;
-        if (e.id) { clearSet.delete(e.id); compactSet.delete(e.id); }
+        if (e.id) {
+          clearSet.delete(e.id);
+          compactSet.delete(e.id);
+          // Don't remove from pinnedSet — content is in pinnedContentStore
+        }
       }
       // Reset auto-clear counter — post-slide branch has fewer user messages,
       // so old count would block auto-clear from ever firing again.
