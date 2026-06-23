@@ -358,6 +358,28 @@ export default function (pi: ExtensionAPI) {
       return msg;
     });
 
+    // Prepend pinned content from store (survives slides)
+    if (pinnedContentStore.size > 0) {
+      const pinnedMessages: any[] = [];
+      for (const [entryId, entry] of pinnedContentStore) {
+        // Skip if pin was removed
+        if (!pinnedSet.has(entryId)) continue;
+        // Skip if already in current messages (not yet slid)
+        const alreadyPresent = messages.some((m: any) => {
+          const mid = msgEntryId.get(m) || (m.toolCallId ? tcEntryId.get(m.toolCallId) : undefined);
+          return mid === entryId;
+        });
+        if (alreadyPresent) continue;
+        pinnedMessages.push({
+          role: entry.role === "toolResult" ? "toolResult" : entry.role,
+          content: [{ type: "text", text: `[pinned:${entryId.slice(0,8)}] ${entry.content}` }],
+        });
+      }
+      if (pinnedMessages.length > 0) {
+        messages.unshift(...pinnedMessages);
+      }
+    }
+
     // Inject ACM context into first user message
     const cachedCount = cachedToFile.size;
     if (clearSet.size > 0 || compactSet.size > 0 || cachedCount > 0) {
