@@ -219,6 +219,16 @@ export default function (pi: ExtensionAPI) {
       }
     }
 
+    // Purge stale clearSet entries not in current messages
+    if (clearSet.size > 0) {
+      const currentToolCallIds = new Set(event.messages
+        .filter((m: any) => m.role === "toolResult" && m.toolCallId)
+        .map((m: any) => m.toolCallId));
+      for (const tcId of clearSet) {
+        if (!currentToolCallIds.has(tcId)) clearSet.delete(tcId);
+      }
+    }
+
     // Find threshold: keep last N turns unmodified
     const recentTurns = 3;
     let turnCount = 0;

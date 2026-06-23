@@ -2094,6 +2094,7 @@ describe("pin + prune + slide combinations", () => {
       const messages = [
         mkMsg("user", "hello"),
         mkMsg("assistant", "hi"),
+        mkMsg("toolResult", "some result", { toolCallId: "tc-x", toolName: "Read" }),
       ];
       currentBranch = mkBranch(messages, 0);
 
