@@ -127,20 +127,25 @@ export function findHybridCutoff(branch: any[], opts?: { keepMessages?: number; 
   if (cutoff <= 0 || cutoff >= branch.length) return 0;
 
   // Snap to valid cut point (user/assistant message or compaction boundary)
+  // Snap to user message boundary — cutting at assistant/toolResult would
+  // leave orphaned tool_use blocks without matching tool_result, which
+  // fails Anthropic API validation (tool_result.tool_use_id required).
   const validCuts: number[] = [];
   for (let i = 0; i < branch.length; i++) {
     const e = branch[i];
     if (e.type === "compaction" || e.type === "branch_summary" || e.type === "custom") {
       validCuts.push(i);
-    } else if (e.type === "message") {
-      const role = e.message?.role;
-      if (role === "user" || role === "assistant") validCuts.push(i);
+    } else if (e.type === "message" && e.message?.role === "user") {
+      validCuts.push(i);
     }
   }
   if (validCuts.length === 0) return 0;
 
+  // Prefer snapping backwards (before cutoff), but if nothing found, snap forward
+  // to first valid user message after cutoff.
   const before = validCuts.filter((i) => i <= cutoff);
-  cutoff = before.length > 0 ? before[before.length - 1] : validCuts[0];
+  const after = validCuts.filter((i) => i > cutoff);
+  cutoff = before.length > 0 ? before[before.length - 1] : (after.length > 0 ? after[0] : validCuts[0]);
 
   return cutoff;
 }

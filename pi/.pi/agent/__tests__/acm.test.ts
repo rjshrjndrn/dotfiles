@@ -338,7 +338,7 @@ describe("findHybridCutoff", () => {
     expect(kept).toBeLessThanOrEqual(10); // intersection uses the tighter window
   });
 
-  it("snaps to valid cut point", () => {
+  it("snaps to user message boundary (never assistant/toolResult)", () => {
     const branch = [
       mkEntry("message", "user", hour),
       mkEntry("message", "assistant", hour),
@@ -348,9 +348,40 @@ describe("findHybridCutoff", () => {
     ];
     const cutoff = findHybridCutoff(branch);
     const entry = branch[cutoff];
-    if (entry.type === "message" && entry.message) {
-      expect(["user", "assistant"]).toContain(entry.message.role);
-    }
+    expect(entry.type).toBe("message");
+    expect(entry.message.role).toBe("user");
+  });
+
+  it("snaps forward to first user message when cutoff lands on assistant", () => {
+    // Cutoff calculation would land on assistant block, should snap forward to user
+    const branch = [
+      ...Array.from({ length: 8 }, (_, i) =>
+        mkEntry("message", i % 2 === 0 ? "user" : "assistant", hour),
+      ),
+      mkEntry("message", "assistant", 0), // non-user at boundary
+      mkEntry("message", "toolResult", 0),
+      mkEntry("message", "user", 0),       // first valid cut after boundary
+      mkEntry("message", "assistant", 0),
+      mkEntry("message", "user", 0),
+    ];
+    const cutoff = findHybridCutoff(branch, { keepMessages: 2 });
+    expect(branch[cutoff].message.role).toBe("user");
+  });
+
+  it("never cuts at toolResult (orphaned tool_result breaks API)", () => {
+    const branch = [
+      mkEntry("message", "user", hour),
+      mkEntry("message", "assistant", hour),
+      mkEntry("message", "toolResult", hour),
+      mkEntry("message", "toolResult", hour),
+      mkEntry("message", "toolResult", hour),
+      mkEntry("message", "user", 0),
+      mkEntry("message", "assistant", 0),
+      mkEntry("message", "user", 0),
+    ];
+    const cutoff = findHybridCutoff(branch, { keepMessages: 2 });
+    expect(cutoff).toBeGreaterThan(0);
+    expect(branch[cutoff].message.role).toBe("user");
   });
 });
 
