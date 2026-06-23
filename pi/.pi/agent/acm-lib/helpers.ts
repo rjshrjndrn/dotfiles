@@ -113,12 +113,12 @@ export function findHybridCutoff(branch: any[], opts?: { keepMessages?: number; 
     // If not enough user messages, msgCutoff stays 0 (no message-based sliding)
   }
 
-  // Union semantics: keep if in EITHER window.
-  // Math.min = more conservative = keeps more = respects whichever window is larger.
+  // Intersection semantics: discard if outside BOTH windows.
+  // Math.max = more aggressive = discards more = slides further.
   // When only one param specified, the other stays 0 (no constraint from that axis).
   let cutoff: number;
   if (timeCutoff > 0 && msgCutoff > 0) {
-    cutoff = Math.min(timeCutoff, msgCutoff);
+    cutoff = Math.max(timeCutoff, msgCutoff);
   } else {
     // One or both are 0 — use whichever is non-zero
     cutoff = Math.max(timeCutoff, msgCutoff);
