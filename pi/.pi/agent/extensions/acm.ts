@@ -12,12 +12,9 @@
  * See acm-lib/ for extracted modules (types, config, helpers, cache, state).
  */
 
-import { complete } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
-  convertToLlm,
   estimateTokens,
-  serializeConversation,
 } from "@earendil-works/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { existsSync, readdirSync } from "node:fs";
@@ -819,92 +816,49 @@ export default function (pi: ExtensionAPI) {
       return { cancel: true };
     }
 
-    // ── Phase 2: Slide with LLM summary ──
-    ctx.ui.notify(`[ACM] Phase 1 insufficient (~${Math.round(conservativeSavings / 1000)}k < ${Math.round(tokensToFree / 1000)}k). Generating summary...`, "info");
+    // ── Phase 2: Slide without LLM summary ──
+    ctx.ui.notify(`[ACM] Phase 1 insufficient (~${Math.round(conservativeSavings / 1000)}k < ${Math.round(tokensToFree / 1000)}k). Sliding window...`, "info");
     if (signal.aborted) return;
 
-    const model = ctx.model;
-    if (!model) { ctx.ui.notify(`[ACM] No model — fallback to default`, "warning"); return; }
-    const auth = await ctx.modelRegistry.getApiKeyAndHeaders(model);
-    if (!auth.ok || !auth.apiKey) { ctx.ui.notify(`[ACM] Auth failed — fallback`, "warning"); return; }
-
-    const conversationText = serializeConversation(convertToLlm(messagesToSummarize));
-    const previousContext = previousSummary ? `\n\nPrevious session summary:\n${previousSummary}` : "";
-
-    const summaryMessages = [{
-      role: "user" as const,
-      content: [{
-        type: "text" as const, text: `You are a conversation summarizer. Create a structured summary:${previousContext}
-
-## Goal
-[What the user is trying to accomplish]
-
-## Constraints & Preferences
-- [Requirements mentioned by user]
-
-## Progress
-### Done
-- [x] [Completed tasks]
-
-### In Progress
-- [ ] [Current work]
-
-## Key Decisions
-- **[Decision]**: [Rationale]
-
-## Next Steps
-1. [What should happen next]
-
-## Critical Context
-- [Data needed to continue]
-
-Be thorough but concise. This replaces the entire conversation history.
-
-<conversation>
-${conversationText}
-</conversation>` }],
-      timestamp: Date.now(),
-    }];
-
-    try {
-      const response = await complete(model, { messages: summaryMessages }, { apiKey: auth.apiKey, headers: auth.headers, maxTokens: 8192, signal });
-      let summary = response.content.filter((c: any) => c.type === "text").map((c: any) => c.text).join("\n");
-      if (!summary.trim()) { if (!signal.aborted) ctx.ui.notify("[ACM] Empty summary — fallback", "warning"); return; }
-
-      if (isSplitTurn && turnPrefixMessages.length > 0) {
-        const prefixText = serializeConversation(convertToLlm(turnPrefixMessages));
-        const prefixResponse = await complete(model, {
-          messages: [{ role: "user" as const, content: [{ type: "text" as const, text: `Summarize concisely:\n\n<conversation>\n${prefixText}\n</conversation>` }], timestamp: Date.now() }],
-        }, { apiKey: auth.apiKey, headers: auth.headers, maxTokens: 4096, signal });
-        const prefixSummary = prefixResponse.content.filter((c: any) => c.type === "text").map((c: any) => c.text).join("\n");
-        if (prefixSummary.trim()) summary += `\n\n---\n\n**Turn Context (split turn):**\n\n${prefixSummary}`;
+    // Persist pinned content to store before slide
+    const hybridCutoff = findHybridCutoff(branchEntries as any[]);
+    for (let i = 0; i < hybridCutoff; i++) {
+      const e = branchEntries[i] as any;
+      if (pinnedSet.has(e.id) && e.message) {
+        pinnedContentStore.set(e.id, {
+          entryId: e.id,
+          role: e.message.role || "unknown",
+          content: extractEntryContent(e),
+          toolName: e.message.toolName,
+          pinnedAt: Date.now(),
+        });
       }
-
-      // Append pinned content from entries being summarized
-      const hybridCutoff = findHybridCutoff(branchEntries as any[]);
-      const pinnedContent: string[] = [];
-      for (let i = 0; i < hybridCutoff; i++) {
-        const e = branchEntries[i] as any;
-        if (pinnedSet.has(e.id) && e.message) pinnedContent.push(extractEntryContent(e));
-      }
-      if (pinnedContent.length > 0) summary += `\n\n## Pinned Context\n\n${pinnedContent.join("\n\n---\n\n")}`;
-
-      // Append file operations
-      const modified = new Set([...(fileOps as any).written, ...(fileOps as any).edited]);
-      const readFiles = [...(fileOps as any).read].filter((f: string) => !modified.has(f)).sort();
-      const modifiedFiles = [...modified].sort();
-      if (readFiles.length > 0) summary += `\n\n<read-files>\n${readFiles.join("\n")}\n</read-files>`;
-      if (modifiedFiles.length > 0) summary += `\n\n<modified-files>\n${modifiedFiles.join("\n")}\n</modified-files>`;
-
-      ctx.ui.notify(`[ACM] ✅ Slide: ~${Math.round(summary.length / 4)} token summary, ${clearSet.size} cleared`, "info");
-      acmState.lastAutoClearUserCount = 0; // Reset so auto-clear works after compaction
-      persist(pi.appendEntry.bind(pi));
-
-      return { compaction: { summary, firstKeptEntryId, tokensBefore, details: { readFiles, modifiedFiles } } };
-    } catch (error) {
-      if (!signal.aborted) ctx.ui.notify(`[ACM] Summary failed: ${error instanceof Error ? error.message : error}`, "error");
-      return;
     }
+
+    // Index slid-away messages in recall
+    for (let i = 0; i < hybridCutoff; i++) {
+      const e = branchEntries[i] as any;
+      if (e.type !== "message" || !e.message) continue;
+      if (e.message.toolCallId && !recallIndex.has(e.message.toolCallId)) {
+        const textContent = extractEntryContent(e).slice(0, 2000);
+        const recall = buildRecallEntry(e.message.toolCallId, e.message.toolName || e.message.role || "unknown", textContent, 0, getBranchMessages(branchEntries as any[]));
+        recallIndex.set(e.message.toolCallId, recall);
+      }
+    }
+
+    // Build minimal summary with file ops (no LLM call, no inlined pinned content)
+    let summary = "[Context before this point was slid away. Use acm_recall to search old context.]";
+    const modified = new Set([...(fileOps as any).written, ...(fileOps as any).edited]);
+    const readFiles = [...(fileOps as any).read].filter((f: string) => !modified.has(f)).sort();
+    const modifiedFiles = [...modified].sort();
+    if (readFiles.length > 0) summary += `\n\n<read-files>\n${readFiles.join("\n")}\n</read-files>`;
+    if (modifiedFiles.length > 0) summary += `\n\n<modified-files>\n${modifiedFiles.join("\n")}\n</modified-files>`;
+
+    ctx.ui.notify(`[ACM] ✅ Slide: ${hybridCutoff} messages discarded, ${clearSet.size} cleared`, "info");
+    acmState.lastAutoClearUserCount = 0;
+    persist(pi.appendEntry.bind(pi));
+
+    return { compaction: { summary, firstKeptEntryId, tokensBefore, details: { readFiles, modifiedFiles } } };
   });
 
   // ── Branch navigation ──────────────────────────────────────────────
