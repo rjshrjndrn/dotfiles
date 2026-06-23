@@ -1,6 +1,6 @@
 /** Mutable ACM state and state operations. */
 
-import type { RecallMetadata, RehydrateInput, RehydrateResult } from "./types.ts";
+import type { RecallMetadata, RehydrateInput, RehydrateResult, PinnedContentEntry } from "./types.ts";
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import { estimateTokens } from "@earendil-works/pi-coding-agent";
 import { extractKeywords, getTextPreview } from "./helpers.ts";
@@ -35,6 +35,9 @@ export const MAX_EVICTED_PATHS = 200; // cap evictedPaths to prevent unbounded g
 
 export const cachedToFile = new Map<string, string>(); // toolCallId → cachePath
 
+// Pinned content store — survives slides. Persisted to session.
+export const pinnedContentStore = new Map<string, PinnedContentEntry>();
+
 // ── Reset ────────────────────────────────────────────────────────────
 
 export function _resetState() {
@@ -48,6 +51,7 @@ export function _resetState() {
   evictedPaths.clear();
   faultPinTurns.clear();
   cachedToFile.clear();
+  pinnedContentStore.clear();
 }
 
 // ── Persistence ──────────────────────────────────────────────────────
@@ -61,6 +65,9 @@ export function persist(appendEntry: (type: string, data?: any) => void) {
     lastAutoClearUserCount: acmState.lastAutoClearUserCount,
   });
   appendEntry("acm-recall-index", { entries: [...recallIndex.values()] });
+  if (pinnedContentStore.size > 0) {
+    appendEntry("acm-pinned-content", { entries: [...pinnedContentStore.values()] });
+  }
 }
 
 export function persistPin(
@@ -77,6 +84,7 @@ export function persistPin(
 export function rehydrateState(entries: Array<{ type: string; customType?: string; data?: any }>) {
   let lastClearState: any;
   let lastRecallIndex: any;
+  let lastPinnedContent: any;
   const pinEvents: Array<{ entryId: string; action: "pin" | "unpin"; isFault?: boolean; pinnedAtTurn?: number }> = [];
 
   for (const entry of entries) {
@@ -84,6 +92,7 @@ export function rehydrateState(entries: Array<{ type: string; customType?: strin
     if (entry.customType === "acm-clear-state") lastClearState = entry.data;
     else if (entry.customType === "acm-recall-index") lastRecallIndex = entry.data;
     else if (entry.customType === "acm-pin" && entry.data) pinEvents.push(entry.data);
+    else if (entry.customType === "acm-pinned-content" && entry.data) lastPinnedContent = entry.data;
   }
 
   if (lastClearState) {
@@ -125,6 +134,12 @@ export function rehydrateState(entries: Array<{ type: string; customType?: strin
   while (evictedPaths.size > MAX_EVICTED_PATHS) {
     const first = evictedPaths.keys().next().value;
     if (first) evictedPaths.delete(first); else break;
+  }
+
+  // Rehydrate pinned content store
+  pinnedContentStore.clear();
+  if (lastPinnedContent?.entries) {
+    for (const e of lastPinnedContent.entries) pinnedContentStore.set(e.entryId, e);
   }
 
   return { cleared: clearSet.size, recalled: recallIndex.size, pinned: pinnedSet.size };

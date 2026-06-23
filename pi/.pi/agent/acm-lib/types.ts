@@ -27,6 +27,15 @@ export interface RehydrateResult {
   faultPinTurns: Map<string, number>;
 }
 
+/** Persisted pinned content that survives slides. */
+export interface PinnedContentEntry {
+  entryId: string;
+  role: string;
+  content: string;
+  toolName?: string;
+  pinnedAt: number;
+}
+
 export interface AcmConfig {
   cacheTools?: string[];
   localTools?: string[];
