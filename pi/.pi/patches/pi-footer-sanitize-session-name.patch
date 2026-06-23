@@ -1,0 +1,24 @@
+# Pi TUI footer: sanitize session name to prevent rendering corruption
+#
+# Bug: Session names with literal \n desync TUI cursor math, content
+#      leaks outside editor box. sanitizeStatusText() already exists
+#      for extension statuses but not applied to sessionName.
+#
+# Apply after pi update:
+#   cd $(dirname $(which pi))/../node_modules/@earendil-works/pi-coding-agent/
+#   patch -p1 < ~/.pi/patches/pi-footer-sanitize-session-name.patch
+#
+# Verify:
+#   grep sanitizeStatusText dist/modes/interactive/components/footer.js | grep sessionName
+#
+# Upstream: earendil-works/pi footer.js should apply sanitizeStatusText()
+#           to sessionName same as extension statuses.
+#
+--- a/dist/modes/interactive/components/footer.js
++++ b/dist/modes/interactive/components/footer.js
+@@ -108,7 +108,7 @@
+         const sessionName = this.session.sessionManager.getSessionName();
+         if (sessionName) {
+-            pwd = `${pwd} • ${sessionName}`;
++            pwd = `${pwd} • ${sanitizeStatusText(sessionName)}`;
+         }

@@ -114,6 +114,8 @@ export default function (pi: ExtensionAPI) {
         .filter((c): c is { type: "text"; text: string } => c.type === "text")
         .map((c) => c.text)
         .join("")
+        .replace(/[\r\n\t]/g, " ")
+        .replace(/ +/g, " ")
         .trim()
         .slice(0, 72);
 
