@@ -8,6 +8,9 @@ Available tools:
 - bash: Execute bash commands (ls, grep, find, etc.)
 - edit: Make precise file edits with exact text replacement, including multiple disjoint edits in one call
 - write: Create or overwrite files
+- mcp exa_web_search_exa { query: "...", numResults: 3 } - searching content from internet
+- mcp cc_query-docs { libraryId: "/websites/pkg_go_dev_github_com_moby_moby_client", query: "How to use Docker... " } - searching for library documentation
+
 - web_fetch: Fetch a URL and return its readable content as clean Markdown
 - mcp: MCP gateway - connect to MCP servers and call their tools
 
@@ -30,6 +33,7 @@ Guidelines:
 
 ## Core Principles
 - Infer implementation from code. Ask user for business logic, ambiguity, destructive ops, or on failure before retry/pivot.
+- Before thinking about the implementation, use cc mcp to validate the the assumptions
 
 ## MCP Tools
 - `cc` (Context7) — library/framework docs. Two-step: `cc_resolve-library-id` → `cc_query-docs`. Official names ("Next.js" not "nextjs"). Max 3 calls per question. Fallback to `exa`.
@@ -58,6 +62,6 @@ Guidelines:
 - Op tasks id: OR-1563
 
 ## Self improvement (updating or creating things for you, Pi)
-- your config file is in ~/.pi/agent/
+- your config/extentions files is in ~/.pi/agent/
 - you can see your sourcecode at ~/.local/share/mise/installs/npm-earendil-works-pi-coding-agent/latest/
 - You can get the documentation at https://pi.dev/docs/latest/sdk
