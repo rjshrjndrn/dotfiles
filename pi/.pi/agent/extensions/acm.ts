@@ -132,6 +132,9 @@ export {
 // ── Extension ────────────────────────────────────────────────────────
 
 export default function (pi: ExtensionAPI) {
+  // Flag: when set, next context event rebuilds messages from session storage
+  let pendingSlideRebuild = false;
+
   // ── Rehydrate on session load ──────────────────────────────────────
 
   pi.on("session_start" as any, (_event: any, ctx: any) => {
@@ -206,6 +209,18 @@ export default function (pi: ExtensionAPI) {
   // ── Context event: apply clearing/compaction ───────────────────────
 
   pi.on("context", (event, ctx) => {
+    // After acm_slide, rebuild messages from session storage.
+    // The slide appends a compaction entry to disk but the agent's in-memory
+    // messages are stale (still contain all pre-slide messages).
+    if (pendingSlideRebuild) {
+      pendingSlideRebuild = false;
+      const sessionContext = (ctx.sessionManager as any).buildSessionContext();
+      if (sessionContext?.messages?.length) {
+        event.messages = sessionContext.messages;
+        ctx.ui.notify(`[ACM] Slide applied: ${event.messages.length} messages (rebuilt from session)`, "info");
+      }
+    }
+
     const branch = ctx.sessionManager.getBranch() as any[];
 
     // Build lookup maps
@@ -586,6 +601,11 @@ export default function (pi: ExtensionAPI) {
 
       // Commit compaction — resets branch head.
       ctx.sessionManager.appendCompaction(summary, firstKeptEntryId, tokensBefore, { source: "acm_slide" }, true);
+
+      // Flag that the next context event should rebuild messages from session
+      // storage. The tool ctx doesn't expose agent.state.messages, but the
+      // transformContext hook (context event) CAN replace messages.
+      pendingSlideRebuild = true;
 
       // Clean up ACM state for discarded entries + stale pins
       for (let i = 0; i < cutoff; i++) {
