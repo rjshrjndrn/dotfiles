@@ -105,8 +105,6 @@ export default function (pi: ExtensionAPI) {
       "--mode", "token",                // compress prior turns for max token savings
       "--code-aware",                    // AST-based code compression
       "--intercept-tool-results",        // compress Read/bash tool results
-      "--memory",                        // persistent cross-session memory
-      "--memory-storage", "global",       // single shared DB across all projects
       "--no-subscription-tracking",      // pi doesn't use Claude Code subscription
       "--no-telemetry",
     ];
