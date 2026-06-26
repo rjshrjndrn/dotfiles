@@ -86,13 +86,33 @@ export function findHybridCutoff(branch: any[], opts?: { keepMessages?: number; 
   const effectiveMinutes = (keepMessages == null && keepMinutes == null) ? 30 : keepMinutes;
   const effectiveMessages = (keepMessages == null && keepMinutes == null) ? 10 : keepMessages;
 
+  // Find effective start: last compaction's firstKeptEntryId
+  // getBranch() returns full tree path including pre-compaction entries.
+  // buildSessionContext() skips those, so we must too.
+  let effectiveStart = 0;
+  for (let i = branch.length - 1; i >= 0; i--) {
+    if (branch[i].type === "compaction") {
+      const fk = branch[i].firstKeptEntryId;
+      if (fk) {
+        // Find the firstKeptEntry index
+        for (let j = 0; j < branch.length; j++) {
+          if (branch[j].id === fk) { effectiveStart = j; break; }
+        }
+      } else {
+        // No firstKeptEntryId — start after compaction
+        effectiveStart = i + 1;
+      }
+      break;
+    }
+  }
+
   const now = Date.now();
 
   // Time-based cutoff: first entry to KEEP (everything before gets slid)
   let timeCutoff = 0;
   if (effectiveMinutes != null) {
     const windowMs = effectiveMinutes * 60 * 1000;
-    for (let i = branch.length - 1; i >= 0; i--) {
+    for (let i = branch.length - 1; i >= effectiveStart; i--) {
       const ts = branch[i].timestamp;
       const t = typeof ts === "number" ? ts : typeof ts === "string" ? new Date(ts).getTime() : 0;
       if (now - t > windowMs) { timeCutoff = i + 1; break; }
@@ -103,7 +123,7 @@ export function findHybridCutoff(branch: any[], opts?: { keepMessages?: number; 
   let msgCutoff = 0;
   if (effectiveMessages != null) {
     let userCount = 0;
-    for (let i = branch.length - 1; i >= 0; i--) {
+    for (let i = branch.length - 1; i >= effectiveStart; i--) {
       const e = branch[i];
       if (e.type === "message" && e.message?.role === "user") {
         userCount++;
@@ -124,14 +144,15 @@ export function findHybridCutoff(branch: any[], opts?: { keepMessages?: number; 
     cutoff = Math.max(timeCutoff, msgCutoff);
   }
 
-  if (cutoff <= 0 || cutoff >= branch.length) return 0;
+  // Never cut before effectiveStart (would re-slide already-compacted entries)
+  if (cutoff <= effectiveStart || cutoff >= branch.length) return 0;
 
   // Snap to valid cut point (user/assistant message or compaction boundary)
   // Snap to user message boundary — cutting at assistant/toolResult would
   // leave orphaned tool_use blocks without matching tool_result, which
   // fails Anthropic API validation (tool_result.tool_use_id required).
   const validCuts: number[] = [];
-  for (let i = 0; i < branch.length; i++) {
+  for (let i = effectiveStart; i < branch.length; i++) {
     const e = branch[i];
     if (e.type === "compaction" || e.type === "branch_summary" || e.type === "custom") {
       validCuts.push(i);

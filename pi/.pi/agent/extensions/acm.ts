@@ -159,7 +159,7 @@ export default function (pi: ExtensionAPI) {
             }
           }
         }
-      } catch {}
+      } catch { }
     }
     if (stats.cleared > 0 || stats.pinned > 0) {
       ctx.ui.notify(`[ACM] Restored: ${stats.cleared} cleared, ${stats.pinned} pinned, ${stats.recalled} in recall, ${cachedToFile.size} cached`, "info");
@@ -414,7 +414,7 @@ export default function (pi: ExtensionAPI) {
         // so toolResult without toolCallId would fail API validation.
         pinnedMessages.push({
           role: "user",
-          content: [{ type: "text", text: `[pinned:${entryId.slice(0,8)}] ${entry.content}` }],
+          content: [{ type: "text", text: `[pinned:${entryId.slice(0, 8)}] ${entry.content}` }],
         });
       }
       if (pinnedMessages.length > 0) {
@@ -605,6 +605,13 @@ export default function (pi: ExtensionAPI) {
       }
       for (const tcId of clearSet) {
         if (!remainingToolCallIds.has(tcId)) clearSet.delete(tcId);
+      }
+      // GC recallIndex + cachedToFile — remove entries for slid-away messages
+      for (const tcId of recallIndex.keys()) {
+        if (!remainingToolCallIds.has(tcId)) recallIndex.delete(tcId);
+      }
+      for (const tcId of cachedToFile.keys()) {
+        if (!remainingToolCallIds.has(tcId)) cachedToFile.delete(tcId);
       }
 
       // Reset auto-clear counter — post-slide branch has fewer user messages,
