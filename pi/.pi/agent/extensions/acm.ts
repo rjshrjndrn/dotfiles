@@ -209,15 +209,14 @@ export default function (pi: ExtensionAPI) {
   // ── Context event: apply clearing/compaction ───────────────────────
 
   pi.on("context", (event, ctx) => {
-    // After acm_slide, rebuild messages from session storage.
-    // The slide appends a compaction entry to disk but the agent's in-memory
-    // messages are stale (still contain all pre-slide messages).
+    // After acm_slide, rebuild messages from session storage on EVERY context
+    // event. transformContext only affects a single API call — it doesn't update
+    // agent.state.messages. Without persistent rebuilding, the stale in-memory
+    // messages return on the next turn.
     if (pendingSlideRebuild) {
-      pendingSlideRebuild = false;
       const sessionContext = (ctx.sessionManager as any).buildSessionContext();
       if (sessionContext?.messages?.length) {
         event.messages = sessionContext.messages;
-        ctx.ui.notify(`[ACM] Slide applied: ${event.messages.length} messages (rebuilt from session)`, "info");
       }
     }
 
