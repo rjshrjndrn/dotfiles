@@ -132,8 +132,12 @@ export {
 // ── Extension ────────────────────────────────────────────────────────
 
 export default function (pi: ExtensionAPI) {
-  // Flag: when set, next context event rebuilds messages from session storage
-  let pendingSlideRebuild = false;
+  // Pending slide compaction request — set by acm_slide tool, consumed by session_before_compact handler
+  let pendingSlideCompaction: {
+    summary: string;
+    firstKeptEntryId: string;
+    tokensBefore: number;
+  } | null = null;
 
   // ── Rehydrate on session load ──────────────────────────────────────
 
@@ -208,18 +212,26 @@ export default function (pi: ExtensionAPI) {
 
   // ── Context event: apply clearing/compaction ───────────────────────
 
-  pi.on("context", (event, ctx) => {
-    // After acm_slide, rebuild messages from session storage on EVERY context
-    // event. transformContext only affects a single API call — it doesn't update
-    // agent.state.messages. Without persistent rebuilding, the stale in-memory
-    // messages return on the next turn.
-    if (pendingSlideRebuild) {
-      const sessionContext = (ctx.sessionManager as any).buildSessionContext();
-      if (sessionContext?.messages?.length) {
-        event.messages = sessionContext.messages;
-      }
-    }
+  // ── Hook: session_before_compact — handle acm_slide via native compaction ──
+  pi.on("session_before_compact", async (event, ctx) => {
+    if (!pendingSlideCompaction) return; // not our compaction, let pi handle normally
 
+    const { summary, firstKeptEntryId, tokensBefore } = pendingSlideCompaction;
+    pendingSlideCompaction = null;
+
+    // Return our custom compaction result — pi will call appendCompaction()
+    // and rebuild agent.state.messages automatically.
+    return {
+      compaction: {
+        summary,
+        firstKeptEntryId,
+        tokensBefore,
+        details: { source: "acm_slide" },
+      },
+    };
+  });
+
+  pi.on("context", (event, ctx) => {
     const branch = ctx.sessionManager.getBranch() as any[];
 
     // Build lookup maps
@@ -597,14 +609,20 @@ export default function (pi: ExtensionAPI) {
 
       // Build minimal summary (no LLM call, no inlined pinned content)
       const summary = "[Context before this point was slid away. Use acm_recall to search old context.]";
+      const kept = branch.length - cutoff;
 
-      // Commit compaction — resets branch head.
-      ctx.sessionManager.appendCompaction(summary, firstKeptEntryId, tokensBefore, { source: "acm_slide" }, true);
-
-      // Flag that the next context event should rebuild messages from session
-      // storage. The tool ctx doesn't expose agent.state.messages, but the
-      // transformContext hook (context event) CAN replace messages.
-      pendingSlideRebuild = true;
+      // Trigger compaction via pi's native pipeline. The session_before_compact
+      // handler will return our custom CompactionResult. Pi then calls
+      // appendCompaction() AND rebuilds agent.state.messages automatically.
+      pendingSlideCompaction = { summary, firstKeptEntryId, tokensBefore };
+      ctx.compact({
+        onComplete: () => {
+          ctx.ui.notify(`[ACM] ✅ Slide compaction applied by pi.`, "info");
+        },
+        onError: (err: Error) => {
+          ctx.ui.notify(`[ACM] ⚠️ Slide compaction error: ${err.message}`, "warning");
+        },
+      });
 
       // Clean up ACM state for discarded entries + stale pins
       for (let i = 0; i < cutoff; i++) {
@@ -638,7 +656,6 @@ export default function (pi: ExtensionAPI) {
       acmState.lastAutoClearUserCount = 0;
       persist(pi.appendEntry.bind(pi));
 
-      const kept = branch.length - cutoff;
       const report = `[ACM] ✅ Slide complete: ${discardedCount} messages discarded, ${kept} recent entries kept, branch head reset. Old context searchable via acm_recall.`;
       ctx.ui.notify(report, "info");
 
@@ -835,8 +852,8 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
-  // No session_before_compact hook — /compact uses pi's stock LLM compaction.
-  // ACM is runtime-only: auto-clear, slide, pin, prune.
+  // session_before_compact hook is registered above — only intercepts when
+  // pendingSlideCompaction is set. Normal /compact uses pi's stock LLM compaction.
 
   // ── Branch navigation ──────────────────────────────────────────────
 
