@@ -182,6 +182,11 @@ export default function (pi: ExtensionAPI) {
     const toolArgs = event.input;
     if (!isExternalTool(toolName, toolArgs)) return; // local tool, pass through
 
+    // Skip interception when reading ACM's own cache files — prevents infinite recursion
+    // where reading a cached result creates another cached result
+    const argsStr = typeof toolArgs === "string" ? toolArgs : JSON.stringify(toolArgs ?? "");
+    if (argsStr.includes(".acm/cache/")) return;
+
     // Extract text content from the result
     const content = Array.isArray(event.content)
       ? event.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n")
