@@ -2,6 +2,8 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { writeFileSync } from "node:fs";
 
 export default function contextDump(pi: ExtensionAPI) {
+  if (process.env.PI_DUMP_MESSAGE !== "true") return;
+
   pi.on("context", (event) => {
     const msgs = event.messages;
     const dump = {
