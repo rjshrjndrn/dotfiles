@@ -24,6 +24,10 @@ const DEFAULT_LOG_FILE = "/tmp/headroom.log";
 const DEFAULT_PORT = 8787;
 const HEALTH_POLL_MS = 200;
 
+// Output shaper: trims ceremony/restated code from model responses.
+// Override with env HEADROOM_OUTPUT_SHAPER=0 to disable.
+const OUTPUT_SHAPER_ENABLED = "1";
+
 export default function (pi: ExtensionAPI) {
   let proxyProcess: ChildProcess | null = null;
   let proxyPort: number = DEFAULT_PORT;
@@ -125,6 +129,7 @@ export default function (pi: ExtensionAPI) {
       env: {
         ...process.env,
         ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+        HEADROOM_OUTPUT_SHAPER: process.env.HEADROOM_OUTPUT_SHAPER ?? OUTPUT_SHAPER_ENABLED,
       },
     });
 
