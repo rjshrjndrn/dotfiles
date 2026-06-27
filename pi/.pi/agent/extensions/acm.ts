@@ -264,9 +264,7 @@ export default function (pi: ExtensionAPI) {
         if (!branchToolCallIds.has(tcId)) { clearSet.delete(tcId); purgedCount++; }
       }
       if (purgedCount > 0) {
-        const msg = `[ACM] Purged ${purgedCount} stale clearSet entries (now ${clearSet.size})`;
-        ctx.ui.notify(msg, "info");
-        try { require("fs").appendFileSync("/tmp/acm-debug.log", `${new Date().toISOString()} ${msg}\n`); } catch {}
+        ctx.ui.notify(`[ACM] Purged ${purgedCount} stale clearSet entries (now ${clearSet.size})`, "info");
       }
     }
 
@@ -375,9 +373,7 @@ export default function (pi: ExtensionAPI) {
       }
       if (autoClearCount > 0) {
         persist(pi.appendEntry.bind(pi));
-        const msg2 = `[ACM] Auto-cleared ${autoClearCount} old tool results (clearSet now ${clearSet.size}). branch entries: ${branch.length}`;
-        ctx.ui.notify(msg2, "info");
-        try { require("fs").appendFileSync("/tmp/acm-debug.log", `${new Date().toISOString()} ${msg2}\n`); } catch {}
+        ctx.ui.notify(`[ACM] Auto-cleared ${autoClearCount} old tool results`, "info");
       }
     }
 
