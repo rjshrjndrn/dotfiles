@@ -250,26 +250,21 @@ export default function (pi: ExtensionAPI) {
       }
     }
 
-    // Purge stale clearSet entries not in current messages
+    // Purge stale clearSet entries not in current branch (source of truth).
+    // event.messages may not contain all toolCallIds (intercepted results etc.).
     if (clearSet.size > 0) {
-      const currentToolCallIds = new Set(event.messages
-        .filter((m: any) => m.role === "toolResult" && m.toolCallId)
-        .map((m: any) => m.toolCallId));
+      const branchToolCallIds = new Set<string>();
+      for (const entry of branch) {
+        if (entry.type !== "message" || !entry.message) continue;
+        const msg = (entry as any).message;
+        if (msg.role === "toolResult" && msg.toolCallId) branchToolCallIds.add(msg.toolCallId);
+      }
       let purgedCount = 0;
-      const beforeSize = clearSet.size;
       for (const tcId of clearSet) {
-        if (!currentToolCallIds.has(tcId)) { clearSet.delete(tcId); purgedCount++; }
+        if (!branchToolCallIds.has(tcId)) { clearSet.delete(tcId); purgedCount++; }
       }
-      // Log purged + sample of what was purged
-      const purgedIds: string[] = [];
-      for (const tcId of clearSet) {
-        if (!currentToolCallIds.has(tcId)) purgedIds.push(tcId);
-      }
-      for (const tcId of purgedIds) clearSet.delete(tcId);
-      purgedCount = purgedIds.length;
       if (purgedCount > 0) {
-        const sample = purgedIds.slice(0, 5).join(", ");
-        const msg = `[ACM] DEBUG: Purged ${purgedCount} stale clearSet entries (${beforeSize} → ${clearSet.size}). event.messages has ${currentToolCallIds.size} toolResult toolCallIds, total msgs: ${event.messages.length}. Sample purged: ${sample}`;
+        const msg = `[ACM] Purged ${purgedCount} stale clearSet entries (now ${clearSet.size})`;
         ctx.ui.notify(msg, "info");
         try { require("fs").appendFileSync("/tmp/acm-debug.log", `${new Date().toISOString()} ${msg}\n`); } catch {}
       }
