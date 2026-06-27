@@ -228,15 +228,17 @@ export function inventoryToolResults(messages: AgentMessage[]) {
 export function buildStub(msg: any): string {
   const toolName = msg.toolName || "unknown";
   const entryId = toolCallIdToEntryId.get(msg.toolCallId) || "?";
-  // If cached to file, use cached stub format with filepath
-  const cachePath = cachedToFile.get(msg.toolCallId);
-  if (cachePath) {
-    const recall = recallIndex.get(msg.toolCallId);
-    const source = recall?.keyTerms ?? getTextPreview(msg);
-    return buildCachedStub(toolName, cachePath, source, getTextPreview(msg, acmConfig.previewChars ?? 1000));
-  }
   const recall = recallIndex.get(msg.toolCallId);
   const source = recall?.keyTerms ?? getTextPreview(msg);
+  // Cleared results get lean stub — no preview, regardless of cache status
+  if (clearSet.has(msg.toolCallId)) {
+    return `[cleared: ${toolName} | id: ${entryId} | ${extractKeywords(source, 10)}]`;
+  }
+  // Cached (intercepted) but not yet cleared — include filepath + preview
+  const cachePath = cachedToFile.get(msg.toolCallId);
+  if (cachePath) {
+    return buildCachedStub(toolName, cachePath, source, getTextPreview(msg, acmConfig.previewChars ?? 1000));
+  }
   return `[cleared: ${toolName} | id: ${entryId} | ${extractKeywords(source, 10)}]`;
 }
 
