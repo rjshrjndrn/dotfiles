@@ -1,67 +1,113 @@
 {
-  "version": 3,
+  "version": 1,
   "skills": {
-    "requesting-code-review": {
-      "source": "obra/superpowers",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/obra/superpowers.git",
-      "skillPath": "skills/requesting-code-review/SKILL.md",
-      "skillFolderHash": "ed265b1a03114cc400d5524afc5c961a4aa9ea8b",
-      "installedAt": "2026-03-30T19:57:29.903Z",
-      "updatedAt": "2026-03-30T19:57:29.903Z"
+    "last30days": {
+      "source": "mvanhorn/last30days-skill",
+      "url": "https://github.com/mvanhorn/last30days-skill.git",
+      "path": "skills/last30days",
+      "hash": "c36ad411d3090c241b16f9c892cbb148a9b137cb75ce91419927cabba38cb258",
+      "treeSha": "63ee58e42ad33abd1e5b114f8f28f367681cb8ff",
+      "installedAt": "2026-06-11T16:41:04Z",
+      "updatedAt": "2026-06-11T16:41:04Z"
     },
     "find-skills": {
       "source": "vercel-labs/skills",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/vercel-labs/skills.git",
-      "skillPath": "skills/find-skills/SKILL.md",
-      "skillFolderHash": "3013fdeb8a11b10b1eb795ec3ae8bfca38f7c26d",
-      "installedAt": "2026-03-30T19:57:35.499Z",
-      "updatedAt": "2026-03-30T19:57:35.499Z"
+      "url": "https://github.com/vercel-labs/skills.git",
+      "path": "skills/find-skills",
+      "hash": "649a1c1fd77ca5ce63d5b2ed773bc3401ffaf79eec6fb12c552253c76c1cab5f",
+      "treeSha": "3013fdeb8a11b10b1eb795ec3ae8bfca38f7c26d",
+      "installedAt": "2026-06-11T16:41:33Z",
+      "updatedAt": "2026-06-11T16:41:33Z"
+    },
+    "grill-me": {
+      "source": "mattpocock/skills",
+      "url": "https://github.com/mattpocock/skills.git",
+      "path": "skills/productivity/grill-me",
+      "hash": "c1cf50e1f66728ba5c29d50ec90112dfbb1c1de8fad585e588c3bf137f0b34f6",
+      "treeSha": "2a1ad17028306ebe45f0e49703fa28b9b2e7f499",
+      "installedAt": "2026-06-11T16:45:03Z",
+      "updatedAt": "2026-06-11T16:45:03Z"
+    },
+    "brainstorming": {
+      "source": "obra/superpowers",
+      "url": "https://github.com/obra/superpowers.git",
+      "path": "skills/brainstorming",
+      "hash": "456c893f96b26cde9a2ea8625295c4f728cbef8ddc3a28474ed467141039b771",
+      "treeSha": "f260c775073816860fef8a37c032ac77e2ff5821",
+      "installedAt": "2026-06-11T16:57:22Z",
+      "updatedAt": "2026-06-11T16:57:22Z"
+    },
+    "receiving-code-review": {
+      "source": "obra/superpowers",
+      "url": "https://github.com/obra/superpowers.git",
+      "path": "skills/receiving-code-review",
+      "hash": "11b42696bfb61f9b831b99f4501379b8fd0f74dd981ee77e526ec9809530fdd0",
+      "treeSha": "7750c56fddb8b2f1cbdb1550a6e3e40d2eeac5f1",
+      "installedAt": "2026-06-11T16:57:23Z",
+      "updatedAt": "2026-06-11T16:57:23Z"
+    },
+    "requesting-code-review": {
+      "source": "obra/superpowers",
+      "url": "https://github.com/obra/superpowers.git",
+      "path": "skills/requesting-code-review",
+      "hash": "f1789f453e83da566e5890ce10eb1b15e56468c1828b0b206c88accc70d6cabc",
+      "treeSha": "ff419ec159bdf5ff2f2d83c7e544c586bcde69bb",
+      "installedAt": "2026-06-11T16:57:24Z",
+      "updatedAt": "2026-06-11T16:57:24Z"
+    },
+    "systematic-debugging": {
+      "source": "obra/superpowers",
+      "url": "https://github.com/obra/superpowers.git",
+      "path": "skills/systematic-debugging",
+      "hash": "3ec0978d589921d950b07f8fc09aeca1b4baf8d8bfd620df802d899c72d97e12",
+      "treeSha": "e96f5f2620c17069d668be1880d5492e34c84ceb",
+      "installedAt": "2026-06-11T16:57:24Z",
+      "updatedAt": "2026-06-11T16:57:24Z"
+    },
+    "using-superpowers": {
+      "source": "obra/superpowers",
+      "url": "https://github.com/obra/superpowers.git",
+      "path": "skills/using-superpowers",
+      "hash": "7f45c8e4c957aa237d79c61a4625d09b243f9f2bcce114faf4d65eedcee7a85a",
+      "treeSha": "225dd70596c396940ff158335a954a64d93ece40",
+      "installedAt": "2026-06-11T16:57:25Z",
+      "updatedAt": "2026-06-11T16:57:25Z"
+    },
+    "baoyu-youtube-transcript": {
+      "source": "JimLiu/baoyu-skills",
+      "url": "https://github.com/JimLiu/baoyu-skills.git",
+      "path": "skills/baoyu-youtube-transcript",
+      "hash": "e3aef240ea2b815fe2a2ac8482d7a8497fe03fdcb240a4fb6469a4d0adf5e580",
+      "treeSha": "223f52d803e2180720600d621ce0d395fad1983a",
+      "installedAt": "2026-06-11T16:57:33Z",
+      "updatedAt": "2026-06-11T16:57:33Z"
     },
     "caveman": {
       "source": "JuliusBrussee/caveman",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/JuliusBrussee/caveman.git",
-      "skillPath": "caveman/SKILL.md",
-      "skillFolderHash": "3e5091e2f32acef06ba3540770ecf7f87e5db25c",
-      "installedAt": "2026-04-08T18:52:14.127Z",
-      "updatedAt": "2026-04-08T18:52:14.127Z"
+      "url": "https://github.com/JuliusBrussee/caveman.git",
+      "path": "skills/caveman",
+      "hash": "976437a904e60b0feb728b219f030176366188ab163fb5f324c9abea39a0c6d2",
+      "treeSha": "75b63aa9ec7bbb0e72bb6b3524ff6b576c14a05a",
+      "installedAt": "2026-06-11T16:57:33Z",
+      "updatedAt": "2026-06-11T16:57:33Z"
     },
-    "compress": {
+    "caveman-compress": {
       "source": "JuliusBrussee/caveman",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/JuliusBrussee/caveman.git",
-      "skillPath": "caveman-compress/SKILL.md",
-      "skillFolderHash": "238d64a169e9026c635cd1b8835d7ec113ffad8f",
-      "installedAt": "2026-04-08T18:52:14.573Z",
-      "updatedAt": "2026-04-08T18:52:14.573Z"
+      "url": "https://github.com/JuliusBrussee/caveman.git",
+      "path": "skills/caveman-compress",
+      "hash": "49751aa87fc60fa58c2b3bc8201d17bdeb795a2baf72aac11f9365ab7f81e052",
+      "treeSha": "405938e27e3c90858bc7ed88ff07d6aa0d3cbd2c",
+      "installedAt": "2026-06-11T16:57:50Z",
+      "updatedAt": "2026-06-11T16:57:50Z"
     },
-    "context-mode": {
-      "source": "mksglu/context-mode",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/mksglu/context-mode.git",
-      "skillPath": "skills/context-mode/SKILL.md",
-      "skillFolderHash": "2f683b752f9a3e145b32ba136c4a1b27d642a33d",
-      "installedAt": "2026-04-19T08:59:19.459Z",
-      "updatedAt": "2026-04-19T08:59:19.459Z"
+    "karpathy-guidelines": {
+      "source": "forrestchang/andrej-karpathy-skills",
+      "url": "https://github.com/forrestchang/andrej-karpathy-skills.git",
+      "path": "skills/karpathy-guidelines",
+      "hash": "2d9f49c15b435f7eddf55b5f0503cdb0e2f9b97b369d595b2a80c08baac05567",
+      "treeSha": "e119339197d600aa39a24fd7a95c946800c9c949",
+      "installedAt": "2026-06-11T16:58:34Z",
+      "updatedAt": "2026-06-11T16:58:34Z"
     }
-  },
-  "dismissed": {
-    "findSkillsPrompt": true
-  },
-  "lastSelectedAgents": [
-    "amp",
-    "antigravity",
-    "cline",
-    "codex",
-    "cursor",
-    "deepagents",
-    "firebender",
-    "gemini-cli",
-    "github-copilot",
-    "kimi-cli",
-    "opencode",
-    "warp"
-  ]
+  }
 }

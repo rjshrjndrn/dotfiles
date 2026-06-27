@@ -255,8 +255,23 @@ export default function (pi: ExtensionAPI) {
       const currentToolCallIds = new Set(event.messages
         .filter((m: any) => m.role === "toolResult" && m.toolCallId)
         .map((m: any) => m.toolCallId));
+      let purgedCount = 0;
+      const beforeSize = clearSet.size;
       for (const tcId of clearSet) {
-        if (!currentToolCallIds.has(tcId)) clearSet.delete(tcId);
+        if (!currentToolCallIds.has(tcId)) { clearSet.delete(tcId); purgedCount++; }
+      }
+      // Log purged + sample of what was purged
+      const purgedIds: string[] = [];
+      for (const tcId of clearSet) {
+        if (!currentToolCallIds.has(tcId)) purgedIds.push(tcId);
+      }
+      for (const tcId of purgedIds) clearSet.delete(tcId);
+      purgedCount = purgedIds.length;
+      if (purgedCount > 0) {
+        const sample = purgedIds.slice(0, 5).join(", ");
+        const msg = `[ACM] DEBUG: Purged ${purgedCount} stale clearSet entries (${beforeSize} → ${clearSet.size}). event.messages has ${currentToolCallIds.size} toolResult toolCallIds, total msgs: ${event.messages.length}. Sample purged: ${sample}`;
+        ctx.ui.notify(msg, "info");
+        try { require("fs").appendFileSync("/tmp/acm-debug.log", `${new Date().toISOString()} ${msg}\n`); } catch {}
       }
     }
 
@@ -365,7 +380,9 @@ export default function (pi: ExtensionAPI) {
       }
       if (autoClearCount > 0) {
         persist(pi.appendEntry.bind(pi));
-        ctx.ui.notify(`[ACM] Auto-cleared ${autoClearCount} old tool results`, "info");
+        const msg2 = `[ACM] Auto-cleared ${autoClearCount} old tool results (clearSet now ${clearSet.size}). branch entries: ${branch.length}`;
+        ctx.ui.notify(msg2, "info");
+        try { require("fs").appendFileSync("/tmp/acm-debug.log", `${new Date().toISOString()} ${msg2}\n`); } catch {}
       }
     }
 

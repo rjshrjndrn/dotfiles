@@ -1,9 +1,9 @@
 #!/bin/bash
-# Restart swayosd on monitor removal (complements omarchy-hyprland-monitor-watch)
+# Restart swayosd on monitor add/remove (complements omarchy-hyprland-monitor-watch)
 SOCKET="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
 socat -U - "UNIX-CONNECT:$SOCKET" | while read -r event; do
   case "$event" in
-    monitorremoved\>\>*|monitorremovedv2\>\>*)
+    monitorremoved\>\>*|monitorremovedv2\>\>*|monitoradded\>\>*|monitoraddedv2\>\>*)
       sleep 2
       pkill swayosd-server
       uwsm-app -- swayosd-server &

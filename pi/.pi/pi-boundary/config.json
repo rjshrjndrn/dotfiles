@@ -1,3 +1,6 @@
 {
-  "whitelist": ["~/llm-wiki"]
+  "whitelist": [
+    "~/llm-wiki",
+    "~/.agents"
+  ]
 }

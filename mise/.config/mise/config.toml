@@ -43,7 +43,7 @@ package_manager = "bun"
 # Mise (meta)
 ###############
 usage = "latest" # To generate completions.
-"github:jdx/mise" = "latest"
+# "github:jdx/mise" = "latest"
 
 ###############
 # Languages & Runtimes
@@ -166,7 +166,6 @@ github-cli = "latest"
 # Terminal / Shell
 ###############
 direnv = "latest"
-tmux = "latest"
 atuin = "latest"
 starship = "latest"
 fzf = "latest"
@@ -175,7 +174,7 @@ fzf = "latest"
 # CLI Utilities
 ###############
 jq = "latest"
-yq = "latest"
+"github:mikefarah/yq" = "latest"
 ripgrep = "latest"
 bat = "latest"
 fd = "latest"
@@ -190,3 +189,4 @@ croc = "latest"
 # Databases
 ###############
 duckdb = "latest"
+"github:tinyhumansai/openhuman" = "latest"
