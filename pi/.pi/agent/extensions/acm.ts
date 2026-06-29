@@ -378,11 +378,17 @@ export default function (pi: ExtensionAPI) {
     }
 
     // ── Build messages: apply stubs, strip thinking, compact ──
+    // Mutate in-place so agent.state.messages (same ref) reflects changes
+    // in the UI token count, not just the ephemeral API call.
     // Runs AFTER auto-clear so newly cleared items get stubbed immediately.
-    const messages = event.messages.map((msg: any, idx: number) => {
+    const messages = event.messages;
+    for (let idx = 0; idx < messages.length; idx++) {
+      const msg = messages[idx] as any;
+
       // Clear tool results
       if (msg.role === "toolResult" && msg.toolCallId && clearSet.has(msg.toolCallId)) {
-        return { ...msg, content: [{ type: "text" as const, text: buildStub(msg) }] };
+        msg.content = [{ type: "text" as const, text: buildStub(msg) }];
+        continue;
       }
 
       // Strip thinking blocks from old messages
@@ -390,7 +396,7 @@ export default function (pi: ExtensionAPI) {
         const hasThinking = msg.content.some((b: any) => b.type === "thinking");
         if (hasThinking) {
           const stripped = msg.content.filter((b: any) => b.type !== "thinking");
-          msg = { ...msg, content: stripped.length > 0 ? stripped : [{ type: "text", text: "[thinking stripped]" }] };
+          msg.content = stripped.length > 0 ? stripped : [{ type: "text", text: "[thinking stripped]" }];
         }
       }
 
@@ -398,11 +404,9 @@ export default function (pi: ExtensionAPI) {
       const entryId = msgEntryId.get(msg) || (msg.toolCallId ? tcEntryId.get(msg.toolCallId) : undefined);
       if (entryId && compactSet.has(entryId) && !pinnedSet.has(entryId)) {
         const compacted = compactMessage(msg, entryId);
-        if (compacted) return { ...msg, content: compacted.content };
+        if (compacted) msg.content = compacted.content;
       }
-
-      return msg;
-    });
+    }
 
     // Inject ACM context into first user message (before pinned prepend,
     // so pinned messages don't absorb the acm-context block)
