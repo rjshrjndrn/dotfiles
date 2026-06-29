@@ -46,29 +46,6 @@ import {
   getCacheStats,
   cacheToolResult,
 } from "../acm-lib/cache.ts";
-import {
-  clearSet,
-  toolCallIdToEntryId,
-  recallIndex,
-  pinnedSet,
-  compactSet,
-  acmState,
-  evictedPaths,
-  FAULT_PIN_TTL,
-  faultPinTurns,
-  MAX_EVICTED_PATHS,
-  cachedToFile,
-  pinnedContentStore,
-  persist,
-  persistPin,
-  rehydrateState,
-  buildToolCallMapping,
-  inventoryToolResults,
-  buildStub,
-  buildRecallEntry,
-  clearToolResults,
-  statusText,
-} from "../acm-lib/state.ts";
 
 // ── Re-exports for backward compatibility (tests import from acm.ts) ──
 
@@ -103,7 +80,7 @@ export {
   buildCachedStub,
   getCacheStats,
 } from "../acm-lib/cache.ts";
-export {
+import {
   clearSet,
   toolCallIdToEntryId,
   recallIndex,
@@ -127,17 +104,13 @@ export {
   buildRecallEntry,
   clearToolResults,
   statusText,
+  getActiveSlide,
+  setActiveSlide,
 } from "../acm-lib/state.ts";
 
 // ── Extension ────────────────────────────────────────────────────────
 
 export default function (pi: ExtensionAPI) {
-  // Pending slide compaction request — set by acm_slide tool, consumed by session_before_compact handler
-  let pendingSlideCompaction: {
-    summary: string;
-    firstKeptEntryId: string;
-    tokensBefore: number;
-  } | null = null;
 
   // ── Rehydrate on session load ──────────────────────────────────────
 
@@ -217,26 +190,40 @@ export default function (pi: ExtensionAPI) {
 
   // ── Context event: apply clearing/compaction ───────────────────────
 
-  // ── Hook: session_before_compact — handle acm_slide via native compaction ──
-  pi.on("session_before_compact", async (event, ctx) => {
-    if (!pendingSlideCompaction) return; // not our compaction, let pi handle normally
-
-    const { summary, firstKeptEntryId, tokensBefore } = pendingSlideCompaction;
-    pendingSlideCompaction = null;
-
-    // Return our custom compaction result — pi will call appendCompaction()
-    // and rebuild agent.state.messages automatically.
-    return {
-      compaction: {
-        summary,
-        firstKeptEntryId,
-        tokensBefore,
-        details: { source: "acm_slide" },
-      },
-    };
-  });
-
   pi.on("context", (event, ctx) => {
+    // ── Slide filter: trim messages before cutoff ──
+    // Runs first — reduces the message set before any other processing.
+    const slide = getActiveSlide();
+    if (slide) {
+      const branch = ctx.sessionManager.getBranch() as any[];
+      // Find the index of the cutoff entry in the branch
+      const cutoffIdx = branch.findIndex((e: any) => e.id === slide.cutoffEntryId);
+      if (cutoffIdx > 0) {
+        // Build a set of entry IDs to keep (cutoff and after)
+        const keepEntryIds = new Set<string>();
+        for (let i = cutoffIdx; i < branch.length; i++) {
+          if (branch[i].id) keepEntryIds.add(branch[i].id);
+        }
+        // Filter event.messages — keep only messages from kept entries.
+        // We need to map messages back to entries via msgEntryId (built below),
+        // but we don't have it yet. Instead, rebuild messages from kept branch entries.
+        const keptMessages: any[] = [];
+        // Prepend slide summary as a user message
+        keptMessages.push({
+          role: "user",
+          content: [{ type: "text", text: `<summary>\n${slide.summary}\n</summary>` }],
+        });
+        for (let i = cutoffIdx; i < branch.length; i++) {
+          const e = branch[i] as any;
+          if (e.type === "message" && e.message) {
+            keptMessages.push(e.message);
+          }
+        }
+        // Replace event.messages with kept subset (new array — don't mutate original for UI)
+        event.messages = keptMessages;
+      }
+    }
+
     const branch = ctx.sessionManager.getBranch() as any[];
 
     // Build lookup maps
@@ -628,18 +615,9 @@ export default function (pi: ExtensionAPI) {
       const summary = "[Context before this point was slid away. Use acm_recall to search old context.]";
       const kept = branch.length - cutoff;
 
-      // Trigger compaction via pi's native pipeline. The session_before_compact
-      // handler will return our custom CompactionResult. Pi then calls
-      // appendCompaction() AND rebuilds agent.state.messages automatically.
-      pendingSlideCompaction = { summary, firstKeptEntryId, tokensBefore };
-      ctx.compact({
-        onComplete: () => {
-          ctx.ui.notify(`[ACM] ✅ Slide compaction applied by pi.`, "info");
-        },
-        onError: (err: Error) => {
-          ctx.ui.notify(`[ACM] ⚠️ Slide compaction error: ${err.message}`, "warning");
-        },
-      });
+      // Set active slide — context event will filter messages on every turn.
+      // No session mutation: UI keeps full tree, only LLM context is filtered.
+      setActiveSlide({ cutoffEntryId: firstKeptEntryId, summary });
 
       // Clean up ACM state for discarded entries + stale pins
       for (let i = 0; i < cutoff; i++) {
@@ -869,8 +847,8 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
-  // session_before_compact hook is registered above — only intercepts when
-  // pendingSlideCompaction is set. Normal /compact uses pi's stock LLM compaction.
+  // No session_before_compact hook — /compact uses pi's stock LLM compaction.
+  // ACM slide is context-only: filters event.messages, doesn't touch session tree.
 
   // ── Branch navigation ──────────────────────────────────────────────
 

@@ -26,6 +26,13 @@ export const acmState = {
 // Production data shows <0.03% fault rate with this approach.
 export const evictedPaths = new Map<string, string>(); // filePath → evicted toolCallId
 
+// Active slide state — context-only filter, doesn't touch session tree.
+let _activeSlide: { cutoffEntryId: string; summary: string } | null = null;
+export function getActiveSlide() { return _activeSlide; }
+export function setActiveSlide(slide: { cutoffEntryId: string; summary: string } | null) {
+  _activeSlide = slide;
+}
+
 // Fault-pin TTL: auto-unpin fault-pins after N turn boundaries.
 // Manual pins (user-requested via acm_pin) are permanent — only fault-pins decay.
 // If LLM still needs content after expiry, re-read triggers re-fault-pin (self-correcting).
@@ -63,6 +70,7 @@ export function persist(appendEntry: (type: string, data?: any) => void) {
     totalTokensSaved: acmState.totalTokensSaved,
     compactedEntryIds: [...compactSet],
     lastAutoClearUserCount: acmState.lastAutoClearUserCount,
+    activeSlide: _activeSlide,
   });
   appendEntry("acm-recall-index", { entries: [...recallIndex.values()] });
   if (pinnedContentStore.size > 0) {
@@ -106,6 +114,7 @@ export function rehydrateState(entries: Array<{ type: string; customType?: strin
     acmState.lastAutoClearUserCount = lastClearState.lastAutoClearUserCount ?? 0;
     compactSet.clear();
     for (const id of lastClearState.compactedEntryIds ?? []) compactSet.add(id);
+    _activeSlide = lastClearState.activeSlide ?? null;
   }
 
   if (lastRecallIndex) {
