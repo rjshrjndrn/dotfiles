@@ -1,0 +1,13 @@
+[Unit]
+Description=Set BLE connection interval to minimum
+After=bluetooth.service
+Requires=bluetooth.service
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/sleep 2
+ExecStart=/bin/bash -c 'echo 6 > /sys/kernel/debug/bluetooth/hci0/conn_min_interval && echo 6 > /sys/kernel/debug/bluetooth/hci0/conn_max_interval && echo 0 > /sys/kernel/debug/bluetooth/hci0/conn_latency'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=bluetooth.target
