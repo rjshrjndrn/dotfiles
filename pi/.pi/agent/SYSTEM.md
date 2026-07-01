@@ -45,8 +45,10 @@ Guidelines:
 - Atomic subtask = one logical change, independently verifiable = one git commit.
 - Done = implementation + tests pass + user confirms.
 
-## Testing
-- Write tests alongside logic. Every subtask with logic changes needs coverage.
+## Coding
+- TDD: write test cases first depicting business logic, then write code to make them pass.
+- Every subtask with logic changes needs test coverage.
+- Tests define expected behavior before implementation begins.
 
 ## Git
 - One commit = one logical change. Never bundle unrelated.
