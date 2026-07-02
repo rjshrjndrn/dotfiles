@@ -90,8 +90,7 @@ opencode = "latest"
 # llm install llm-github-copilot
 # llm github_copilot auth login
 "pipx:llm" = "latest"
-# Proxy to filter permissions for an app
-"github:GreyhavenHQ/greywall" = "latest"
+
 # Reduce context tokens
 "npm:context-mode" = "latest"
 # Transparent LLM context compression proxy
@@ -145,6 +144,10 @@ vals = "latest"
 doppler = "latest"
 infisical = "latest"
 ggshield = "latest"
+step = "latest"
+"github:smallstep/step-kms-plugin" = "latest"  # need ❮ yay -S pcsclite
+# Proxy to filter permissions for an app
+"github:GreyhavenHQ/greywall" = "latest"
 
 ###############
 # IaC
@@ -189,4 +192,8 @@ croc = "latest"
 # Databases
 ###############
 duckdb = "latest"
+
+###############
+# Misc
+###############
 "github:tinyhumansai/openhuman" = "latest"
