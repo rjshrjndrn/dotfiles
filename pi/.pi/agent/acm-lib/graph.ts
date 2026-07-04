@@ -23,6 +23,11 @@ export interface GraphToolResult {
  * Initialize the graph DB. Pass ":memory:" for tests, or a file path for persistence.
  */
 export async function initGraph(dbPath: string): Promise<void> {
+  if (dbPath !== ":memory:") {
+    const { mkdirSync } = await import("node:fs");
+    const { dirname } = await import("node:path");
+    mkdirSync(dirname(dbPath), { recursive: true });
+  }
   const lbug = await import("@ladybugdb/core");
   db = new lbug.Database(dbPath === ":memory:" ? undefined : dbPath);
   conn = new lbug.Connection(db);

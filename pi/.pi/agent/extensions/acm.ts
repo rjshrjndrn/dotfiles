@@ -46,6 +46,15 @@ import {
   getCacheStats,
   cacheToolResult,
 } from "../acm-lib/cache.ts";
+import {
+  initGraph,
+  insertToolResult as graphInsert,
+  queryByKeyword as graphQueryByKeyword,
+  queryByFile as graphQueryByFile,
+  getRelated as graphGetRelated,
+  getSequence as graphGetSequence,
+  isGraphReady,
+} from "../acm-lib/graph.ts";
 
 // ── Re-exports for backward compatibility (tests import from acm.ts) ──
 
@@ -108,6 +117,20 @@ import {
   setActiveSlide,
 } from "../acm-lib/state.ts";
 
+// ── Graph sync helper ────────────────────────────────────────────────
+
+/** Sync a recall entry to the graph DB (fire-and-forget). */
+function syncToGraph(recall: RecallMetadata): void {
+  if (!isGraphReady()) return;
+  graphInsert({
+    id: recall.toolCallId || recall.entryId,
+    toolName: recall.toolName,
+    keyTerms: recall.keyTerms,
+    filePaths: recall.filePaths,
+    timestamp: recall.timestamp,
+  }).catch(() => {}); // non-critical, swallow errors
+}
+
 // ── Extension ────────────────────────────────────────────────────────
 
 export default function (pi: ExtensionAPI) {
@@ -144,6 +167,12 @@ export default function (pi: ExtensionAPI) {
     if (stats.cleared > 0 || stats.pinned > 0) {
       ctx.ui.notify(`[ACM] Restored: ${stats.cleared} cleared, ${stats.pinned} pinned, ${stats.recalled} in recall, ${cachedToFile.size} cached`, "info");
     }
+
+    // Initialize LadybugDB graph for relational recall
+    const graphDir = join(getCacheDir(sessionDir), "graph");
+    initGraph(join(graphDir, "acm.lbug")).catch((err: any) => {
+      ctx.ui.notify(`[ACM] Graph init failed: ${err.message}`, "warn");
+    });
   });
 
   // ── Tool result intercept: cache external tool outputs to disk ─────
@@ -343,6 +372,7 @@ export default function (pi: ExtensionAPI) {
           : "";
         const recall = buildRecallEntry(msg.toolCallId, msg.toolName || "unknown", textContent, tokens * 4, getBranchMessages(branch));
         recallIndex.set(msg.toolCallId, recall);
+        syncToGraph(recall);
         // Cache local tool results to disk before clearing (prevents content loss)
         if (!cachedToFile.has(msg.toolCallId)) {
           const sessionDir = ctx.sessionManager.getSessionDir();
@@ -608,6 +638,7 @@ export default function (pi: ExtensionAPI) {
           const textContent = extractEntryContent(e).slice(0, 2000);
           const recall = buildRecallEntry(e.message.toolCallId, e.message.toolName || e.message.role || "unknown", textContent, 0, getBranchMessages(branch));
           recallIndex.set(e.message.toolCallId, recall);
+          syncToGraph(recall);
         }
       }
 
@@ -709,7 +740,36 @@ export default function (pi: ExtensionAPI) {
         }
         matches.sort((a, b) => b.score - a.score);
 
-        if (matches.length === 0) {
+        // Augment with graph results if available
+        let graphSection = "";
+        if (isGraphReady()) {
+          try {
+            const graphHits = await graphQueryByKeyword(params.query);
+            // Find graph-only results not in Map matches
+            const mapIds = new Set(matches.map(m => m.entry.toolCallId || m.entry.entryId));
+            const graphOnly = graphHits.filter(g => !mapIds.has(g.id));
+            if (graphOnly.length > 0) {
+              graphSection = `\n\n[Graph-only matches: ${graphOnly.length}]\n` +
+                graphOnly.slice(0, 5).map(g =>
+                  `  • ${g.toolName} | ${g.keyTerms.slice(0, 80)} | files: ${g.filePaths.join(", ") || "none"}`
+                ).join("\n");
+            }
+            // Also find related via co-file traversal from top match
+            if (matches.length > 0) {
+              const topId = matches[0].entry.toolCallId || matches[0].entry.entryId;
+              const related = await graphGetRelated(topId);
+              const relatedNew = related.filter(r => !mapIds.has(r.id));
+              if (relatedNew.length > 0) {
+                graphSection += `\n\n[Related (shared files): ${relatedNew.length}]\n` +
+                  relatedNew.slice(0, 5).map(r =>
+                    `  • ${r.toolName} | ${r.keyTerms.slice(0, 80)} | files: ${r.filePaths.join(", ") || "none"}`
+                  ).join("\n");
+              }
+            }
+          } catch { /* graph query failed, fall through */ }
+        }
+
+        if (matches.length === 0 && !graphSection) {
           return { content: [{ type: "text" as const, text: `[ACM] No results for: "${params.query}"` }], details: { found: false } };
         }
 
@@ -717,6 +777,7 @@ export default function (pi: ExtensionAPI) {
         const report = [
           `[ACM Recall] ${matches.length} match${matches.length > 1 ? "es" : ""}:`,
           ...lines,
+          graphSection,
           ``,
           `Use bash (rg, grep, head) on cached file paths to retrieve content.`,
         ].join("\n");
@@ -828,10 +889,12 @@ export default function (pi: ExtensionAPI) {
         const textContent = Array.isArray(entry.message.content)
           ? entry.message.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join(" ")
           : typeof entry.message.content === "string" ? entry.message.content : "";
-        recallIndex.set(entry.id, {
+        const compactRecall: RecallMetadata = {
           entryId: entry.id, toolCallId: "", toolName: entry.message.role,
           filePaths: [], keyTerms: textContent.slice(0, 200), timestamp: Date.now(), charCount: textContent.length,
-        });
+        };
+        recallIndex.set(entry.id, compactRecall);
+        syncToGraph(compactRecall);
       }
 
       if (compacted === 0) {
