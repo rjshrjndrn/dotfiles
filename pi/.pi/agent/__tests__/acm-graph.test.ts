@@ -8,6 +8,8 @@ import {
   getRelated,
   getSequence,
   clearGraphData,
+  getGraphStats,
+  getGraphSummary,
   type GraphToolResult,
 } from "../acm-lib/graph.ts";
 
@@ -250,6 +252,61 @@ describe("acm-graph", () => {
 
       // Re-init shared in-memory for remaining tests
       await initGraph(":memory:");
+    });
+  });
+
+  describe("getGraphStats", () => {
+    it("returns zero counts on empty graph", async () => {
+      const stats = await getGraphStats();
+      expect(stats.toolResults).toBe(0);
+      expect(stats.filePaths).toBe(0);
+    });
+
+    it("returns correct counts after inserts", async () => {
+      await insertToolResult({ id: "s1", toolName: "read", keyTerms: "foo", filePaths: ["/a.ts", "/b.ts"], timestamp: Date.now() });
+      await insertToolResult({ id: "s2", toolName: "bash", keyTerms: "bar", filePaths: ["/b.ts"], timestamp: Date.now() });
+      const stats = await getGraphStats();
+      expect(stats.toolResults).toBe(2);
+      expect(stats.filePaths).toBe(2); // /a.ts and /b.ts deduplicated
+    });
+  });
+
+  describe("getGraphSummary", () => {
+    it("returns empty on empty graph", async () => {
+      const summary = await getGraphSummary();
+      expect(summary.toolResults).toBe(0);
+      expect(summary.filePaths).toEqual([]);
+    });
+
+    it("returns sorted unique file paths", async () => {
+      await insertToolResult({ id: "g1", toolName: "read", keyTerms: "x", filePaths: ["/z.ts", "/a.ts"], timestamp: Date.now() });
+      await insertToolResult({ id: "g2", toolName: "read", keyTerms: "y", filePaths: ["/a.ts", "/m.ts"], timestamp: Date.now() });
+      const summary = await getGraphSummary();
+      expect(summary.toolResults).toBe(2);
+      expect(summary.filePaths).toEqual(["/a.ts", "/m.ts", "/z.ts"]);
+    });
+  });
+
+  describe("slide summary integration", () => {
+    it("getGraphSummary produces data suitable for slide head injection", async () => {
+      await insertToolResult({ id: "sl1", toolName: "read", keyTerms: "auth middleware", filePaths: ["/src/auth.ts"], timestamp: Date.now() });
+      await insertToolResult({ id: "sl2", toolName: "bash", keyTerms: "test config", filePaths: ["/src/auth.ts", "/src/config.ts"], timestamp: Date.now() });
+
+      const gs = await getGraphSummary();
+      expect(gs.toolResults).toBe(2);
+      expect(gs.filePaths).toHaveLength(2);
+
+      // Simulate what slide handler does: build context string
+      const basenames = [...new Set(gs.filePaths.map((p: string) => p.split("/").slice(-2).join("/")))].slice(0, 20);
+      let summary = "[Context before this point was slid away. Use acm_recall to search old context.]";
+      summary += `\n\nGraph context (${gs.toolResults} cached results, ${gs.filePaths.length} files):`;
+      summary += `\nFiles: ${basenames.join(", ")}`;
+
+      expect(summary).toContain("Graph context");
+      expect(summary).toContain("2 cached results");
+      expect(summary).toContain("2 files");
+      expect(summary).toContain("src/auth.ts");
+      expect(summary).toContain("src/config.ts");
     });
   });
 });

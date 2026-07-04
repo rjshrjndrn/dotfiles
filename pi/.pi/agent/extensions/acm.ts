@@ -55,6 +55,7 @@ import {
   getSequence as graphGetSequence,
   isGraphReady,
   getGraphStats,
+  getGraphSummary,
 } from "../acm-lib/graph.ts";
 
 // ── Re-exports for backward compatibility (tests import from acm.ts) ──
@@ -671,7 +672,20 @@ export default function (pi: ExtensionAPI) {
       }
 
       // Build minimal summary (no LLM call, no inlined pinned content)
-      const summary = "[Context before this point was slid away. Use acm_recall to search old context.]";
+      let summary = "[Context before this point was slid away. Use acm_recall to search old context.]";
+
+      // Append graph summary if available
+      if (isGraphReady()) {
+        try {
+          const gs = await getGraphSummary();
+          if (gs.toolResults > 0) {
+            const basenames = [...new Set(gs.filePaths.map((p: string) => p.split("/").slice(-2).join("/")))].slice(0, 20);
+            summary += `\n\nGraph context (${gs.toolResults} cached results, ${gs.filePaths.length} files):`;
+            if (basenames.length > 0) summary += `\nFiles: ${basenames.join(", ")}`;
+            if (basenames.length < gs.filePaths.length) summary += ` (+${gs.filePaths.length - basenames.length} more)`;
+          }
+        } catch {}
+      }
       const kept = branch.length - cutoff;
 
       // Set active slide — context event will filter messages on every turn.

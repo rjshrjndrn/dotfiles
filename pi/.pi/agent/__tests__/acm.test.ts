@@ -1507,6 +1507,7 @@ describe("pin + prune + slide combinations", () => {
       await tools["acm_slide"]("tc-slide", { keepMinutes: 5, keepMessages: 20 }, { aborted: false }, vi.fn(), createCtx());
       expect(mockAppendCompaction).toHaveBeenCalled();
     });
+
   });
 
   // ── Pin + Prune ───────────────────────────────────────────────────

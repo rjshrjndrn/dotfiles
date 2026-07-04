@@ -218,6 +218,23 @@ export async function getGraphStats(): Promise<{ toolResults: number; filePaths:
   }
 }
 
+/** Get a compact summary of graph contents for post-slide context injection. */
+export async function getGraphSummary(): Promise<{ toolResults: number; filePaths: string[] }> {
+  if (!isGraphReady()) return { toolResults: 0, filePaths: [] };
+  try {
+    const tr = await conn.query("MATCH (n:ToolResult) RETURN count(n) AS c");
+    const fp = await conn.query("MATCH (n:FilePath) RETURN n.path AS p ORDER BY p");
+    const trRows = await tr.getAll();
+    const fpRows = await fp.getAll();
+    return {
+      toolResults: Number(trRows[0]?.c ?? 0),
+      filePaths: fpRows.map((r: any) => r.p as string),
+    };
+  } catch {
+    return { toolResults: 0, filePaths: [] };
+  }
+}
+
 /** Clear all data but keep schema. For testing. */
 export async function clearGraphData(): Promise<void> {
   ensureInit();
