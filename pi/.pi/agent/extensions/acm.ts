@@ -549,6 +549,43 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
+  // ── Tool: ladybug_status ──────────────────────────────────────────
+
+  pi.registerTool({
+    name: "ladybug_status",
+    label: "LadybugDB Status",
+    description: "Show LadybugDB graph stats: node/edge counts, top files, recent tool results.",
+    promptSnippet: "ladybug_status: Show LadybugDB graph database stats.",
+    parameters: Type.Object({}),
+    async execute(_toolCallId, _params, _signal, _onUpdate, _ctx) {
+      if (!isGraphReady()) {
+        return { content: [{ type: "text" as const, text: "LadybugDB not initialized." }], details: {} };
+      }
+
+      try {
+        const gs = await getGraphStats();
+        const summary = await getGraphSummary();
+
+        // Get edge counts
+        const lines = [
+          `── LadybugDB Status ──`,
+          ``,
+          `Nodes:`,
+          `  ToolResult: ${gs.toolResults}`,
+          `  FilePath:   ${gs.filePaths}`,
+          ``,
+          `Files tracked (${summary.filePaths.length}):`,
+          ...summary.filePaths.slice(0, 20).map(f => `  ${f}`),
+          summary.filePaths.length > 20 ? `  ... +${summary.filePaths.length - 20} more` : "",
+        ].filter(Boolean).join("\n");
+
+        return { content: [{ type: "text" as const, text: lines }], details: {} };
+      } catch (err: any) {
+        return { content: [{ type: "text" as const, text: `LadybugDB error: ${err.message}` }], details: {} };
+      }
+    },
+  });
+
   // ── Tool: acm_clear ────────────────────────────────────────────────
 
   pi.registerTool({
