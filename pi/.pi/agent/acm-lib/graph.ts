@@ -119,10 +119,13 @@ export async function insertToolResult(entry: GraphToolResult): Promise<void> {
  */
 export async function queryByKeyword(keyword: string): Promise<GraphToolResult[]> {
   ensureInit();
-  const kw = escapeStr(keyword.toLowerCase());
+  // Split multi-word query — match ANY word
+  const words = keyword.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+  if (words.length === 0) return [];
+  const conditions = words.map(w => `lower(t.keyTerms) CONTAINS '${escapeStr(w)}'`).join(" OR ");
   const result = await conn.query(
     `MATCH (t:ToolResult)
-     WHERE lower(t.keyTerms) CONTAINS '${kw}'
+     WHERE ${conditions}
      OPTIONAL MATCH (t)-[:References]->(f:FilePath)
      RETURN t.id, t.toolName, t.keyTerms, t.timestamp, collect(f.path) AS filePaths
      ORDER BY t.timestamp DESC`

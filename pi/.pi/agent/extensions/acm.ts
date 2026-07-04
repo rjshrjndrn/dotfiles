@@ -119,16 +119,27 @@ import {
 
 // ── Graph sync helper ────────────────────────────────────────────────
 
+import { appendFileSync } from "node:fs";
+const ACM_LOG = "/tmp/ladybug-acm.log";
+function acmLog(msg: string): void {
+  try { appendFileSync(ACM_LOG, `[${new Date().toISOString()}] ${msg}\n`); } catch {}
+}
+
 /** Sync a recall entry to the graph DB (fire-and-forget). */
 function syncToGraph(recall: RecallMetadata): void {
-  if (!isGraphReady()) return;
+  acmLog(`syncToGraph called, graphReady=${isGraphReady()}, id=${recall.toolCallId || recall.entryId}`);
+  if (!isGraphReady()) { acmLog("graph not ready, skipping"); return; }
   graphInsert({
     id: recall.toolCallId || recall.entryId,
     toolName: recall.toolName,
     keyTerms: recall.keyTerms,
     filePaths: recall.filePaths,
     timestamp: recall.timestamp,
-  }).catch(() => {}); // non-critical, swallow errors
+  }).then(() => {
+    acmLog(`inserted ${recall.toolCallId || recall.entryId} ok, filePaths=[${recall.filePaths.join(",")}]`);
+  }).catch((err: any) => {
+    acmLog(`syncToGraph ERROR: ${err?.message || err}`);
+  });
 }
 
 // ── Extension ────────────────────────────────────────────────────────
@@ -170,7 +181,11 @@ export default function (pi: ExtensionAPI) {
 
     // Initialize LadybugDB graph for relational recall
     const graphDir = join(getCacheDir(sessionDir), "graph");
-    initGraph(join(graphDir, "acm.lbug")).catch((err: any) => {
+    acmLog(`initGraph at ${join(graphDir, "acm.lbug")}`);
+    initGraph(join(graphDir, "acm.lbug")).then(() => {
+      acmLog(`initGraph SUCCESS, ready=${isGraphReady()}`);
+    }).catch((err: any) => {
+      acmLog(`initGraph FAILED: ${err.message}`);
       ctx.ui.notify(`[ACM] Graph init failed: ${err.message}`, "warn");
     });
   });
@@ -742,14 +757,17 @@ export default function (pi: ExtensionAPI) {
 
         // Augment with graph results if available
         let graphSection = "";
+        acmLog(`recall query: "${params.query}", graphReady=${isGraphReady()}, mapMatches=${matches.length}`);
         if (isGraphReady()) {
           try {
             const graphHits = await graphQueryByKeyword(params.query);
+            acmLog(`graph hits: ${graphHits.length}, ids: ${graphHits.map(g => g.id).join(",")}`);
             // Find graph-only results not in Map matches
             const mapIds = new Set(matches.map(m => m.entry.toolCallId || m.entry.entryId));
             const graphOnly = graphHits.filter(g => !mapIds.has(g.id));
+            graphSection = `\n\n[Graph: ${graphHits.length} total, ${graphOnly.length} unique]`;
             if (graphOnly.length > 0) {
-              graphSection = `\n\n[Graph-only matches: ${graphOnly.length}]\n` +
+              graphSection += `\n[Graph-only matches: ${graphOnly.length}]\n` +
                 graphOnly.slice(0, 5).map(g =>
                   `  • ${g.toolName} | ${g.keyTerms.slice(0, 80)} | files: ${g.filePaths.join(", ") || "none"}`
                 ).join("\n");
@@ -758,15 +776,17 @@ export default function (pi: ExtensionAPI) {
             if (matches.length > 0) {
               const topId = matches[0].entry.toolCallId || matches[0].entry.entryId;
               const related = await graphGetRelated(topId);
-              const relatedNew = related.filter(r => !mapIds.has(r.id));
-              if (relatedNew.length > 0) {
-                graphSection += `\n\n[Related (shared files): ${relatedNew.length}]\n` +
-                  relatedNew.slice(0, 5).map(r =>
+              acmLog(`related for ${topId}: ${related.length} results`);
+              if (related.length > 0) {
+                graphSection += `\n\n[Related (shared files): ${related.length}]\n` +
+                  related.slice(0, 5).map(r =>
                     `  • ${r.toolName} | ${r.keyTerms.slice(0, 80)} | files: ${r.filePaths.join(", ") || "none"}`
                   ).join("\n");
               }
             }
-          } catch { /* graph query failed, fall through */ }
+          } catch (gErr: any) {
+            acmLog(`recall query ERROR: ${gErr?.message || gErr}`);
+          }
         }
 
         if (matches.length === 0 && !graphSection) {
