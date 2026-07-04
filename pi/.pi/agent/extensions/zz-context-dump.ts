@@ -9,13 +9,14 @@ export default function contextDump(pi: ExtensionAPI) {
     const dump = {
       timestamp: new Date().toISOString(),
       messageCount: msgs.length,
+      firstMessageFull: JSON.stringify(msgs[0]?.content ?? ""),
+      totalBytes: msgs.reduce((sum: number, m: any) => sum + JSON.stringify(m ?? "").length, 0),
       messageSizes: msgs.map((m: any, i: number) => ({
         index: i,
         role: m.role,
         bytes: JSON.stringify(m.content ?? "").length,
         preview: JSON.stringify(m.content ?? "").slice(0, 120),
       })),
-      totalBytes: msgs.reduce((sum: number, m: any) => sum + JSON.stringify(m ?? "").length, 0),
     };
     writeFileSync("/tmp/acm-last-context.json", JSON.stringify(dump, null, 2));
   });
