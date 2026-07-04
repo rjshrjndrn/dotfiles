@@ -126,6 +126,9 @@ function acmLog(msg: string): void {
   try { appendFileSync(ACM_LOG, `[${new Date().toISOString()}] ${msg}\n`); } catch {}
 }
 
+// Stored ref for status updates from syncToGraph
+let _setStatus: ((id: string, text: string) => void) | null = null;
+
 /** Sync a recall entry to the graph DB (fire-and-forget). */
 function syncToGraph(recall: RecallMetadata): void {
   acmLog(`syncToGraph called, graphReady=${isGraphReady()}, id=${recall.toolCallId || recall.entryId}`);
@@ -136,8 +139,12 @@ function syncToGraph(recall: RecallMetadata): void {
     keyTerms: recall.keyTerms,
     filePaths: recall.filePaths,
     timestamp: recall.timestamp,
-  }).then(() => {
+  }).then(async () => {
     acmLog(`inserted ${recall.toolCallId || recall.entryId} ok, filePaths=[${recall.filePaths.join(",")}]`);
+    if (_setStatus) {
+      const gs = await getGraphStats();
+      _setStatus("ladybugdb", `\ud83e\udd8e ${gs.toolResults} entries, ${gs.filePaths} files`);
+    }
   }).catch((err: any) => {
     acmLog(`syncToGraph ERROR: ${err?.message || err}`);
   });
@@ -150,6 +157,7 @@ export default function (pi: ExtensionAPI) {
   // ── Rehydrate on session load ──────────────────────────────────────
 
   pi.on("session_start" as any, (_event: any, ctx: any) => {
+    _setStatus = (id: string, text: string) => ctx.ui.setStatus(id, text);
     // Load config + discover local tools from runtime
     const config = loadAcmConfig(dirname(fileURLToPath(import.meta.url)));
     discoverLocalTools(ctx.getAllTools?.() ?? [], config);
