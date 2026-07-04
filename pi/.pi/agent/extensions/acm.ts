@@ -122,7 +122,9 @@ import {
 
 import { appendFileSync } from "node:fs";
 const ACM_LOG = "/tmp/ladybug-acm.log";
+const ACM_DEBUG = process.env.ACM_DEBUG === "true" || process.env.ACM_DEBUG === "1";
 function acmLog(msg: string): void {
+  if (!ACM_DEBUG) return;
   try { appendFileSync(ACM_LOG, `[${new Date().toISOString()}] ${msg}\n`); } catch {}
 }
 
