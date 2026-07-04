@@ -1,0 +1,255 @@
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
+import {
+  initGraph,
+  closeGraph,
+  insertToolResult,
+  queryByKeyword,
+  queryByFile,
+  getRelated,
+  getSequence,
+  clearGraphData,
+  type GraphToolResult,
+} from "../acm-lib/graph.ts";
+
+describe("acm-graph", () => {
+  beforeAll(async () => {
+    await initGraph(":memory:");
+  });
+
+  afterAll(async () => {
+    await closeGraph();
+  });
+
+  beforeEach(async () => {
+    await clearGraphData();
+  });
+
+  describe("insertToolResult", () => {
+    it("inserts a tool result and retrieves by keyword", async () => {
+      await insertToolResult({
+        id: "tr1",
+        toolName: "read",
+        keyTerms: "auth middleware token",
+        filePaths: ["/src/auth.ts"],
+        timestamp: 1000,
+      });
+
+      const results = await queryByKeyword("auth");
+      expect(results).toHaveLength(1);
+      expect(results[0].id).toBe("tr1");
+      expect(results[0].toolName).toBe("read");
+    });
+
+    it("creates FilePath nodes and References edges", async () => {
+      await insertToolResult({
+        id: "tr1",
+        toolName: "read",
+        keyTerms: "auth",
+        filePaths: ["/src/auth.ts", "/src/config.ts"],
+        timestamp: 1000,
+      });
+
+      const byAuth = await queryByFile("/src/auth.ts");
+      expect(byAuth).toHaveLength(1);
+      expect(byAuth[0].id).toBe("tr1");
+
+      const byConfig = await queryByFile("/src/config.ts");
+      expect(byConfig).toHaveLength(1);
+    });
+
+    it("creates Follows edge to previous tool result", async () => {
+      await insertToolResult({
+        id: "tr1",
+        toolName: "read",
+        keyTerms: "auth",
+        filePaths: ["/src/auth.ts"],
+        timestamp: 1000,
+      });
+      await insertToolResult({
+        id: "tr2",
+        toolName: "edit",
+        keyTerms: "auth fix",
+        filePaths: ["/src/auth.ts"],
+        timestamp: 1500,
+      });
+
+      const seq = await getSequence("tr1", "forward", 3);
+      expect(seq).toHaveLength(1);
+      expect(seq[0].id).toBe("tr2");
+    });
+  });
+
+  describe("queryByKeyword", () => {
+    it("returns empty for no matches", async () => {
+      await insertToolResult({
+        id: "tr1",
+        toolName: "read",
+        keyTerms: "auth middleware",
+        filePaths: [],
+        timestamp: 1000,
+      });
+
+      const results = await queryByKeyword("database");
+      expect(results).toHaveLength(0);
+    });
+
+    it("matches multiple results", async () => {
+      await insertToolResult({
+        id: "tr1",
+        toolName: "read",
+        keyTerms: "auth middleware",
+        filePaths: [],
+        timestamp: 1000,
+      });
+      await insertToolResult({
+        id: "tr2",
+        toolName: "bash",
+        keyTerms: "auth test grep",
+        filePaths: [],
+        timestamp: 2000,
+      });
+      await insertToolResult({
+        id: "tr3",
+        toolName: "read",
+        keyTerms: "database config",
+        filePaths: [],
+        timestamp: 3000,
+      });
+
+      const results = await queryByKeyword("auth");
+      expect(results).toHaveLength(2);
+    });
+  });
+
+  describe("queryByFile", () => {
+    it("finds all tool results that touched a file", async () => {
+      await insertToolResult({
+        id: "tr1",
+        toolName: "read",
+        keyTerms: "auth",
+        filePaths: ["/src/auth.ts"],
+        timestamp: 1000,
+      });
+      await insertToolResult({
+        id: "tr2",
+        toolName: "edit",
+        keyTerms: "auth fix",
+        filePaths: ["/src/auth.ts"],
+        timestamp: 2000,
+      });
+      await insertToolResult({
+        id: "tr3",
+        toolName: "read",
+        keyTerms: "config",
+        filePaths: ["/src/config.ts"],
+        timestamp: 3000,
+      });
+
+      const results = await queryByFile("/src/auth.ts");
+      expect(results).toHaveLength(2);
+      expect(results.map((r) => r.id).sort()).toEqual(["tr1", "tr2"]);
+    });
+  });
+
+  describe("getRelated (co-file neighbors)", () => {
+    it("finds tool results that share files with given result", async () => {
+      await insertToolResult({
+        id: "tr1",
+        toolName: "read",
+        keyTerms: "auth",
+        filePaths: ["/src/auth.ts"],
+        timestamp: 1000,
+      });
+      await insertToolResult({
+        id: "tr2",
+        toolName: "edit",
+        keyTerms: "auth fix bug",
+        filePaths: ["/src/auth.ts", "/src/middleware.ts"],
+        timestamp: 2000,
+      });
+      await insertToolResult({
+        id: "tr3",
+        toolName: "read",
+        keyTerms: "middleware",
+        filePaths: ["/src/middleware.ts"],
+        timestamp: 3000,
+      });
+
+      // tr1 shares auth.ts with tr2
+      const related1 = await getRelated("tr1");
+      expect(related1.map((r) => r.id)).toContain("tr2");
+
+      // tr3 shares middleware.ts with tr2
+      const related3 = await getRelated("tr3");
+      expect(related3.map((r) => r.id)).toContain("tr2");
+
+      // tr1 and tr3 don't directly share files
+      expect(related1.map((r) => r.id)).not.toContain("tr3");
+    });
+  });
+
+  describe("getSequence (temporal traversal)", () => {
+    it("traverses forward through Follows edges", async () => {
+      await insertToolResult({ id: "tr1", toolName: "read", keyTerms: "a", filePaths: [], timestamp: 1000 });
+      await insertToolResult({ id: "tr2", toolName: "edit", keyTerms: "b", filePaths: [], timestamp: 2000 });
+      await insertToolResult({ id: "tr3", toolName: "bash", keyTerms: "c", filePaths: [], timestamp: 3000 });
+
+      const fwd = await getSequence("tr1", "forward", 5);
+      expect(fwd.map((r) => r.id)).toEqual(["tr2", "tr3"]);
+    });
+
+    it("traverses backward through Follows edges", async () => {
+      await insertToolResult({ id: "tr1", toolName: "read", keyTerms: "a", filePaths: [], timestamp: 1000 });
+      await insertToolResult({ id: "tr2", toolName: "edit", keyTerms: "b", filePaths: [], timestamp: 2000 });
+      await insertToolResult({ id: "tr3", toolName: "bash", keyTerms: "c", filePaths: [], timestamp: 3000 });
+
+      const bwd = await getSequence("tr3", "backward", 5);
+      expect(bwd.map((r) => r.id)).toEqual(["tr2", "tr1"]);
+    });
+
+    it("respects depth limit", async () => {
+      await insertToolResult({ id: "tr1", toolName: "a", keyTerms: "x", filePaths: [], timestamp: 1000 });
+      await insertToolResult({ id: "tr2", toolName: "b", keyTerms: "x", filePaths: [], timestamp: 2000 });
+      await insertToolResult({ id: "tr3", toolName: "c", keyTerms: "x", filePaths: [], timestamp: 3000 });
+      await insertToolResult({ id: "tr4", toolName: "d", keyTerms: "x", filePaths: [], timestamp: 4000 });
+
+      const fwd = await getSequence("tr1", "forward", 2);
+      expect(fwd).toHaveLength(2);
+      expect(fwd.map((r) => r.id)).toEqual(["tr2", "tr3"]);
+    });
+  });
+
+  describe("persistence", () => {
+    it("survives close and reopen with file-backed DB", async () => {
+      const { mkdtempSync, rmSync } = await import("node:fs");
+      const { tmpdir } = await import("node:os");
+      const { join } = await import("node:path");
+      const tmpDir = mkdtempSync(join(tmpdir(), "acm-graph-"));
+      const dbPath = join(tmpDir, "test.lbug");
+
+      // Close shared in-memory DB
+      await closeGraph();
+
+      // Open file-backed, insert, close
+      await initGraph(dbPath);
+      await insertToolResult({ id: "tr1", toolName: "read", keyTerms: "auth", filePaths: ["/src/auth.ts"], timestamp: 1000 });
+      await closeGraph();
+
+      // Reopen and query
+      await initGraph(dbPath);
+      const results = await queryByKeyword("auth");
+      expect(results).toHaveLength(1);
+      expect(results[0].id).toBe("tr1");
+
+      const byFile = await queryByFile("/src/auth.ts");
+      expect(byFile).toHaveLength(1);
+
+      // Cleanup
+      await closeGraph();
+      rmSync(tmpDir, { recursive: true, force: true });
+
+      // Re-init shared in-memory for remaining tests
+      await initGraph(":memory:");
+    });
+  });
+});
