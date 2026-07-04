@@ -201,6 +201,23 @@ export function isGraphReady(): boolean {
   return initialized && conn != null;
 }
 
+/** Get graph entry counts for status display. */
+export async function getGraphStats(): Promise<{ toolResults: number; filePaths: number }> {
+  if (!isGraphReady()) return { toolResults: 0, filePaths: 0 };
+  try {
+    const tr = await conn.query("MATCH (n:ToolResult) RETURN count(n) AS c");
+    const fp = await conn.query("MATCH (n:FilePath) RETURN count(n) AS c");
+    const trRows = await tr.getAll();
+    const fpRows = await fp.getAll();
+    return {
+      toolResults: Number(trRows[0]?.c ?? 0),
+      filePaths: Number(fpRows[0]?.c ?? 0),
+    };
+  } catch {
+    return { toolResults: 0, filePaths: 0 };
+  }
+}
+
 /** Clear all data but keep schema. For testing. */
 export async function clearGraphData(): Promise<void> {
   ensureInit();

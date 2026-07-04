@@ -54,6 +54,7 @@ import {
   getRelated as graphGetRelated,
   getSequence as graphGetSequence,
   isGraphReady,
+  getGraphStats,
 } from "../acm-lib/graph.ts";
 
 // ── Re-exports for backward compatibility (tests import from acm.ts) ──
@@ -182,8 +183,10 @@ export default function (pi: ExtensionAPI) {
     // Initialize LadybugDB graph for relational recall
     const graphDir = join(getCacheDir(sessionDir), "graph");
     acmLog(`initGraph at ${join(graphDir, "acm.lbug")}`);
-    initGraph(join(graphDir, "acm.lbug")).then(() => {
+    initGraph(join(graphDir, "acm.lbug")).then(async () => {
       acmLog(`initGraph SUCCESS, ready=${isGraphReady()}`);
+      const gs = await getGraphStats();
+      ctx.ui.setStatus("ladybugdb", `🦎 ${gs.toolResults} entries, ${gs.filePaths} files`);
     }).catch((err: any) => {
       acmLog(`initGraph FAILED: ${err.message}`);
       ctx.ui.notify(`[ACM] Graph init failed: ${err.message}`, "warn");
