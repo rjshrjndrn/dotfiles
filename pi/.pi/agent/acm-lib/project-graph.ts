@@ -19,6 +19,7 @@ export interface ProjectGraphEvent {
   files: string[];
   sessionId: string;
   timestamp: number;
+  summary?: string;
 }
 
 export interface SessionInfo {

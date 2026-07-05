@@ -284,14 +284,125 @@ User does edit auth.ts
 
 Flat, greppable, one line per event. No nesting. Keywords enable fast search without index.
 
+## Decision Gate: turn_end + LLM Reasoning Capture
+
+Date: 2026-07-05
+
+### Key Insight
+
+Pi SDK exposes `turn_end` event with `event.message` (assistant's full text)
+and `event.toolResults` (tool results from that turn). We can capture LLM
+reasoning WITHOUT extra LLM calls — it's already in the assistant message.
+
+### Full Data Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Pi Agent Session                            │
+│                                                                │
+│  User prompt                                                   │
+│    │                                                           │
+│    ▼                                                           │
+│  ┌──────────────────────────────────────────┐                  │
+│  │  LLM Turn                                │                  │
+│  │                                          │                  │
+│  │  1. LLM reads context + reasons          │                  │
+│  │  2. LLM calls tools (read/edit/bash)     │                  │
+│  │  3. tool_result fires per tool ──────────┼──► Session Graph │
+│  │     (ACM intercepts, caches large ones)  │   (LadybugDB)   │
+│  │                                          │                  │
+│  │  4. turn_end fires ──────────────────────┼──► Decision Gate │
+│  │     event.message = assistant text       │       │          │
+│  │     event.toolResults = tool outputs     │       │          │
+│  └──────────────────────────────────────────┘       │          │
+│                                                     ▼          │
+│                                              ┌─────────────┐  │
+│                                              │ Promote?    │  │
+│                                              │             │  │
+│                                              │ Mutation?───┼─YES─┐
+│                                              │ Error?──────┼─YES─┤
+│                                              │ Decision?───┼─YES─┤
+│                                              │ Exploration?┼─NO  │
+│                                              └─────────────┘    │
+│                                                     │           │
+│                                                     ▼           │
+│                                              ┌─────────────┐   │
+│                                              │ Project     │   │
+│                                              │ Graph (LDB) │   │
+│                                              │ .pi/memory  │   │
+│                                              │ .lbug       │   │
+│                                              └─────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Decision Gate Logic
+
+Deterministic, no extra LLM call. Uses tool metadata + assistant message:
+
+```
+turn_end fires with:
+  event.message.content  = "I see token expiry uses < instead of <=. Fixing..."
+  event.toolResults      = [{ toolName: "edit", input: { path: "auth.ts" }, ... }]
+
+Decision gate evaluates:
+  1. Any mutation tool? (edit/write) ──────────► PROMOTE as "fix" or "decision"
+  2. Any tool error?    (isError=true) ────────► PROMOTE as "error"
+  3. Git commit?        (bash + git commit) ───► PROMOTE as "fix"
+  4. Only reads/investigation? ────────────────► BUFFER (may promote later if
+                                                  followed by mutation on same file)
+  5. ls/find exploration? ─────────────────────► SKIP
+```
+
+### Reasoning Extraction
+
+From assistant message text, extract first meaningful sentence as summary.
+No LLM call — simple heuristic:
+
+```
+assistant text: "I see the token expiry check uses `<` instead of `<=`.
+                 This means tokens expire one second too early. Fixing..."
+
+extracted summary: "token expiry check uses < instead of <="
+```
+
+Stored as `summary` field on the ProjectGraphEvent. Enriches keyword search
+with LLM's reasoning — the "why" behind the change.
+
+### Buffered Investigation Pattern
+
+```
+turn 1: read auth.ts        → BUFFER (investigation)
+turn 2: read middleware.ts   → BUFFER (investigation)
+turn 3: edit auth.ts         → PROMOTE (mutation)
+         └─ also promotes buffered reads of auth.ts (linked investigation)
+         └─ middleware.ts read stays buffered (unrelated)
+turn 4: no more edits        → middleware.ts buffer expires at slide time
+```
+
+### Event Shape for Project Graph
+
+```typescript
+{
+  id: "turn-5-edit-auth.ts",
+  toolName: "edit",
+  keyTerms: "auth jwt token expiry",
+  eventType: "fix",
+  files: ["src/auth.ts"],
+  sessionId: "session-abc",
+  timestamp: 1720000000,
+  summary: "token expiry check uses < instead of <=",  // from LLM reasoning
+  linkedInvestigations: ["turn-3-read-auth.ts"],       // buffered reads promoted
+}
+```
+
 ## Priority
 
-
-1. Project-scoped DB (biggest impact, solves core problem)
-2. Schema enrichment (GitRepo, Session, Decision nodes + new fields)
-3. Cross-project gotchas JSONL (low effort, high value)
-4. Pre-action file check (nice to have)
-5. ChromaDB semantic layer (future, only if recall quality degrades)
+1. Project-scoped DB (biggest impact, solves core problem) ✅ done
+2. Decision gate + turn_end wiring (this section)
+3. Schema enrichment (GitRepo, Session, Decision nodes + new fields)
+4. Cross-project gotchas JSONL (low effort, high value)
+5. Pre-action file check (nice to have)
+6. ChromaDB semantic layer (future, only if recall quality degrades)
 
 ---
 
