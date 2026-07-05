@@ -246,7 +246,11 @@ export default function (pi: ExtensionAPI) {
   // ── Turn end: feed to project memory decision gate ─────────────────
 
   pi.on("turn_end" as any, async (event: any, _ctx: any) => {
-    acmLog(`turn_end fired, bridge ready=${projectBridge.isReady()}, keys=${Object.keys(event).join(',')}, msgType=${typeof event.message}, msgKeys=${event.message ? Object.keys(event.message).join(',') : 'null'}`);
+    acmLog(`turn_end fired, bridge ready=${projectBridge.isReady()}, keys=${Object.keys(event).join(',')}, msgType=${typeof event.message}`);
+    if (event.toolResults?.[0]) {
+      const tr0 = event.toolResults[0];
+      acmLog(`turn_end tr0: keys=${Object.keys(tr0).join(',')}, toolName=${tr0.toolName ?? tr0.name}, inputKeys=${tr0.input ? Object.keys(tr0.input).join(',') : 'N/A'}, inputType=${typeof tr0.input}`);
+    }
     if (!projectBridge.isReady()) return;
     try {
       const toolResults = (event.toolResults ?? []).map((tr: any) => ({
