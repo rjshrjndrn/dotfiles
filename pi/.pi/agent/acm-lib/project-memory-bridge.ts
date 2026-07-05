@@ -197,7 +197,10 @@ export class ProjectMemoryBridge {
     const briefing = await this.getSessionBriefing();
     if (briefing.hotFiles.length === 0 && briefing.recentSessions.length === 0) return "";
 
-    const lines: string[] = ["📁 Project Memory:"];
+    const lines: string[] = [
+      "📁 Project Memory:",
+      "  Use acm_recall(query) to search prior session history for any file or topic.",
+    ];
 
     // Sessions (exclude current)
     const priorSessions = briefing.recentSessions.filter((s) => s.id !== this.sessionId);

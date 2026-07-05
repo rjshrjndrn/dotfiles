@@ -912,7 +912,7 @@ export default function (pi: ExtensionAPI) {
     description:
       "Search the index of cleared/cached tool results. Returns file paths and metadata only — no content. " +
       "Use bash (rg, grep, head, jq) on returned file paths to retrieve actual content.",
-    promptSnippet: "acm_recall: Search index of cached/cleared results. Returns paths + keywords, NO content. Use bash to read cache files.",
+    promptSnippet: "acm_recall: Search index of cached/cleared results AND cross-session project memory. Returns paths + keywords, NO content. Use bash to read cache files. IMPORTANT: When user asks about prior work on a file or topic (e.g. 'what did we do with X', 'why was X changed'), ALWAYS call acm_recall first before reading the file.",
     parameters: Type.Object({
       entryId: Type.Optional(Type.String({ description: "Exact session entry ID to look up." })),
       query: Type.Optional(Type.String({ description: "Keyword search across cleared tool results." })),
