@@ -223,7 +223,8 @@ export default function (pi: ExtensionAPI) {
     }).then(async () => {
       if (projectBridge.isReady()) {
         acmLog(`projectBridge initialized for ${gitRoot}`);
-        ctx.ui.setStatus("project-mem", `📁 project memory active`);
+        const pStats = await projectBridge.getStats();
+        ctx.ui.setStatus("project-mem", `📁 ${pStats.sessions} sessions, ${pStats.events} events`);
         // Inject session briefing into context
         try {
           const briefing = await projectBridge.formatSessionBriefing();
