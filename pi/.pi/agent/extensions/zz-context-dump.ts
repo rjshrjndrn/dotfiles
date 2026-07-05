@@ -10,6 +10,15 @@ export default function contextDump(pi: ExtensionAPI) {
       timestamp: new Date().toISOString(),
       messageCount: msgs.length,
       firstMessageFull: JSON.stringify(msgs[0]?.content ?? ""),
+      acmContextBlock: (() => {
+        for (const m of msgs) {
+          const c = Array.isArray(m.content) ? m.content : [];
+          for (const b of c) {
+            if (b.type === "text" && b.text?.includes("acm-context")) return b.text;
+          }
+        }
+        return null;
+      })(),
       totalBytes: msgs.reduce((sum: number, m: any) => sum + JSON.stringify(m ?? "").length, 0),
       messageSizes: msgs.map((m: any, i: number) => ({
         index: i,

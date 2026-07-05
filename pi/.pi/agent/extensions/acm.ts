@@ -278,6 +278,7 @@ export default function (pi: ExtensionAPI) {
       const toolResults = (event.toolResults ?? []).map((tr: any) => {
         const id = tr.toolCallId ?? tr.id ?? "";
         const args = toolCallArgs.get(id) ?? tr.input ?? {};
+        acmLog(`turn_end mapping: id=${id}, argsFound=${toolCallArgs.has(id)}, mapSize=${toolCallArgs.size}, path=${args?.path ?? args?.command?.slice(0,40) ?? 'none'}`);
         return {
           toolName: tr.toolName ?? tr.name ?? "unknown",
           toolCallId: id,
@@ -605,7 +606,7 @@ export default function (pi: ExtensionAPI) {
       if (Array.isArray(m.content)) return m.content.some((b: any) => b.type === "text" && b.text?.includes("slid away"));
       return false;
     });
-    if (clearSet.size > 0 || compactSet.size > 0 || cachedCount > 0 || hasSlid) {
+    if (clearSet.size > 0 || compactSet.size > 0 || cachedCount > 0 || hasSlid || projectBriefingCache || filePrecheckCache) {
       const acmText = [
         `<acm-context>`,
         `${clearSet.size} tool results cleared, ${compactSet.size} messages compacted, ${pinnedSet.size} pinned, ${cachedCount} cached to disk.`,
