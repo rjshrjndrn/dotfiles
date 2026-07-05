@@ -246,20 +246,7 @@ export default function (pi: ExtensionAPI) {
   // ── Turn end: feed to project memory decision gate ─────────────────
 
   pi.on("turn_end" as any, async (event: any, _ctx: any) => {
-    acmLog(`turn_end fired, bridge ready=${projectBridge.isReady()}, keys=${Object.keys(event).join(',')}, msgType=${typeof event.message}`);
-    if (event.toolResults?.[0]) {
-      const tr0 = event.toolResults[0];
-      acmLog(`turn_end tr0: keys=${Object.keys(tr0).join(',')}, toolName=${tr0.toolName}, hasContent=${!!tr0.content}, hasDetails=${!!tr0.details}, detailsKeys=${tr0.details ? Object.keys(tr0.details).join(',') : 'N/A'}`);
-    }
-    // Check if message contains tool calls with arguments
-    const msg = event.message;
-    if (msg?.content && Array.isArray(msg.content)) {
-      const toolCalls = msg.content.filter((b: any) => b.type === "toolCall" || b.type === "tool_use");
-      if (toolCalls.length > 0) {
-        const tc0 = toolCalls[0];
-        acmLog(`turn_end tc0: keys=${Object.keys(tc0).join(',')}, name=${tc0.name}, argsKeys=${tc0.arguments ? Object.keys(tc0.arguments).join(',') : tc0.input ? Object.keys(tc0.input).join(',') : 'N/A'}`);
-      }
-    }
+    acmLog(`turn_end: bridge ready=${projectBridge.isReady()}, tools=${(event.toolResults ?? []).length}`);
     if (!projectBridge.isReady()) return;
     try {
       // Build tool call argument map from assistant message's tool calls
@@ -278,7 +265,6 @@ export default function (pi: ExtensionAPI) {
       const toolResults = (event.toolResults ?? []).map((tr: any) => {
         const id = tr.toolCallId ?? tr.id ?? "";
         const args = toolCallArgs.get(id) ?? tr.input ?? {};
-        acmLog(`turn_end mapping: id=${id}, argsFound=${toolCallArgs.has(id)}, mapSize=${toolCallArgs.size}, path=${args?.path ?? args?.command?.slice(0,40) ?? 'none'}`);
         return {
           toolName: tr.toolName ?? tr.name ?? "unknown",
           toolCallId: id,
