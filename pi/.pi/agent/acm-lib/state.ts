@@ -251,17 +251,31 @@ export function buildStub(msg: any): string {
   return `[cleared: ${toolName} | id: ${entryId} | ${extractKeywords(source, 10)}]`;
 }
 
+import { appendFileSync } from "node:fs";
+const _stateDebug = process.env.ACM_DEBUG === "true" || process.env.ACM_DEBUG === "1";
+function _graphLog(msg: string) { if (!_stateDebug) return; try { appendFileSync("/tmp/ladybug-acm.log", `[${new Date().toISOString()}] [state] ${msg}\n`); } catch {} }
+
 export function buildRecallEntry(toolCallId: string, toolName: string, keyTerms: string, charCount: number, messages: AgentMessage[]): RecallMetadata {
   const filePaths: string[] = [];
+  let foundToolCall = false;
   for (const msg of messages) {
     const m = msg as any;
     if (m.role !== "assistant" || !Array.isArray(m.content)) continue;
     for (const block of m.content) {
-      if (block.type === "toolCall" && block.id === toolCallId && block.arguments) {
-        filePaths.push(...extractToolCallPaths(block.arguments));
+      if (block.type === "toolCall" && block.id === toolCallId) {
+        foundToolCall = true;
+        if (block.arguments) {
+          const args = typeof block.arguments === "string" ? JSON.parse(block.arguments) : block.arguments;
+          const paths = extractToolCallPaths(args);
+          _graphLog(`toolCall found for ${toolCallId}, args keys=${Object.keys(args)}, paths=${JSON.stringify(paths)}`);
+          filePaths.push(...paths);
+        } else {
+          _graphLog(`toolCall found for ${toolCallId} but no arguments`);
+        }
       }
     }
   }
+  if (!foundToolCall) _graphLog(`no toolCall block found for ${toolCallId} in ${messages.length} messages`);
   return { entryId: toolCallIdToEntryId.get(toolCallId) || "", toolCallId, toolName, filePaths, keyTerms, timestamp: Date.now(), charCount };
 }
 
