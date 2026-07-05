@@ -16,6 +16,8 @@ import { dirname } from "node:path";
 
 const DEBUG = !!process.env.ACM_PROJECT_DEBUG;
 const LOG_FILE = "/tmp/acm-project-graph.log";
+// Buffer size for DB instances. Smaller = less mmap pressure for open/close cycles.
+const BUFFER_SIZE = 64 << 20; // 64MB
 
 function log(msg: string): void {
   if (!DEBUG) return;
@@ -67,6 +69,8 @@ export class ProjectGraph {
   private lbugModule: any = null;
   private mode: "exclusive" | "shared";
   private pendingWrites: Array<(conn: any) => Promise<void>> = [];
+  private writeDb: any = null;
+  private writeConn: any = null;
 
   constructor(dbPath: string, mode: "exclusive" | "shared" = "exclusive") {
     this.dbPath = dbPath;
@@ -85,19 +89,19 @@ export class ProjectGraph {
     if (this.mode === "exclusive") {
       // Single read-write connection, no locking
       log(`init: exclusive mode at ${this.dbPath}`);
-      this.db = new this.lbugModule.Database(this.dbPath, 64 << 20);
+      this.db = new this.lbugModule.Database(this.dbPath, BUFFER_SIZE);
       this.conn = new this.lbugModule.Connection(this.db);
       await this.ensureSchema(this.conn);
     } else {
       // Shared mode: create schema via flock, then open read-only
       log(`init: shared mode at ${this.dbPath}`);
       await this.withFlock(async () => {
-        const db = new this.lbugModule.Database(this.dbPath, 64 << 20);
+        const db = new this.lbugModule.Database(this.dbPath, BUFFER_SIZE);
         const conn = new this.lbugModule.Connection(db);
         await this.ensureSchema(conn);
         db.close();
       });
-      this.db = new this.lbugModule.Database(this.dbPath, 64 << 20, undefined, true);
+      this.db = new this.lbugModule.Database(this.dbPath, BUFFER_SIZE, undefined, true);
       this.conn = new this.lbugModule.Connection(this.db);
     }
 
@@ -112,10 +116,8 @@ export class ProjectGraph {
       await this.flushWrites();
     }
     this.conn = null;
-    if (this.db) {
-      this.db.close();
-      this.db = null;
-    }
+    if (this.db) { this.db.close(); this.db = null; }
+    if (this.writeDb) { this.writeDb.close(); this.writeDb = null; this.writeConn = null; }
     this.ready = false;
     this.lastInsertedPerSession.clear();
   }
@@ -237,7 +239,8 @@ export class ProjectGraph {
 
   /**
    * Flush all pending writes in a single flock cycle.
-   * In shared mode: close RO → flock → open RW → batch → close RW → open RO → unlock
+   * In shared mode: flock → execute on RW conn → unlock.
+   * Keeps a persistent RW connection to avoid mmap exhaustion from open/close.
    * In exclusive mode: no-op (writes go directly to conn).
    */
   async flushWrites(): Promise<void> {
@@ -246,24 +249,24 @@ export class ProjectGraph {
     const ops = this.pendingWrites.splice(0);
     log(`flushWrites: ${ops.length} operations`);
 
-    // Close read-only
-    if (this.conn) this.conn = null;
-    if (this.db) { this.db.close(); this.db = null; }
+    // Lazy-init the write connection (kept alive for session lifetime)
+    if (!this.writeDb) {
+      this.writeDb = new this.lbugModule.Database(this.dbPath, BUFFER_SIZE);
+      this.writeConn = new this.lbugModule.Connection(this.writeDb);
+      await this.ensureSchema(this.writeConn);
+    }
 
     await this.withFlock(async () => {
-      const db = new this.lbugModule.Database(this.dbPath, 64 << 20);
-      const conn = new this.lbugModule.Connection(db);
       for (const op of ops) {
-        await op(conn);
+        await op(this.writeConn);
       }
-      db.close();
     });
 
-    // Reopen read-only
-    if (this.ready) {
-      this.db = new this.lbugModule.Database(this.dbPath, 64 << 20, undefined, true);
-      this.conn = new this.lbugModule.Connection(this.db);
-    }
+    // Reopen read-only to see new data (LDB read-only snapshots at open time)
+    if (this.conn) this.conn = null;
+    if (this.db) { this.db.close(); this.db = null; }
+    this.db = new this.lbugModule.Database(this.dbPath, BUFFER_SIZE, undefined, true);
+    this.conn = new this.lbugModule.Connection(this.db);
   }
 
   // ── Reads (no lock needed) ──────────────────────────────
