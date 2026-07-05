@@ -185,6 +185,129 @@ export class ProjectMemoryBridge {
     };
   }
 
+  // ── Surfacing: formatted output for pi context injection ────────
+
+  /**
+   * Format a briefing string for session start injection.
+   * Returns "" if no project graph or no prior data.
+   */
+  async formatSessionBriefing(): Promise<string> {
+    if (!this.graph) return "";
+
+    const briefing = await this.getSessionBriefing();
+    if (briefing.hotFiles.length === 0 && briefing.recentSessions.length === 0) return "";
+
+    const lines: string[] = ["📁 Project Memory:"];
+
+    // Sessions (exclude current)
+    const priorSessions = briefing.recentSessions.filter((s) => s.id !== this.sessionId);
+    if (priorSessions.length > 0) {
+      lines.push(`  ${priorSessions.length} prior session(s)`);
+    }
+
+    // Hot files
+    if (briefing.hotFiles.length > 0) {
+      lines.push("  Hot files:");
+      for (const f of briefing.hotFiles) {
+        lines.push(`    ${f.path} (${f.refCount} refs)`);
+      }
+    }
+
+    // Recent errors
+    if (briefing.recentErrors.length > 0) {
+      lines.push("  Recent errors:");
+      for (const e of briefing.recentErrors) {
+        lines.push(`    ${e.files.join(", ")}: ${e.summary}`);
+      }
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * Format a precheck warning for a file about to be edited.
+   * Returns "" if file has no history.
+   */
+  async formatFilePrecheck(filePath: string): Promise<string> {
+    if (!this.graph) return "";
+
+    const precheck = await this.precheckFile(filePath);
+    if (precheck.eventCount === 0) return "";
+
+    const events = await this.queryByFile(filePath);
+    const lines: string[] = [
+      `⚠ ${filePath}: ${precheck.eventCount} prior edit(s) across session(s): ${precheck.sessions.join(", ")}`,
+    ];
+
+    if (precheck.recentKeyTerms.length > 0) {
+      lines.push(`  Key terms: ${precheck.recentKeyTerms.join(", ")}`);
+    }
+
+    // Show errors related to this file
+    const errors = events.filter((e) => e.eventType === "error");
+    if (errors.length > 0) {
+      lines.push("  Errors:");
+      for (const e of errors) {
+        lines.push(`    ${e.summary}`);
+      }
+    }
+
+    // Show recent summaries
+    const mutations = events.filter((e) => e.eventType !== "error" && e.eventType !== "investigation");
+    if (mutations.length > 0) {
+      lines.push("  History:");
+      for (const e of mutations.slice(-3)) {
+        lines.push(`    [${e.sessionId}] ${e.summary}`);
+      }
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * Search project memory by keyword. Returns raw events.
+   */
+  async searchProjectMemory(query: string): Promise<ProjectGraphEvent[]> {
+    if (!this.graph) return [];
+
+    // Search by keyword
+    const results = await this.queryByKeyword(query);
+
+    // Also search by file path if query looks like a path
+    if (query.includes("/") || query.includes(".")) {
+      // Try exact match first, then partial
+      let fileResults = await this.queryByFile(query);
+      if (fileResults.length === 0) {
+        // Search all events whose files contain the query as substring
+        const allByKeyword = await this.queryByKeyword(query.replace(/\./g, " ").replace(/\//g, " "));
+        fileResults = allByKeyword.filter((e) =>
+          e.files.some((f) => f.includes(query))
+        );
+      }
+      const ids = new Set(results.map((r) => r.id));
+      for (const fr of fileResults) {
+        if (!ids.has(fr.id)) results.push(fr);
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Format project recall results for acm_recall injection.
+   * Returns "" if no matches.
+   */
+  async formatProjectRecall(query: string): Promise<string> {
+    const results = await this.searchProjectMemory(query);
+    if (results.length === 0) return "";
+
+    const lines: string[] = [`📁 Project memory (${results.length} match${results.length > 1 ? "es" : ""}):`];
+    for (const r of results) {
+      lines.push(`  [${r.sessionId}] ${r.eventType}: ${r.files.join(", ")} — ${r.summary}`);
+    }
+    return lines.join("\n");
+  }
+
   // ── Debug ──────────────────────────────────────────────
 
   private log(msg: string): void {
