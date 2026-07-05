@@ -162,6 +162,8 @@ export default function (pi: ExtensionAPI) {
   const projectBridge = new ProjectMemoryBridge({
     logFile: "/tmp/acm-project-bridge.log",
   });
+  let projectBriefingCache = ""; // cached briefing text, set on session_start
+  let filePrecheckCache = ""; // precheck warnings for files touched this turn
 
   // ── Rehydrate on session load ──────────────────────────────────────
 
@@ -218,10 +220,20 @@ export default function (pi: ExtensionAPI) {
       sessionId,
       cwd,
       gitRoot,
-    }).then(() => {
+    }).then(async () => {
       if (projectBridge.isReady()) {
         acmLog(`projectBridge initialized for ${gitRoot}`);
         ctx.ui.setStatus("project-mem", `📁 project memory active`);
+        // Inject session briefing into context
+        try {
+          const briefing = await projectBridge.formatSessionBriefing();
+          if (briefing) {
+            projectBriefingCache = briefing;
+            acmLog(`session briefing ready: ${briefing.length} chars`);
+          }
+        } catch (err: any) {
+          acmLog(`briefing generation failed: ${err.message}`);
+        }
       } else {
         acmLog(`projectBridge: no git root, disabled`);
       }
@@ -233,6 +245,7 @@ export default function (pi: ExtensionAPI) {
   // ── Turn end: feed to project memory decision gate ─────────────────
 
   pi.on("turn_end" as any, async (event: any, _ctx: any) => {
+    acmLog(`turn_end fired, bridge ready=${projectBridge.isReady()}, keys=${Object.keys(event).join(',')}, msgType=${typeof event.message}, msgKeys=${event.message ? Object.keys(event.message).join(',') : 'null'}`);
     if (!projectBridge.isReady()) return;
     try {
       const toolResults = (event.toolResults ?? []).map((tr: any) => ({
@@ -242,13 +255,51 @@ export default function (pi: ExtensionAPI) {
         isError: !!tr.isError,
       }));
 
+      // Extract text from message — could be string, object with content, or array of blocks
+      let msgText = "";
+      if (typeof event.message === "string") {
+        msgText = event.message;
+      } else if (event.message?.content) {
+        if (typeof event.message.content === "string") {
+          msgText = event.message.content;
+        } else if (Array.isArray(event.message.content)) {
+          msgText = event.message.content
+            .filter((b: any) => b.type === "text")
+            .map((b: any) => b.text ?? "")
+            .join("\n");
+        }
+      } else if (Array.isArray(event.message)) {
+        msgText = event.message
+          .filter((b: any) => b.type === "text")
+          .map((b: any) => b.text ?? "")
+          .join("\n");
+      }
+
       await projectBridge.onTurnEnd({
         turnIndex: event.turnIndex ?? 0,
-        message: typeof event.message === "string"
-          ? event.message
-          : event.message?.content ?? "",
+        message: msgText,
         toolResults,
       });
+
+      // Generate prechecks for files touched by edit/write tools
+      const editedFiles = toolResults
+        .filter((tr: any) => ["edit", "write", "Edit", "Write"].includes(tr.toolName))
+        .map((tr: any) => tr.input?.path)
+        .filter(Boolean);
+
+      if (editedFiles.length > 0) {
+        const prechecks: string[] = [];
+        for (const f of editedFiles) {
+          const pc = await projectBridge.formatFilePrecheck(f);
+          if (pc) prechecks.push(pc);
+        }
+        filePrecheckCache = prechecks.join("\n");
+        if (filePrecheckCache) {
+          acmLog(`file precheck generated: ${filePrecheckCache.length} chars for ${editedFiles.join(", ")}`);
+        }
+      } else {
+        filePrecheckCache = "";
+      }
     } catch (err: any) {
       acmLog(`turn_end projectBridge error: ${err.message}`);
     }
@@ -535,6 +586,8 @@ export default function (pi: ExtensionAPI) {
         `For file content: prefer \`bash rg/grep\` on source files over Read. Use Read as fallback.`,
         `To find what's cached: acm_recall(query: "keywords") returns paths only, NO content.`,
         `Do NOT guess cleared content.`,
+        projectBriefingCache || ``,
+        filePrecheckCache || ``,
         `</acm-context>`,
       ].filter(Boolean).join("\n");
 
@@ -914,7 +967,18 @@ export default function (pi: ExtensionAPI) {
           }
         }
 
-        if (matches.length === 0 && !graphSection) {
+        // Search project memory (cross-session)
+        let projectSection = "";
+        try {
+          const projectRecall = await projectBridge.formatProjectRecall(params.query);
+          if (projectRecall) {
+            projectSection = `\n\n${projectRecall}`;
+          }
+        } catch (pErr: any) {
+          acmLog(`recall projectBridge ERROR: ${pErr?.message || pErr}`);
+        }
+
+        if (matches.length === 0 && !graphSection && !projectSection) {
           return { content: [{ type: "text" as const, text: `[ACM] No results for: "${params.query}"` }], details: { found: false } };
         }
 
@@ -923,6 +987,7 @@ export default function (pi: ExtensionAPI) {
           `[ACM Recall] ${matches.length} match${matches.length > 1 ? "es" : ""}:`,
           ...lines,
           graphSection,
+          projectSection,
           ``,
           `Use bash (rg, grep, head) on cached file paths to retrieve content.`,
         ].join("\n");
