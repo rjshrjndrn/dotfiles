@@ -7,7 +7,13 @@
 
 import { execSync } from "node:child_process";
 import { resolve, dirname, join } from "node:path";
-import { realpathSync } from "node:fs";
+import { realpathSync, existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+
+// In-memory cache for current process
+const rootCache = new Map<string, string | null>();
+
+// File-based cache path
+const GIT_ROOT_CACHE_FILE = ".pi/git-root.cache";
 
 /**
  * Detect the git repo root for a given directory.
@@ -15,34 +21,63 @@ import { realpathSync } from "node:fs";
  * Returns null if not inside a git repo.
  */
 export function detectRepoRoot(cwd: string): string | null {
+  // 1. In-memory cache (process-level)
+  if (rootCache.has(cwd)) return rootCache.get(cwd)!;
+
+  // 2. File-based cache (cross-session, avoids subprocess)
+  const fileCachePath = join(cwd, GIT_ROOT_CACHE_FILE);
+  if (existsSync(fileCachePath)) {
+    try {
+      const cached = readFileSync(fileCachePath, "utf-8").trim();
+      if (cached && existsSync(join(cached, ".git"))) {
+        rootCache.set(cwd, cached);
+        return cached;
+      }
+    } catch { /* stale cache, re-detect */ }
+  }
+
+  // 3. Detect via git subprocess
+  const root = detectRepoRootUncached(cwd);
+  rootCache.set(cwd, root);
+
+  // 4. Write file cache at the detected root
+  if (root) {
+    try {
+      const cacheDir = join(root, ".pi");
+      mkdirSync(cacheDir, { recursive: true });
+      writeFileSync(join(root, GIT_ROOT_CACHE_FILE), root + "\n");
+    } catch { /* non-fatal */ }
+  }
+
+  return root;
+}
+
+/** Uncached detection via git subprocess. Exported for testing. */
+export function detectRepoRootUncached(cwd: string): string | null {
   try {
-    // --git-common-dir returns the .git dir shared across worktrees
-    // For regular repos: ".git"
-    // For worktrees: "/absolute/path/to/main/.git"
     const gitCommonDir = execSync("git rev-parse --git-common-dir", {
       cwd,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
     }).trim();
 
-    // Get the worktree toplevel to resolve relative paths
     const toplevel = execSync("git rev-parse --show-toplevel", {
       cwd,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
     }).trim();
 
-    // Resolve gitCommonDir to absolute path
-    // --git-common-dir returns path relative to cwd, not toplevel
-    // For regular repos: ".git" or "../../.git" (relative to cwd)
-    // For worktrees: absolute path to main repo's .git/worktrees/<name>
     const resolved = resolve(cwd, gitCommonDir);
-    // Strip trailing /worktrees/<name> if present, then strip .git
     const normalized = resolved.replace(/\/worktrees\/[^/]+$/, "");
     return realpathSync(dirname(normalized));
   } catch {
     return null;
   }
+}
+
+/** Clear in-memory cache (for testing). */
+export function clearRootCache(): void {
+  rootCache.clear();
 }
 
 /**
