@@ -249,16 +249,42 @@ export default function (pi: ExtensionAPI) {
     acmLog(`turn_end fired, bridge ready=${projectBridge.isReady()}, keys=${Object.keys(event).join(',')}, msgType=${typeof event.message}`);
     if (event.toolResults?.[0]) {
       const tr0 = event.toolResults[0];
-      acmLog(`turn_end tr0: keys=${Object.keys(tr0).join(',')}, toolName=${tr0.toolName ?? tr0.name}, inputKeys=${tr0.input ? Object.keys(tr0.input).join(',') : 'N/A'}, inputType=${typeof tr0.input}`);
+      acmLog(`turn_end tr0: keys=${Object.keys(tr0).join(',')}, toolName=${tr0.toolName}, hasContent=${!!tr0.content}, hasDetails=${!!tr0.details}, detailsKeys=${tr0.details ? Object.keys(tr0.details).join(',') : 'N/A'}`);
+    }
+    // Check if message contains tool calls with arguments
+    const msg = event.message;
+    if (msg?.content && Array.isArray(msg.content)) {
+      const toolCalls = msg.content.filter((b: any) => b.type === "toolCall" || b.type === "tool_use");
+      if (toolCalls.length > 0) {
+        const tc0 = toolCalls[0];
+        acmLog(`turn_end tc0: keys=${Object.keys(tc0).join(',')}, name=${tc0.name}, argsKeys=${tc0.arguments ? Object.keys(tc0.arguments).join(',') : tc0.input ? Object.keys(tc0.input).join(',') : 'N/A'}`);
+      }
     }
     if (!projectBridge.isReady()) return;
     try {
-      const toolResults = (event.toolResults ?? []).map((tr: any) => ({
-        toolName: tr.toolName ?? tr.name ?? "unknown",
-        toolCallId: tr.toolCallId ?? tr.id ?? "",
-        input: tr.input ?? {},
-        isError: !!tr.isError,
-      }));
+      // Build tool call argument map from assistant message's tool calls
+      const toolCallArgs = new Map<string, any>();
+      const msgContent = event.message?.content;
+      if (Array.isArray(msgContent)) {
+        for (const block of msgContent) {
+          if (block.type === "toolCall" || block.type === "tool_use") {
+            const id = block.id || block.toolCallId;
+            const args = block.arguments || block.input || {};
+            if (id) toolCallArgs.set(id, args);
+          }
+        }
+      }
+
+      const toolResults = (event.toolResults ?? []).map((tr: any) => {
+        const id = tr.toolCallId ?? tr.id ?? "";
+        const args = toolCallArgs.get(id) ?? tr.input ?? {};
+        return {
+          toolName: tr.toolName ?? tr.name ?? "unknown",
+          toolCallId: id,
+          input: args,
+          isError: !!tr.isError,
+        };
+      });
 
       // Extract text from message — could be string, object with content, or array of blocks
       let msgText = "";
