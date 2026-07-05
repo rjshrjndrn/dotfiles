@@ -1,6 +1,12 @@
 /**
  * ProjectGraph — Project-level LadybugDB with flock concurrency.
  *
+ * Used by ACM to persist cross-session knowledge: which files were touched,
+ * what tools ran, and which sessions operated on a project. This lets new
+ * sessions inherit context (file pre-checks, hot-file detection, session
+ * history) without re-scanning, enabling project-aware memory across agent
+ * restarts and concurrent sessions.
+ *
  * Persistent graph DB scoped to a git root.
  *
  * Two modes:
