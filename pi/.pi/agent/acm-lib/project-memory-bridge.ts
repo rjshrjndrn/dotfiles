@@ -27,7 +27,7 @@ export interface SessionStartEvent {
 }
 
 export interface BridgeConfig {
-  dbDir: string; // directory for the project DB (normally gitRoot/.pi/)
+  dbDir?: string; // directory for the project DB. If omitted, derived from gitRoot at session start.
   logFile?: string; // debug log path (default: /tmp/acm-project-bridge.log)
 }
 
@@ -71,7 +71,8 @@ export class ProjectMemoryBridge {
     }
 
     try {
-      const dbPath = join(this.config.dbDir, "memory.lbug");
+      const dbDir = this.config.dbDir || join(event.gitRoot!, ".pi");
+      const dbPath = join(dbDir, "memory.lbug");
       this.graph = new ProjectGraph(dbPath, "exclusive");
       await this.graph.init();
 

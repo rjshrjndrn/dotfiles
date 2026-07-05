@@ -57,6 +57,8 @@ import {
   getGraphStats,
   getGraphSummary,
 } from "../acm-lib/graph.ts";
+import { ProjectMemoryBridge } from "../acm-lib/project-memory-bridge.ts";
+import { detectRepoRoot } from "../acm-lib/git-root.ts";
 
 // ── Re-exports for backward compatibility (tests import from acm.ts) ──
 
@@ -156,6 +158,10 @@ function syncToGraph(recall: RecallMetadata): void {
 // ── Extension ────────────────────────────────────────────────────────
 
 export default function (pi: ExtensionAPI) {
+  // ── Project memory bridge (cross-session, project-scoped) ───────────
+  const projectBridge = new ProjectMemoryBridge({
+    logFile: "/tmp/acm-project-bridge.log",
+  });
 
   // ── Rehydrate on session load ──────────────────────────────────────
 
@@ -202,6 +208,61 @@ export default function (pi: ExtensionAPI) {
       acmLog(`initGraph FAILED: ${err.message}`);
       ctx.ui.notify(`[ACM] Graph init failed: ${err.message}`, "warn");
     });
+
+    // ── Initialize project memory bridge ──────────────────────────────
+    const cwd = ctx.cwd ?? process.cwd();
+    const gitRoot = detectRepoRoot(cwd);
+    const sessionId = ctx.sessionManager?.getSessionId?.() ?? `session-${Date.now()}`;
+
+    projectBridge.onSessionStart({
+      sessionId,
+      cwd,
+      gitRoot,
+    }).then(() => {
+      if (projectBridge.isReady()) {
+        acmLog(`projectBridge initialized for ${gitRoot}`);
+        ctx.ui.setStatus("project-mem", `📁 project memory active`);
+      } else {
+        acmLog(`projectBridge: no git root, disabled`);
+      }
+    }).catch((err: any) => {
+      acmLog(`projectBridge init FAILED: ${err.message}`);
+    });
+  });
+
+  // ── Turn end: feed to project memory decision gate ─────────────────
+
+  pi.on("turn_end" as any, async (event: any, _ctx: any) => {
+    if (!projectBridge.isReady()) return;
+    try {
+      const toolResults = (event.toolResults ?? []).map((tr: any) => ({
+        toolName: tr.toolName ?? tr.name ?? "unknown",
+        toolCallId: tr.toolCallId ?? tr.id ?? "",
+        input: tr.input ?? {},
+        isError: !!tr.isError,
+      }));
+
+      await projectBridge.onTurnEnd({
+        turnIndex: event.turnIndex ?? 0,
+        message: typeof event.message === "string"
+          ? event.message
+          : event.message?.content ?? "",
+        toolResults,
+      });
+    } catch (err: any) {
+      acmLog(`turn_end projectBridge error: ${err.message}`);
+    }
+  });
+
+  // ── Session shutdown: flush and close project memory ────────────────
+
+  pi.on("session_shutdown" as any, async (_event: any, _ctx: any) => {
+    try {
+      await projectBridge.onSessionShutdown();
+      acmLog(`projectBridge shutdown complete`);
+    } catch (err: any) {
+      acmLog(`projectBridge shutdown error: ${err.message}`);
+    }
   });
 
   // ── Tool result intercept: cache external tool outputs to disk ─────
