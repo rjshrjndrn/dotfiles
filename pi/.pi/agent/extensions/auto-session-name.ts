@@ -12,8 +12,15 @@
 import { completeSimple } from "@mariozechner/pi-ai";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
-const SYSTEM_PROMPT =
-  "Generate a short name (under 72 characters) for a coding session that starts with this message. Output only the name, nothing else. No quotes, no prefix.";
+const SYSTEM_PROMPT = `Name the TOPIC of this coding session in 2-3 words max. Focus on WHAT the work is about (the subject/area), not what the user asked to do.
+
+Examples:
+- User asks "fix the login bug where tokens expire" → "auth token expiry"
+- User asks "add dark mode to settings page" → "settings dark mode"
+- User asks "refactor the database connection pool" → "db connection pool"
+- User asks "check the auto name extension" → "session naming ext"
+
+Output only the 2-3 word topic. No quotes, no prefix, no verbs.`;
 
 // Matches pi's skill block format: <skill name="..." location="...">...content...</skill>
 const SKILL_BLOCK_RE = /^<skill name="([^"]+)" location="[^"]+">\n[\s\S]*?\n<\/skill>(?:\n\n([\s\S]+))?$/;
@@ -116,8 +123,7 @@ export default function (pi: ExtensionAPI) {
         .join("")
         .replace(/[\r\n\t]/g, " ")
         .replace(/ +/g, " ")
-        .trim()
-        .slice(0, 72);
+        .trim();
 
       if (name && !pi.getSessionName()) {
         pi.setSessionName(name);
