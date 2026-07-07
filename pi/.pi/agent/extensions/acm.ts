@@ -58,6 +58,7 @@ import {
   getGraphSummary,
   ftsSearch,
   ftsInit,
+  deleteToolResults as graphDeleteToolResults,
 } from "../acm-lib/graph.ts";
 import { ProjectMemoryBridge } from "../acm-lib/project-memory-bridge.ts";
 import { detectRepoRoot } from "../acm-lib/git-root.ts";
@@ -1159,6 +1160,132 @@ export default function (pi: ExtensionAPI) {
 
   // No session_before_compact hook — /compact uses pi's stock LLM compaction.
   // ACM slide is context-only: filters event.messages, doesn't touch session tree.
+
+  // ── Tool: acm_forget ──────────────────────────────────────────────
+
+  pi.registerTool({
+    name: "acm_forget",
+    label: "ACM Forget",
+    description:
+      "Delete specific entries from recall index and project graph by query or ID. " +
+      "Use without confirm to preview matches (dry run). Set confirm=true to delete.",
+    promptSnippet:
+      "acm_forget: Remove stale/false entries from project memory. Dry run first (no confirm), then confirm=true to delete. " +
+      "Deletes from: recall index, graph DB, and cached files on disk.",
+    parameters: Type.Object({
+      query: Type.Optional(Type.String({ description: "Keyword search to find entries to forget." })),
+      ids: Type.Optional(Type.Array(Type.String(), { description: "Specific entry/toolCall IDs to forget." })),
+      confirm: Type.Optional(Type.Boolean({ description: "Set true to actually delete. Default false (dry run)." })),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
+      const confirm = params.confirm === true;
+
+      // Collect target IDs
+      let targets: Array<{ id: string; toolName: string; keyTerms: string }> = [];
+
+      if (params.ids && params.ids.length > 0) {
+        // Direct ID lookup
+        for (const id of params.ids) {
+          const recall = recallIndex.get(id) || [...recallIndex.values()].find(r => r.entryId === id);
+          if (recall) {
+            targets.push({ id: recall.toolCallId, toolName: recall.toolName, keyTerms: recall.keyTerms.slice(0, 80) });
+          } else {
+            // Might be graph-only
+            targets.push({ id, toolName: "unknown", keyTerms: "(graph-only)" });
+          }
+        }
+      } else if (params.query) {
+        // Search by keyword — same logic as acm_recall
+        const terms = params.query.toLowerCase().split(/\s+/).filter(Boolean);
+
+        // Search in-memory recallIndex
+        for (const recall of recallIndex.values()) {
+          const searchable = `${recall.toolName} ${recall.keyTerms} ${recall.filePaths.join(" ")}`.toLowerCase();
+          const matchCount = terms.filter(t => searchable.includes(t)).length;
+          if (matchCount > 0) {
+            targets.push({ id: recall.toolCallId, toolName: recall.toolName, keyTerms: recall.keyTerms.slice(0, 80) });
+          }
+        }
+
+        // Search graph via FTS
+        if (isGraphReady()) {
+          try {
+            const ftsHits = await ftsSearch(params.query, 50);
+            for (const hit of ftsHits) {
+              if (!targets.some(t => t.id === hit.node.id)) {
+                targets.push({ id: hit.node.id, toolName: hit.node.toolName, keyTerms: hit.node.keyTerms.slice(0, 80) });
+              }
+            }
+          } catch {}
+        }
+      } else {
+        return { content: [{ type: "text" as const, text: "[ACM Forget] Provide query or ids." }] };
+      }
+
+      if (targets.length === 0) {
+        return { content: [{ type: "text" as const, text: `[ACM Forget] No matches found.` }] };
+      }
+
+      // Dry run — show what would be deleted
+      if (!confirm) {
+        const preview = targets.slice(0, 20).map((t, i) =>
+          `  ${i + 1}. ${t.toolName} | ${t.keyTerms} | id: ${t.id}`
+        ).join("\n");
+        return {
+          content: [{ type: "text" as const, text:
+            `[ACM Forget] DRY RUN — ${targets.length} entries would be deleted:\n${preview}` +
+            (targets.length > 20 ? `\n  ... +${targets.length - 20} more` : "") +
+            `\n\nCall again with confirm=true to delete.`
+          }],
+        };
+      }
+
+      // Confirmed — delete everywhere
+      let deletedRecall = 0;
+      let deletedCache = 0;
+      let deletedGraph = 0;
+
+      for (const t of targets) {
+        // 1. Remove from recallIndex
+        if (recallIndex.has(t.id)) {
+          recallIndex.delete(t.id);
+          deletedRecall++;
+        }
+
+        // 2. Remove cached file from disk
+        const cachePath = cachedToFile.get(t.id);
+        if (cachePath) {
+          try {
+            const { unlinkSync } = await import("node:fs");
+            unlinkSync(cachePath);
+            deletedCache++;
+          } catch {}
+          cachedToFile.delete(t.id);
+        }
+
+        // 3. Remove from evictedPaths
+        for (const [fp, tcId] of evictedPaths.entries()) {
+          if (tcId === t.id) evictedPaths.delete(fp);
+        }
+      }
+
+      // 4. Delete from graph in batch
+      if (isGraphReady()) {
+        try {
+          deletedGraph = await graphDeleteToolResults(targets.map(t => t.id));
+        } catch (e: any) {
+          acmLog(`acm_forget graph delete error: ${e?.message || e}`);
+        }
+      }
+
+      const report = `[ACM Forget] Deleted ${targets.length} entries:\n` +
+        `  recall index: ${deletedRecall}\n` +
+        `  cached files: ${deletedCache}\n` +
+        `  graph nodes:  ${deletedGraph}`;
+
+      return { content: [{ type: "text" as const, text: report }] };
+    },
+  });
 
   // ── Branch navigation ──────────────────────────────────────────────
 

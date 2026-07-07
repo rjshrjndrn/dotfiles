@@ -8,6 +8,7 @@ import {
   getRelated,
   getSequence,
   clearGraphData,
+  deleteToolResults,
   getGraphStats,
   getGraphSummary,
   type GraphToolResult,
@@ -307,6 +308,48 @@ describe("acm-graph", () => {
       expect(summary).toContain("2 files");
       expect(summary).toContain("src/auth.ts");
       expect(summary).toContain("src/config.ts");
+    });
+  });
+
+  describe("deleteToolResults", () => {
+    it("deletes specific nodes and their edges", async () => {
+      await insertToolResult({ id: "d1", toolName: "read", keyTerms: "auth token", filePaths: ["/auth.ts"], timestamp: Date.now() });
+      await insertToolResult({ id: "d2", toolName: "bash", keyTerms: "test run", filePaths: ["/auth.ts", "/test.ts"], timestamp: Date.now() });
+      await insertToolResult({ id: "d3", toolName: "edit", keyTerms: "config update", filePaths: ["/config.ts"], timestamp: Date.now() });
+
+      const stats1 = await getGraphStats();
+      expect(stats1.toolResults).toBe(3);
+
+      const deleted = await deleteToolResults(["d1", "d2"]);
+      expect(deleted).toBe(2);
+
+      const stats2 = await getGraphStats();
+      expect(stats2.toolResults).toBe(1);
+
+      // d3 still queryable
+      const results = await queryByKeyword("config");
+      expect(results).toHaveLength(1);
+      expect(results[0].id).toBe("d3");
+    });
+
+    it("cleans up orphaned FilePath nodes", async () => {
+      await insertToolResult({ id: "o1", toolName: "read", keyTerms: "only ref", filePaths: ["/orphan.ts"], timestamp: Date.now() });
+      await insertToolResult({ id: "o2", toolName: "read", keyTerms: "shared ref", filePaths: ["/shared.ts"], timestamp: Date.now() });
+
+      await deleteToolResults(["o1"]);
+
+      const stats = await getGraphStats();
+      expect(stats.filePaths).toBe(1); // /orphan.ts removed, /shared.ts kept
+    });
+
+    it("returns 0 for empty array", async () => {
+      const deleted = await deleteToolResults([]);
+      expect(deleted).toBe(0);
+    });
+
+    it("handles non-existent IDs gracefully", async () => {
+      const deleted = await deleteToolResults(["nonexistent"]);
+      expect(deleted).toBe(1); // query succeeds, just no rows affected
     });
   });
 });

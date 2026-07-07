@@ -375,6 +375,36 @@ export async function ftsSearch(
   }
 }
 
+/**
+ * Delete specific ToolResult nodes and their edges from the graph.
+ * Also cleans up orphaned FilePath nodes.
+ * Returns count of deleted nodes.
+ */
+export async function deleteToolResults(ids: string[]): Promise<number> {
+  ensureInit();
+  if (ids.length === 0) return 0;
+  let deleted = 0;
+  for (const id of ids) {
+    try {
+      // Delete edges first, then node
+      await conn.query(`MATCH (t:ToolResult {id: '${escapeStr(id)}'})-[r:References]->() DELETE r`);
+      await conn.query(`MATCH ()-[r:Follows]->(t:ToolResult {id: '${escapeStr(id)}'}) DELETE r`);
+      await conn.query(`MATCH (t:ToolResult {id: '${escapeStr(id)}'})-[r:Follows]->() DELETE r`);
+      await conn.query(`MATCH (t:ToolResult {id: '${escapeStr(id)}'}) DELETE t`);
+      deleted++;
+    } catch (e: any) {
+      _graphLog(`deleteToolResult failed for ${id}: ${e?.message || e}`);
+    }
+  }
+  // Clean up orphaned FilePath nodes (no References pointing to them)
+  try {
+    await conn.query(`MATCH (f:FilePath) WHERE NOT EXISTS { MATCH ()-[:References]->(f) } DELETE f`);
+  } catch (e: any) {
+    _graphLog(`orphan cleanup failed: ${e?.message || e}`);
+  }
+  return deleted;
+}
+
 /** Clear all data but keep schema. For testing. */
 export async function clearGraphData(): Promise<void> {
   ensureInit();
