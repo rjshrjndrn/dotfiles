@@ -10,6 +10,8 @@ let db: any = null;
 let conn: any = null;
 let lastInsertedId: string | null = null;
 let initialized = false;
+let _ftsDirty = false;
+let _ftsIndexExists = false;
 
 export interface GraphToolResult {
   id: string;
@@ -17,6 +19,11 @@ export interface GraphToolResult {
   keyTerms: string;
   filePaths: string[];
   timestamp: number;
+}
+
+export interface FtsSearchResult {
+  node: GraphToolResult;
+  score: number;
 }
 
 /**
@@ -52,7 +59,13 @@ export async function initGraph(dbPath: string): Promise<void> {
     CREATE REL TABLE IF NOT EXISTS Follows(FROM ToolResult TO ToolResult)
   `);
 
+  // Load FTS extension
+  await conn.query("INSTALL fts");
+  await conn.query("LOAD EXTENSION fts");
+
   lastInsertedId = null;
+  _ftsDirty = false;
+  _ftsIndexExists = false;
   initialized = true;
 }
 
@@ -66,6 +79,8 @@ export async function closeGraph(): Promise<void> {
   }
   initialized = false;
   lastInsertedId = null;
+  _ftsDirty = false;
+  _ftsIndexExists = false;
 }
 
 function ensureInit(): void {
@@ -112,6 +127,7 @@ export async function insertToolResult(entry: GraphToolResult): Promise<void> {
   }
 
   lastInsertedId = entry.id;
+  _ftsDirty = true;
 }
 
 /**
@@ -235,13 +251,106 @@ export async function getGraphSummary(): Promise<{ toolResults: number; filePath
   }
 }
 
+// ── FTS (Full-Text Search) ─────────────────────────────────────────
+
+/** Whether the FTS index needs rebuilding (new data since last build). */
+export function ftsDirty(): boolean {
+  return _ftsDirty;
+}
+
+/** Rebuild the FTS index. DROP existing + CREATE fresh. */
+export async function ftsRebuild(): Promise<void> {
+  ensureInit();
+  if (_ftsIndexExists) {
+    try {
+      await conn.query("CALL DROP_FTS_INDEX('ToolResult', 'tr_fts')");
+    } catch {
+      // Index may not exist yet
+    }
+  }
+  try {
+    await conn.query(
+      "CALL CREATE_FTS_INDEX('ToolResult', 'tr_fts', ['keyTerms'], stemmer := 'english')"
+    );
+    _ftsIndexExists = true;
+  } catch (e: any) {
+    // If table is empty, CREATE_FTS_INDEX may fail on some versions — that's OK
+    if (String(e).includes("empty")) {
+      _ftsIndexExists = false;
+    } else {
+      throw e;
+    }
+  }
+  _ftsDirty = false;
+}
+
+/**
+ * Search using FTS index. Rebuilds lazily if dirty.
+ * Returns scored results sorted by BM25 score descending.
+ * Returns [] for empty query, empty table, or no matches.
+ */
+export async function ftsSearch(
+  query: string,
+  limit: number = 20
+): Promise<FtsSearchResult[]> {
+  ensureInit();
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+
+  // Check if table has data
+  const countResult = await conn.query("MATCH (n:ToolResult) RETURN count(n) AS c");
+  const countRows = await countResult.getAll();
+  if (Number(countRows[0]?.c ?? 0) === 0) return [];
+
+  // Lazy rebuild
+  if (_ftsDirty || !_ftsIndexExists) {
+    await ftsRebuild();
+  }
+
+  try {
+    const result = await conn.query(
+      `CALL QUERY_FTS_INDEX('ToolResult', 'tr_fts', '${escapeStr(trimmed)}', top := ${limit})
+       WITH node AS t, score
+       OPTIONAL MATCH (t)-[:References]->(f:FilePath)
+       RETURN t.id AS id, t.toolName AS toolName, t.keyTerms AS keyTerms,
+              t.timestamp AS timestamp, collect(DISTINCT f.path) AS filePaths, score
+       ORDER BY score DESC`
+    );
+    const rows = await result.getAll();
+    return rows.map((row: any) => ({
+      node: {
+        id: row.id,
+        toolName: row.toolName,
+        keyTerms: row.keyTerms,
+        filePaths: (row.filePaths ?? []).filter((p: any) => p != null),
+        timestamp: Number(row.timestamp),
+      },
+      score: Number(row.score),
+    }));
+  } catch (e: any) {
+    // If FTS query fails (e.g. all stopwords), return empty
+    if (String(e).includes("no result") || String(e).includes("empty")) {
+      return [];
+    }
+    throw e;
+  }
+}
+
 /** Clear all data but keep schema. For testing. */
 export async function clearGraphData(): Promise<void> {
   ensureInit();
+  // Drop FTS index first (references the table data)
+  if (_ftsIndexExists) {
+    try {
+      await conn.query("CALL DROP_FTS_INDEX('ToolResult', 'tr_fts')");
+    } catch {}
+    _ftsIndexExists = false;
+  }
   // Delete edges first, then nodes
   await conn.query("MATCH ()-[r:References]->() DELETE r");
   await conn.query("MATCH ()-[r:Follows]->() DELETE r");
   await conn.query("MATCH (n:ToolResult) DELETE n");
   await conn.query("MATCH (n:FilePath) DELETE n");
   lastInsertedId = null;
+  _ftsDirty = false;
 }
