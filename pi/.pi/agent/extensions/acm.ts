@@ -61,7 +61,7 @@ import {
   deleteToolResults as graphDeleteToolResults,
 } from "../acm-lib/graph.ts";
 import { ProjectMemoryBridge } from "../acm-lib/project-memory-bridge.ts";
-import { detectRepoRoot } from "../acm-lib/git-root.ts";
+import { detectRepoRoot, detectWorktreeRoot } from "../acm-lib/git-root.ts";
 
 // ── Re-exports for backward compatibility (tests import from acm.ts) ──
 
@@ -220,7 +220,11 @@ export default function (pi: ExtensionAPI) {
     // ── Initialize project memory bridge ──────────────────────────────
     const cwd = ctx.cwd ?? process.cwd();
     const gitRoot = detectRepoRoot(cwd);
+    const worktreeRoot = detectWorktreeRoot(cwd);
     const sessionId = ctx.sessionManager?.getSessionId?.() ?? `session-${Date.now()}`;
+
+    // Set worktree root for path relativization (worktree root if in worktree, else normal root)
+    if (worktreeRoot) projectBridge.setWorktreeRoot(worktreeRoot);
 
     projectBridge.onSessionStart({
       sessionId,
