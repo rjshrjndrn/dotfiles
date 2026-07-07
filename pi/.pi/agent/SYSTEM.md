@@ -72,6 +72,7 @@ Guidelines:
 
 ## Coding
 - Follow STRICT TDD from Behaviour section above. No exceptions.
+- After each logical change, do atomic commits.
 
 ## Git
 - One commit = one logical change. Never bundle unrelated.
