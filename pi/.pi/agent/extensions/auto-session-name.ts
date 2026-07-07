@@ -49,12 +49,12 @@ export default function (pi: ExtensionAPI) {
 
   // Nudge agent to name session on first turn
   let nudged = false;
-  pi.on("agent_start", (_event, ctx) => {
+  pi.on("before_agent_start", (event) => {
     if (nudged || pi.getSessionName()) return;
     nudged = true;
 
-    ctx.systemPromptAppend(
-      "IMPORTANT: After your first response, call the `name_session` tool with a 2-3 word topic name for this session."
-    );
+    const opts = event.systemPromptOptions;
+    const nudge = "\nIMPORTANT: After your first response, call the `name_session` tool with a 2-3 word topic name for this session.";
+    opts.appendSystemPrompt = (opts.appendSystemPrompt || "") + nudge;
   });
 }
