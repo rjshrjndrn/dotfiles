@@ -14,8 +14,6 @@ let db: any = null;
 let conn: any = null;
 let lastInsertedId: string | null = null;
 let initialized = false;
-let _ftsDirty = false;
-let _ftsIndexExists = false;
 let _ftsAvailable: boolean | null = null; // null = not tried yet
 
 export interface GraphToolResult {
@@ -104,8 +102,6 @@ export async function initGraph(dbPath: string): Promise<void> {
   `);
 
   lastInsertedId = null;
-  _ftsDirty = false;
-  _ftsIndexExists = false;
   _ftsAvailable = null; // defer FTS extension load to first use
   initialized = true;
 }
@@ -120,8 +116,6 @@ export async function closeGraph(): Promise<void> {
   }
   initialized = false;
   lastInsertedId = null;
-  _ftsDirty = false;
-  _ftsIndexExists = false;
   _ftsAvailable = null;
 }
 
@@ -169,7 +163,6 @@ export async function insertToolResult(entry: GraphToolResult): Promise<void> {
   }
 
   lastInsertedId = entry.id;
-  _ftsDirty = true;
 }
 
 /**
@@ -295,62 +288,39 @@ export async function getGraphSummary(): Promise<{ toolResults: number; filePath
 
 // ── FTS (Full-Text Search) ─────────────────────────────────────────
 
-/** Whether the FTS index needs rebuilding (new data since last build). */
-export function ftsDirty(): boolean {
-  return _ftsDirty;
-}
-
 /**
- * Load the FTS extension. Call once per session (extension must be loaded per process).
- * Safe to call multiple times — no-ops after first success or failure.
+ * Load FTS extension and create index. LadybugDB auto-indexes new inserts.
+ * Safe to call multiple times — extension load is once, index creation is idempotent.
  */
 export async function ftsInit(): Promise<boolean> {
-  if (_ftsAvailable === true) return true;
-  if (_ftsAvailable === false) return false;
   ensureInit();
-  try {
-    await conn.query("INSTALL fts");
-    await conn.query("LOAD EXTENSION fts");
-    _ftsAvailable = true;
-    _graphLog("FTS extension loaded");
-    return true;
-  } catch (e: any) {
-    _ftsAvailable = false;
-    _graphLog(`FTS extension FAILED: ${e?.message || e}`);
-    return false;
-  }
-}
-
-/** Whether the FTS extension is available. */
-export function ftsAvailable(): boolean {
-  return _ftsAvailable === true;
-}
-
-/** Rebuild the FTS index. DROP existing + CREATE fresh. Call before search if dirty. */
-export async function ftsRebuild(): Promise<void> {
-  ensureInit();
-  if (!_ftsAvailable) { _ftsDirty = false; return; }
-  if (_ftsIndexExists) {
+  // Load extension once per process
+  if (_ftsAvailable === null) {
     try {
-      await conn.query("CALL DROP_FTS_INDEX('ToolResult', 'tr_fts')");
-    } catch {
-      // Index may not exist yet
+      await conn.query("INSTALL fts");
+      await conn.query("LOAD EXTENSION fts");
+      _ftsAvailable = true;
+      _graphLog("FTS extension loaded");
+    } catch (e: any) {
+      _ftsAvailable = false;
+      _graphLog(`FTS extension FAILED: ${e?.message || e}`);
+      return false;
     }
   }
+  if (!_ftsAvailable) return false;
+
+  // Create index (idempotent — catches "already exists" and "empty table")
   try {
     await conn.query(
       "CALL CREATE_FTS_INDEX('ToolResult', 'tr_fts', ['keyTerms'], stemmer := 'english')"
     );
-    _ftsIndexExists = true;
   } catch (e: any) {
-    // If table is empty, CREATE_FTS_INDEX may fail on some versions — that's OK
-    if (String(e).includes("empty")) {
-      _ftsIndexExists = false;
-    } else {
+    const msg = String(e);
+    if (!msg.includes("already exists") && !msg.includes("empty")) {
       throw e;
     }
   }
-  _ftsDirty = false;
+  return true;
 }
 
 /**
@@ -367,15 +337,14 @@ export async function ftsSearch(
   const trimmed = query.trim();
   if (!trimmed) return [];
 
+  // Lazy init
+  const ok = await ftsInit();
+  if (!ok) return [];
+
   // Check if table has data
   const countResult = await conn.query("MATCH (n:ToolResult) RETURN count(n) AS c");
   const countRows = await countResult.getAll();
   if (Number(countRows[0]?.c ?? 0) === 0) return [];
-
-  // Lazy rebuild
-  if (_ftsDirty || !_ftsIndexExists) {
-    await ftsRebuild();
-  }
 
   try {
     const result = await conn.query(
@@ -410,17 +379,13 @@ export async function ftsSearch(
 export async function clearGraphData(): Promise<void> {
   ensureInit();
   // Drop FTS index first (references the table data)
-  if (_ftsIndexExists) {
-    try {
-      await conn.query("CALL DROP_FTS_INDEX('ToolResult', 'tr_fts')");
-    } catch {}
-    _ftsIndexExists = false;
-  }
+  try {
+    await conn.query("CALL DROP_FTS_INDEX('ToolResult', 'tr_fts')");
+  } catch {}
   // Delete edges first, then nodes
   await conn.query("MATCH ()-[r:References]->() DELETE r");
   await conn.query("MATCH ()-[r:Follows]->() DELETE r");
   await conn.query("MATCH (n:ToolResult) DELETE n");
   await conn.query("MATCH (n:FilePath) DELETE n");
   lastInsertedId = null;
-  _ftsDirty = false;
 }

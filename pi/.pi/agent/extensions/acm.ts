@@ -57,7 +57,6 @@ import {
   getGraphStats,
   getGraphSummary,
   ftsSearch,
-  ftsRebuild,
   ftsInit,
 } from "../acm-lib/graph.ts";
 import { ProjectMemoryBridge } from "../acm-lib/project-memory-bridge.ts";
@@ -210,9 +209,6 @@ export default function (pi: ExtensionAPI) {
       // Load FTS extension + build index from existing data
       const ftsOk = await ftsInit();
       acmLog(`ftsInit: ${ftsOk ? 'OK' : 'FAILED'}`);
-      if (ftsOk) {
-        ftsRebuild().catch((e: any) => acmLog(`ftsRebuild init ERROR: ${e?.message || e}`));
-      }
       const gs = await getGraphStats();
       ctx.ui.setStatus("ladybugdb", `🦎 ${gs.toolResults} entries, ${gs.filePaths} files`);
     }).catch((err: any) => {
@@ -773,11 +769,6 @@ export default function (pi: ExtensionAPI) {
 
       const saved = clearToolResults(candidates, (msg) => ctx.ui.notify(`[ACM] ${msg}`, "info"), branchMessages);
       persist(pi.appendEntry.bind(pi));
-
-      // Batch FTS rebuild after clearing (async, don't block response)
-      if (isGraphReady()) {
-        ftsRebuild().catch((e: any) => acmLog(`ftsRebuild post-clear ERROR: ${e?.message || e}`));
-      }
 
       const report = `[ACM] ✅ Cleared ${candidates.length} tool results (~${Math.round(saved * 0.4 / 1000)}k freed, ${clearSet.size} total). Effect on next turn.`;
       ctx.ui.notify(report, "info");
