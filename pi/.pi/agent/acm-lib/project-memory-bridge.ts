@@ -47,6 +47,7 @@ export class ProjectMemoryBridge {
   private debug: boolean;
   private logFile: string;
   private turnCounter = 0;
+  private worktreeRoot: string | null = null;
 
   constructor(config: BridgeConfig) {
     this.config = config;
@@ -56,6 +57,31 @@ export class ProjectMemoryBridge {
 
   isReady(): boolean {
     return this.graph !== null && this.graph.isReady();
+  }
+
+  /** Set the worktree root for path relativization. */
+  setWorktreeRoot(root: string): void {
+    // Normalize: strip trailing slash
+    this.worktreeRoot = root.replace(/\/+$/, "");
+  }
+
+  /**
+   * Convert absolute path to worktree-relative.
+   * If path is already relative, or outside worktreeRoot, returns unchanged.
+   * If no worktreeRoot set, returns unchanged.
+   */
+  relativizePath(absPath: string): string {
+    if (!this.worktreeRoot) return absPath;
+
+    const normalized = absPath.replace(/\/+$/, "");
+
+    // Exact match = root itself
+    if (normalized === this.worktreeRoot) return ".";
+
+    const prefix = this.worktreeRoot + "/";
+    if (!normalized.startsWith(prefix)) return absPath;
+
+    return normalized.slice(prefix.length) || ".";
   }
 
   // ── Lifecycle hooks ─────────────────────────────────────
@@ -107,6 +133,9 @@ export class ProjectMemoryBridge {
       const results = this.gate.evaluate(turnCtx);
 
       for (const r of results) {
+        // Relativize file paths before storing
+        r.event.files = r.event.files.map((f) => this.relativizePath(f));
+
         if (r.action === "promote") {
           await this.graph.writeEvent(r.event);
           this.log(`promote: ${r.event.id} type=${r.event.eventType} files=${r.event.files.join(",")}`);
@@ -140,7 +169,7 @@ export class ProjectMemoryBridge {
 
   async queryByFile(filePath: string): Promise<ProjectGraphEvent[]> {
     if (!this.graph) return [];
-    return this.graph.queryByFile(filePath);
+    return this.graph.queryByFile(this.relativizePath(filePath));
   }
 
   async queryByKeyword(keyword: string): Promise<ProjectGraphEvent[]> {
@@ -150,7 +179,7 @@ export class ProjectMemoryBridge {
 
   async precheckFile(filePath: string): Promise<FilePrecheck> {
     if (!this.graph) return { eventCount: 0, lastTouched: 0, sessions: [], recentKeyTerms: [] };
-    return this.graph.precheckFile(filePath);
+    return this.graph.precheckFile(this.relativizePath(filePath));
   }
 
   async getSessions(): Promise<SessionInfo[]> {
