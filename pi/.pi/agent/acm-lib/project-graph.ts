@@ -17,7 +17,7 @@
  *   Writes batch into flushWrites() to minimize open/close cycles.
  */
 
-import { mkdirSync, openSync, closeSync, appendFileSync } from "node:fs";
+import { mkdirSync, existsSync, unlinkSync, openSync, closeSync, appendFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 const DEBUG = !!process.env.ACM_PROJECT_DEBUG;
@@ -90,6 +90,41 @@ export class ProjectGraph {
 
   async init(): Promise<void> {
     mkdirSync(dirname(this.dbPath), { recursive: true });
+
+    // Pre-flight: validate DB (+WAL) in subprocess.
+    // 1. Try with WAL → 2. Remove WAL, retry → 3. Delete DB
+    if (existsSync(this.dbPath)) {
+      const { execSync } = await import("node:child_process");
+      const escaped = this.dbPath.replace(/'/g, "'\\''");
+      const probe = `node -e "const l=require('@ladybugdb/core');const d=new l.Database('${escaped}');const c=new l.Connection(d);c.query('RETURN 1').then(r=>r.getAll()).then(()=>{d.close();process.exit(0)}).catch(()=>{d.close();process.exit(1)})"`;
+
+      let ok = false;
+      try {
+        execSync(probe, { timeout: 5000, stdio: "ignore" });
+        ok = true;
+        log("pre-flight OK");
+      } catch {
+        const walPath = this.dbPath + ".wal";
+        if (existsSync(walPath)) {
+          log(`pre-flight FAILED with WAL, removing WAL and retrying`);
+          try { unlinkSync(walPath); } catch {}
+          try {
+            execSync(probe, { timeout: 5000, stdio: "ignore" });
+            ok = true;
+            log("pre-flight OK after WAL removal");
+          } catch {
+            log(`pre-flight FAILED even without WAL, deleting DB`);
+          }
+        } else {
+          log(`pre-flight FAILED (no WAL), deleting corrupt DB`);
+        }
+      }
+      if (!ok) {
+        try { unlinkSync(this.dbPath); } catch {}
+        try { unlinkSync(this.dbPath + ".wal"); } catch {}
+      }
+    }
+
     this.lbugModule = await import("@ladybugdb/core");
 
     if (this.mode === "exclusive") {

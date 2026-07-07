@@ -207,10 +207,9 @@ export default function (pi: ExtensionAPI) {
     acmLog(`initGraph at ${join(graphDir, "acm.lbug")}`);
     initGraph(join(graphDir, "acm.lbug")).then(async () => {
       acmLog(`initGraph SUCCESS, ready=${isGraphReady()}`);
-      // Load FTS extension (safe, non-blocking)
+      // Load FTS extension + build index from existing data
       const ftsOk = await ftsInit();
       acmLog(`ftsInit: ${ftsOk ? 'OK' : 'FAILED'}`);
-      // Build index on first start (new data may exist from prior session)
       if (ftsOk) {
         ftsRebuild().catch((e: any) => acmLog(`ftsRebuild init ERROR: ${e?.message || e}`));
       }

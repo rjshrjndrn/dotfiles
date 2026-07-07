@@ -36,9 +36,48 @@ export interface FtsSearchResult {
  */
 export async function initGraph(dbPath: string): Promise<void> {
   if (dbPath !== ":memory:") {
-    const { mkdirSync } = await import("node:fs");
+    const { mkdirSync, existsSync, unlinkSync } = await import("node:fs");
     const { dirname } = await import("node:path");
     mkdirSync(dirname(dbPath), { recursive: true });
+
+    // Pre-flight: validate DB (+WAL if present) in subprocess.
+    // Subprocess crashes on corrupt data without taking down main process.
+    // Recovery strategy:
+    //   1. Try open DB with WAL → success? WAL replayed, done
+    //   2. Failed? Delete WAL, retry → success? DB recovered sans WAL
+    //   3. Still failed? Delete DB, start fresh
+    if (existsSync(dbPath)) {
+      const { execSync } = await import("node:child_process");
+      const escaped = dbPath.replace(/'/g, "'\\''");
+      const probe = `node -e "const l=require('@ladybugdb/core');const d=new l.Database('${escaped}');const c=new l.Connection(d);c.query('RETURN 1').then(r=>r.getAll()).then(()=>{d.close();process.exit(0)}).catch(()=>{d.close();process.exit(1)})"`;
+
+      let ok = false;
+      try {
+        execSync(probe, { timeout: 5000, stdio: "ignore" });
+        ok = true;
+        _graphLog("pre-flight OK");
+      } catch {
+        // Step 2: WAL might be the problem — remove it and retry
+        const walPath = dbPath + ".wal";
+        if (existsSync(walPath)) {
+          _graphLog(`pre-flight FAILED with WAL, removing WAL and retrying`);
+          try { unlinkSync(walPath); } catch {}
+          try {
+            execSync(probe, { timeout: 5000, stdio: "ignore" });
+            ok = true;
+            _graphLog("pre-flight OK after WAL removal");
+          } catch {
+            _graphLog(`pre-flight FAILED even without WAL, deleting DB`);
+          }
+        } else {
+          _graphLog(`pre-flight FAILED (no WAL), deleting corrupt DB`);
+        }
+      }
+      if (!ok) {
+        try { unlinkSync(dbPath); } catch {}
+        try { unlinkSync(dbPath + ".wal"); } catch {}
+      }
+    }
   }
   const lbug = await import("@ladybugdb/core");
   db = new lbug.Database(dbPath === ":memory:" ? undefined : dbPath);
