@@ -1,5 +1,5 @@
 {
-  "lastChangelogVersion": "0.80.2",
+  "lastChangelogVersion": "0.80.3",
   "defaultProvider": "anthropic",
   "defaultModel": "claude-opus-4-6",
   "packages": [
@@ -9,7 +9,6 @@
     "npm:@rjshrjndrn/pi-fetch",
     "npm:pi-caveman",
     "git:github.com/igor-makarov/pi-mcp-adapter",
-    "npm:pi-gitnexus",
     "git:github.com/minghinmatthewlam/pi-subagents"
   ],
   "skills": [
