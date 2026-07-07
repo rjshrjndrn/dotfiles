@@ -6,12 +6,17 @@
  * "what happened after this?" instead of brute keyword scan.
  */
 
+import { appendFileSync } from "node:fs";
+const _graphDebug = process.env.ACM_DEBUG === "true" || process.env.ACM_DEBUG === "1";
+function _graphLog(msg: string) { if (!_graphDebug) return; try { appendFileSync("/tmp/ladybug-acm.log", `[${new Date().toISOString()}] [graph] ${msg}\n`); } catch {} }
+
 let db: any = null;
 let conn: any = null;
 let lastInsertedId: string | null = null;
 let initialized = false;
 let _ftsDirty = false;
 let _ftsIndexExists = false;
+let _ftsAvailable: boolean | null = null; // null = not tried yet
 
 export interface GraphToolResult {
   id: string;
@@ -59,13 +64,10 @@ export async function initGraph(dbPath: string): Promise<void> {
     CREATE REL TABLE IF NOT EXISTS Follows(FROM ToolResult TO ToolResult)
   `);
 
-  // Load FTS extension
-  await conn.query("INSTALL fts");
-  await conn.query("LOAD EXTENSION fts");
-
   lastInsertedId = null;
   _ftsDirty = false;
   _ftsIndexExists = false;
+  _ftsAvailable = null; // defer FTS extension load to first use
   initialized = true;
 }
 
@@ -81,6 +83,7 @@ export async function closeGraph(): Promise<void> {
   lastInsertedId = null;
   _ftsDirty = false;
   _ftsIndexExists = false;
+  _ftsAvailable = null;
 }
 
 function ensureInit(): void {
@@ -258,9 +261,36 @@ export function ftsDirty(): boolean {
   return _ftsDirty;
 }
 
-/** Rebuild the FTS index. DROP existing + CREATE fresh. */
+/**
+ * Load the FTS extension. Call once per session (extension must be loaded per process).
+ * Safe to call multiple times — no-ops after first success or failure.
+ */
+export async function ftsInit(): Promise<boolean> {
+  if (_ftsAvailable === true) return true;
+  if (_ftsAvailable === false) return false;
+  ensureInit();
+  try {
+    await conn.query("INSTALL fts");
+    await conn.query("LOAD EXTENSION fts");
+    _ftsAvailable = true;
+    _graphLog("FTS extension loaded");
+    return true;
+  } catch (e: any) {
+    _ftsAvailable = false;
+    _graphLog(`FTS extension FAILED: ${e?.message || e}`);
+    return false;
+  }
+}
+
+/** Whether the FTS extension is available. */
+export function ftsAvailable(): boolean {
+  return _ftsAvailable === true;
+}
+
+/** Rebuild the FTS index. DROP existing + CREATE fresh. Call before search if dirty. */
 export async function ftsRebuild(): Promise<void> {
   ensureInit();
+  if (!_ftsAvailable) { _ftsDirty = false; return; }
   if (_ftsIndexExists) {
     try {
       await conn.query("CALL DROP_FTS_INDEX('ToolResult', 'tr_fts')");
@@ -294,6 +324,7 @@ export async function ftsSearch(
   limit: number = 20
 ): Promise<FtsSearchResult[]> {
   ensureInit();
+  if (!_ftsAvailable) return [];
   const trimmed = query.trim();
   if (!trimmed) return [];
 

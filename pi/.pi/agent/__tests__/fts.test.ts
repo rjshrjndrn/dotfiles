@@ -6,6 +6,7 @@ import {
   clearGraphData,
   ftsSearch,
   ftsRebuild,
+  ftsInit,
   ftsDirty,
   type GraphToolResult,
   type FtsSearchResult,
@@ -27,6 +28,7 @@ import {
 describe("FTS Search", () => {
   beforeAll(async () => {
     await initGraph(":memory:");
+    await ftsInit();
   });
 
   afterAll(async () => {

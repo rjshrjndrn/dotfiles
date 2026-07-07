@@ -56,6 +56,9 @@ import {
   isGraphReady,
   getGraphStats,
   getGraphSummary,
+  ftsSearch,
+  ftsRebuild,
+  ftsInit,
 } from "../acm-lib/graph.ts";
 import { ProjectMemoryBridge } from "../acm-lib/project-memory-bridge.ts";
 import { detectRepoRoot } from "../acm-lib/git-root.ts";
@@ -204,6 +207,13 @@ export default function (pi: ExtensionAPI) {
     acmLog(`initGraph at ${join(graphDir, "acm.lbug")}`);
     initGraph(join(graphDir, "acm.lbug")).then(async () => {
       acmLog(`initGraph SUCCESS, ready=${isGraphReady()}`);
+      // Load FTS extension (safe, non-blocking)
+      const ftsOk = await ftsInit();
+      acmLog(`ftsInit: ${ftsOk ? 'OK' : 'FAILED'}`);
+      // Build index on first start (new data may exist from prior session)
+      if (ftsOk) {
+        ftsRebuild().catch((e: any) => acmLog(`ftsRebuild init ERROR: ${e?.message || e}`));
+      }
       const gs = await getGraphStats();
       ctx.ui.setStatus("ladybugdb", `🦎 ${gs.toolResults} entries, ${gs.filePaths} files`);
     }).catch((err: any) => {
@@ -765,6 +775,11 @@ export default function (pi: ExtensionAPI) {
       const saved = clearToolResults(candidates, (msg) => ctx.ui.notify(`[ACM] ${msg}`, "info"), branchMessages);
       persist(pi.appendEntry.bind(pi));
 
+      // Batch FTS rebuild after clearing (async, don't block response)
+      if (isGraphReady()) {
+        ftsRebuild().catch((e: any) => acmLog(`ftsRebuild post-clear ERROR: ${e?.message || e}`));
+      }
+
       const report = `[ACM] ✅ Cleared ${candidates.length} tool results (~${Math.round(saved * 0.4 / 1000)}k freed, ${clearSet.size} total). Effect on next turn.`;
       ctx.ui.notify(report, "info");
 
@@ -951,26 +966,40 @@ export default function (pi: ExtensionAPI) {
         }
         matches.sort((a, b) => b.score - a.score);
 
-        // Augment with graph results if available
+        // Augment with graph results — FTS first, CONTAINS fallback
         let graphSection = "";
         acmLog(`recall query: "${params.query}", graphReady=${isGraphReady()}, mapMatches=${matches.length}`);
         if (isGraphReady()) {
           try {
-            const graphHits = await graphQueryByKeyword(params.query);
-            acmLog(`graph hits: ${graphHits.length}, ids: ${graphHits.map(g => g.id).join(",")}`);
+            // FTS search (BM25 scored)
+            const ftsHits = await ftsSearch(params.query, 20);
+            acmLog(`fts hits: ${ftsHits.length}`);
+
+            let graphHits: Array<{ id: string; toolName: string; keyTerms: string; filePaths: string[]; score?: number }> = [];
+            if (ftsHits.length > 0) {
+              graphHits = ftsHits.map(h => ({ ...h.node, score: h.score }));
+            } else {
+              // Fallback to CONTAINS if FTS returned nothing
+              const containsHits = await graphQueryByKeyword(params.query);
+              graphHits = containsHits.map(h => ({ ...h, score: undefined }));
+              acmLog(`fts=0, contains fallback: ${containsHits.length}`);
+            }
+
             // Find graph-only results not in Map matches
             const mapIds = new Set(matches.map(m => m.entry.toolCallId || m.entry.entryId));
             const graphOnly = graphHits.filter(g => !mapIds.has(g.id));
-            graphSection = `\n\n[Graph: ${graphHits.length} total, ${graphOnly.length} unique]`;
+            const scoredLabel = ftsHits.length > 0 ? "FTS" : "CONTAINS";
+            graphSection = `\n\n[Graph (${scoredLabel}): ${graphHits.length} total, ${graphOnly.length} unique]`;
             if (graphOnly.length > 0) {
               graphSection += `\n[Graph-only matches: ${graphOnly.length}]\n` +
-                graphOnly.slice(0, 5).map(g =>
-                  `  • ${g.toolName} | ${g.keyTerms.slice(0, 80)} | files: ${g.filePaths.join(", ") || "none"}`
-                ).join("\n");
+                graphOnly.slice(0, 5).map(g => {
+                  const scoreStr = g.score != null ? ` | score: ${g.score.toFixed(3)}` : "";
+                  return `  • ${g.toolName} | ${g.keyTerms.slice(0, 80)} | files: ${g.filePaths.join(", ") || "none"}${scoreStr}`;
+                }).join("\n");
             }
             // Also find related via co-file traversal from top match
-            if (matches.length > 0) {
-              const topId = matches[0].entry.toolCallId || matches[0].entry.entryId;
+            const topId = graphHits[0]?.id || (matches.length > 0 ? matches[0].entry.toolCallId || matches[0].entry.entryId : null);
+            if (topId) {
               const related = await graphGetRelated(topId);
               acmLog(`related for ${topId}: ${related.length} results`);
               if (related.length > 0) {
