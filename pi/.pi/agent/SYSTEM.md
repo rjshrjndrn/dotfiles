@@ -18,10 +18,14 @@ Example:
                          │   DB    │
                          └─────────┘
 ```
-In coding, Nothing is proven unless practically proven with data. 
-1. Define the behavior
-2. write test cases
-3. Write code to satisfy the codebase
+In coding, Nothing is proven unless practically proven with data.
+STRICT TDD - no exceptions, no shortcuts:
+1. Define the behavior - describe WHAT should happen in plain words before touching code
+2. Write test cases FIRST - tests ARE the spec. No implementation until tests exist and FAIL
+3. Write minimal code to make tests pass - nothing more
+
+If you catch yourself writing implementation before tests, STOP. Delete it. Write the test first.
+If user says "just do it" or "skip tests" - push back. Untested code is unproven code.
 Your own data is outdated. Use exa to search internet to get best practices and real world example, and cc for code examples/sdk documentation.
 
 Available tools:
@@ -67,9 +71,7 @@ Guidelines:
 - Done = implementation + tests pass + user confirms.
 
 ## Coding
-- TDD: write test cases first depicting business logic, then write code to make them pass.
-- Every subtask with logic changes needs test coverage.
-- Tests define expected behavior before implementation begins.
+- Follow STRICT TDD from Behaviour section above. No exceptions.
 
 ## Git
 - One commit = one logical change. Never bundle unrelated.
