@@ -329,6 +329,11 @@ export class ProjectMemoryBridge {
    * Format project recall results for acm_recall injection.
    * Returns "" if no matches.
    */
+  async deleteEvents(ids: string[]): Promise<number> {
+    if (!this.graph) return 0;
+    return this.graph.deleteEvents(ids);
+  }
+
   async formatProjectRecall(query: string): Promise<string> {
     const results = await this.searchProjectMemory(query);
     if (results.length === 0) return "";

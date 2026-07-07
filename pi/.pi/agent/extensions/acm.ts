@@ -1206,7 +1206,7 @@ export default function (pi: ExtensionAPI) {
         for (const recall of recallIndex.values()) {
           const searchable = `${recall.toolName} ${recall.keyTerms} ${recall.filePaths.join(" ")}`.toLowerCase();
           const matchCount = terms.filter(t => searchable.includes(t)).length;
-          if (matchCount > 0) {
+          if (matchCount === terms.length) {
             targets.push({ id: recall.toolCallId, toolName: recall.toolName, keyTerms: recall.keyTerms.slice(0, 80) });
           }
         }
@@ -1224,6 +1224,20 @@ export default function (pi: ExtensionAPI) {
         }
       } else {
         return { content: [{ type: "text" as const, text: "[ACM Forget] Provide query or ids." }] };
+      }
+
+      // Also search project memory for matching entries
+      if (params.query && projectBridge.isReady()) {
+        try {
+          const pmResults = await projectBridge.searchProjectMemory(params.query);
+          for (const r of pmResults) {
+            if (!targets.some(t => t.id === r.id)) {
+              targets.push({ id: r.id, toolName: r.toolName, keyTerms: (r.summary || r.keyTerms || "").slice(0, 80) });
+            }
+          }
+        } catch (pmErr: any) {
+          acmLog(`acm_forget PM search error: ${pmErr?.message || pmErr}`);
+        }
       }
 
       if (targets.length === 0) {
@@ -1273,7 +1287,7 @@ export default function (pi: ExtensionAPI) {
         }
       }
 
-      // 4. Delete from graph in batch
+      // 4. Delete from session graph in batch
       if (isGraphReady()) {
         try {
           deletedGraph = await graphDeleteToolResults(targets.map(t => t.id));
@@ -1282,10 +1296,21 @@ export default function (pi: ExtensionAPI) {
         }
       }
 
+      // 5. Delete from project memory graph (targets already include PM entries from search phase)
+      let deletedProject = 0;
+      if (projectBridge.isReady()) {
+        try {
+          deletedProject = await projectBridge.deleteEvents(targets.map(t => t.id));
+        } catch (e: any) {
+          acmLog(`acm_forget project delete error: ${e?.message || e}`);
+        }
+      }
+
       const report = `[ACM Forget] Deleted ${targets.length} entries:\n` +
-        `  recall index: ${deletedRecall}\n` +
-        `  cached files: ${deletedCache}\n` +
-        `  graph nodes:  ${deletedGraph}`;
+        `  recall index:   ${deletedRecall}\n` +
+        `  cached files:   ${deletedCache}\n` +
+        `  graph nodes:    ${deletedGraph}\n` +
+        `  project memory: ${deletedProject}`;
 
       return { content: [{ type: "text" as const, text: report }] };
     },

@@ -435,6 +435,33 @@ export class ProjectGraph {
     return (await result.getAll()).map((r: any) => ({ path: r.path, refCount: Number(r.refCount) }));
   }
 
+  // ── Delete ──────────────────────────────────────────────
+
+  /**
+   * Delete specific ToolResult nodes and their edges from the project graph.
+   * Cleans up orphaned FilePath nodes afterward.
+   * Returns count of deleted nodes.
+   */
+  async deleteEvents(ids: string[]): Promise<number> {
+    this.ensureReady();
+    if (ids.length === 0) return 0;
+    let deleted = 0;
+    for (const id of ids) {
+      try {
+        await this.conn.query(`MATCH (t:ToolResult {id: '${escapeStr(id)}'})-[r:References]->() DELETE r`);
+        await this.conn.query(`MATCH ()-[r:Follows]->(t:ToolResult {id: '${escapeStr(id)}'}) DELETE r`);
+        await this.conn.query(`MATCH (t:ToolResult {id: '${escapeStr(id)}'})-[r:Follows]->() DELETE r`);
+        await this.conn.query(`MATCH (t:ToolResult {id: '${escapeStr(id)}'}) DELETE t`);
+        deleted++;
+      } catch {}
+    }
+    // Clean up orphaned FilePath nodes
+    try {
+      await this.conn.query(`MATCH (f:FilePath) WHERE NOT EXISTS { MATCH ()-[:References]->(f) } DELETE f`);
+    } catch {}
+    return deleted;
+  }
+
   // ── Helpers ─────────────────────────────────────────────
 
   private ensureReady(): void {
