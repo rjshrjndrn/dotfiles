@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { execSync } from "node:child_process";
 import { realpathSync } from "node:fs";
-import { detectRepoRoot, projectDbPath } from "../acm-lib/git-root.ts";
+import { detectRepoRoot, detectWorktreeRoot, projectDbPath } from "../acm-lib/git-root.ts";
 
 describe("detectRepoRoot", () => {
   let tmpDir: string;
@@ -60,6 +60,68 @@ describe("detectRepoRoot", () => {
     // Both should resolve to same repo root
     expect(rootFromMain).toBe(realpathSync(main));
     expect(rootFromWorktree).toBe(realpathSync(main));
+  });
+});
+
+describe("detectWorktreeRoot", () => {
+  let tmpDir: string;
+
+  beforeAll(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "wt-root-test-"));
+  });
+
+  afterAll(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("returns repo root for a normal git repo (no worktree)", () => {
+    const repo = join(tmpDir, "repo");
+    mkdirSync(repo);
+    execSync("git init", { cwd: repo });
+
+    const root = detectWorktreeRoot(repo);
+    expect(root).toBe(realpathSync(repo));
+  });
+
+  it("returns worktree root (not common root) when inside a worktree", () => {
+    const main = join(tmpDir, "wt-main");
+    mkdirSync(main);
+    execSync("git init", { cwd: main });
+    execSync("git commit --allow-empty -m 'init'", { cwd: main });
+    execSync("git branch feature", { cwd: main });
+
+    const wtPath = join(tmpDir, "wt-feature");
+    execSync(`git worktree add ${wtPath} feature`, { cwd: main });
+
+    const rootFromMain = detectWorktreeRoot(main);
+    const rootFromWorktree = detectWorktreeRoot(wtPath);
+
+    // Main repo → its own root
+    expect(rootFromMain).toBe(realpathSync(main));
+    // Worktree → worktree path, NOT main repo
+    expect(rootFromWorktree).toBe(realpathSync(wtPath));
+  });
+
+  it("returns worktree root from a subdirectory inside worktree", () => {
+    const main = join(tmpDir, "wt-main2");
+    mkdirSync(main);
+    execSync("git init", { cwd: main });
+    execSync("git commit --allow-empty -m 'init'", { cwd: main });
+    execSync("git branch feat2", { cwd: main });
+
+    const wtPath = join(tmpDir, "wt-feat2");
+    execSync(`git worktree add ${wtPath} feat2`, { cwd: main });
+    const sub = join(wtPath, "src", "deep");
+    mkdirSync(sub, { recursive: true });
+
+    const root = detectWorktreeRoot(sub);
+    expect(root).toBe(realpathSync(wtPath));
+  });
+
+  it("returns null for non-git directory", () => {
+    const noGit = join(tmpDir, "nogit");
+    mkdirSync(noGit);
+    expect(detectWorktreeRoot(noGit)).toBeNull();
   });
 });
 

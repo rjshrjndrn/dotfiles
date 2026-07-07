@@ -75,9 +75,38 @@ export function detectRepoRootUncached(cwd: string): string | null {
   }
 }
 
+// In-memory cache for worktree roots
+const worktreeRootCache = new Map<string, string | null>();
+
+/**
+ * Detect the worktree root for a given directory.
+ * Returns the worktree-local root (via --show-toplevel), not the common root.
+ * In a normal repo (no worktrees), this equals the repo root.
+ * Returns null if not inside a git repo.
+ */
+export function detectWorktreeRoot(cwd: string): string | null {
+  if (worktreeRootCache.has(cwd)) return worktreeRootCache.get(cwd)!;
+
+  try {
+    const toplevel = execSync("git rev-parse --show-toplevel", {
+      cwd,
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+    }).trim();
+
+    const resolved = realpathSync(toplevel);
+    worktreeRootCache.set(cwd, resolved);
+    return resolved;
+  } catch {
+    worktreeRootCache.set(cwd, null);
+    return null;
+  }
+}
+
 /** Clear in-memory cache (for testing). */
 export function clearRootCache(): void {
   rootCache.clear();
+  worktreeRootCache.clear();
 }
 
 /**
