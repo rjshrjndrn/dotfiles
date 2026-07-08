@@ -131,7 +131,7 @@ export class ProjectGraph {
     if (this.mode === "exclusive") {
       // Single read-write connection, no locking
       log(`init: exclusive mode at ${this.dbPath}`);
-      this.db = new this.lbugModule.Database(this.dbPath, BUFFER_SIZE, undefined, undefined, undefined, true);
+      this.db = new this.lbugModule.Database(this.dbPath, BUFFER_SIZE);
       this.conn = new this.lbugModule.Connection(this.db);
       await this.ensureSchema(this.conn);
     } else {
@@ -293,7 +293,7 @@ export class ProjectGraph {
 
     // Lazy-init the write connection (kept alive for session lifetime)
     if (!this.writeDb) {
-      this.writeDb = new this.lbugModule.Database(this.dbPath, BUFFER_SIZE, undefined, undefined, undefined, true);
+      this.writeDb = new this.lbugModule.Database(this.dbPath, BUFFER_SIZE);
       this.writeConn = new this.lbugModule.Connection(this.writeDb);
       await this.ensureSchema(this.writeConn);
     }
