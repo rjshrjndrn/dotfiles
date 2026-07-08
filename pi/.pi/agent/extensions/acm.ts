@@ -1168,6 +1168,28 @@ export default function (pi: ExtensionAPI) {
   // ── Tool: acm_forget ──────────────────────────────────────────────
 
   pi.registerTool({
+    name: "acm_save_memory",
+    label: "Save to Project Memory",
+    description:
+      "Save a note to project memory. Persists across sessions and appears in session briefing. " +
+      "Use when user asks to remember something about the project (e.g. SSH config, deployment steps, architecture decisions).",
+    promptSnippet:
+      "acm_save_memory: Save user-provided notes to persistent project memory. " +
+      "Notes appear in future session briefings. Optionally attach file paths for context.",
+    parameters: Type.Object({
+      note: Type.String({ description: "The note/information to save." }),
+      files: Type.Optional(Type.Array(Type.String(), { description: "Related file paths (will be relativized to git root)." })),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
+      const success = await projectBridge.saveUserNote(params.note, params.files ?? []);
+      if (success) {
+        return { content: `✅ Saved to project memory: ${params.note.slice(0, 80)}${params.note.length > 80 ? "..." : ""}` };
+      }
+      return { content: "❌ Failed to save — project memory not initialized (no git root?)." };
+    },
+  });
+
+  pi.registerTool({
     name: "acm_forget",
     label: "ACM Forget",
     description:
