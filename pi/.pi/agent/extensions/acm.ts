@@ -1183,9 +1183,9 @@ export default function (pi: ExtensionAPI) {
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
       const success = await projectBridge.saveUserNote(params.note, params.files ?? []);
       if (success) {
-        return { content: `✅ Saved to project memory: ${params.note.slice(0, 80)}${params.note.length > 80 ? "..." : ""}` };
+        return { content: [{ type: "text" as const, text: `✅ Saved to project memory: ${params.note.slice(0, 80)}${params.note.length > 80 ? "..." : ""}` }] };
       }
-      return { content: "❌ Failed to save — project memory not initialized (no git root?)." };
+      return { content: [{ type: "text" as const, text: "❌ Failed to save — project memory not initialized (no git root?)." }] };
     },
   });
 
