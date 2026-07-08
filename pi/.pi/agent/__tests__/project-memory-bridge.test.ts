@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ProjectMemoryBridge } from "../acm-lib/project-memory-bridge.ts";
+import type { ProjectGraphEvent } from "../acm-lib/project-graph.ts";
 
 /**
  * Test path relativization in ProjectMemoryBridge.
@@ -57,5 +58,103 @@ describe("ProjectMemoryBridge — path relativization", () => {
       const result = bridge.relativizePath("/home/user/project/");
       expect(result).toBe(".");
     });
+  });
+});
+
+describe("ProjectMemoryBridge — saveUserNote", () => {
+  let bridge: ProjectMemoryBridge;
+  let mockGraph: any;
+
+  beforeEach(() => {
+    bridge = new ProjectMemoryBridge({});
+    mockGraph = {
+      writeEvent: vi.fn().mockResolvedValue(undefined),
+      isReady: () => true,
+      init: vi.fn().mockResolvedValue(undefined),
+      registerSession: vi.fn().mockResolvedValue(undefined),
+      queryByKeyword: vi.fn().mockResolvedValue([]),
+      getSessions: vi.fn().mockResolvedValue([]),
+      getHotFiles: vi.fn().mockResolvedValue([]),
+      getStats: vi.fn().mockResolvedValue({ events: 0, files: 0, sessions: 0 }),
+    };
+    // Inject mock graph and sessionId via onSessionStart internals
+    (bridge as any).graph = mockGraph;
+    (bridge as any).sessionId = "test-session";
+  });
+
+  it("writes a user_note event to graph", async () => {
+    await bridge.saveUserNote("SSH tunnel: port 5432 via bastion");
+
+    expect(mockGraph.writeEvent).toHaveBeenCalledOnce();
+    const event: ProjectGraphEvent = mockGraph.writeEvent.mock.calls[0][0];
+    expect(event.eventType).toBe("user_note");
+    expect(event.toolName).toBe("user_note");
+    expect(event.summary).toBe("SSH tunnel: port 5432 via bastion");
+    expect(event.keyTerms).toContain("SSH");
+    expect(event.sessionId).toBe("test-session");
+  });
+
+  it("includes relativized files when provided", async () => {
+    bridge.setWorktreeRoot("/home/user/project");
+    await bridge.saveUserNote("deploy config", ["/home/user/project/deploy/config.yaml"]);
+
+    const event: ProjectGraphEvent = mockGraph.writeEvent.mock.calls[0][0];
+    expect(event.files).toEqual(["deploy/config.yaml"]);
+  });
+
+  it("stores empty files array when none provided", async () => {
+    await bridge.saveUserNote("general note about auth");
+
+    const event: ProjectGraphEvent = mockGraph.writeEvent.mock.calls[0][0];
+    expect(event.files).toEqual([]);
+  });
+
+  it("returns false when graph not initialized", async () => {
+    (bridge as any).graph = null;
+    const result = await bridge.saveUserNote("some note");
+    expect(result).toBe(false);
+  });
+
+  it("returns true on successful save", async () => {
+    const result = await bridge.saveUserNote("some note");
+    expect(result).toBe(true);
+  });
+});
+
+describe("ProjectMemoryBridge — user notes in briefing", () => {
+  let bridge: ProjectMemoryBridge;
+  let mockGraph: any;
+
+  const userNoteEvent: ProjectGraphEvent = {
+    id: "note-1",
+    toolName: "user_note",
+    keyTerms: "SSH tunnel bastion",
+    eventType: "user_note",
+    files: [],
+    sessionId: "s1",
+    timestamp: Date.now(),
+    summary: "SSH tunnel: port 5432 via bastion",
+  };
+
+  beforeEach(() => {
+    bridge = new ProjectMemoryBridge({});
+    mockGraph = {
+      isReady: () => true,
+      getHotFiles: vi.fn().mockResolvedValue([]),
+      getSessions: vi.fn().mockResolvedValue([]),
+      queryByKeyword: vi.fn().mockImplementation(async (kw: string) => {
+        if (kw === "error fail") return [];
+        return [];
+      }),
+      queryByEventType: vi.fn().mockResolvedValue([userNoteEvent]),
+    };
+    (bridge as any).graph = mockGraph;
+    (bridge as any).sessionId = "test-session";
+  });
+
+  it("includes user notes section in briefing", async () => {
+    const briefing = await bridge.formatSessionBriefing();
+    expect(briefing).toContain("Notes:");
+    expect(briefing).toContain("SSH tunnel: port 5432 via bastion");
   });
 });

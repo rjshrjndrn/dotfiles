@@ -394,6 +394,17 @@ export class ProjectGraph {
     return this.rowsToEvents(await result.getAll());
   }
 
+  async queryByEventType(eventType: string, limit: number = 20): Promise<ProjectGraphEvent[]> {
+    this.ensureReady();
+    const result = await this.conn.query(
+      `MATCH (t:ToolResult) WHERE t.eventType = '${escapeStr(eventType)}'
+       OPTIONAL MATCH (t)-[:References]->(f:FilePath)
+       RETURN t.id, t.toolName, t.keyTerms, t.eventType, t.sessionId, t.timestamp, t.summary, collect(DISTINCT f.path) AS files
+       ORDER BY t.timestamp DESC LIMIT ${limit}`
+    );
+    return this.rowsToEvents(await result.getAll());
+  }
+
   async precheckFile(filePath: string): Promise<FilePrecheck> {
     this.ensureReady();
     const events = await this.queryByFile(filePath);

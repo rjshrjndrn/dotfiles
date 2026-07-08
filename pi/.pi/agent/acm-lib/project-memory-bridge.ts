@@ -35,6 +35,7 @@ export interface SessionBriefing {
   hotFiles: HotFile[];
   recentSessions: SessionInfo[];
   recentErrors: ProjectGraphEvent[];
+  userNotes: ProjectGraphEvent[];
 }
 
 const DEFAULT_LOG = "/tmp/acm-project-bridge.log";
@@ -165,6 +166,36 @@ export class ProjectMemoryBridge {
     this.turnCounter = 0;
   }
 
+  // ── User notes ─────────────────────────────────────────
+
+  /**
+   * Save a user-provided note to project memory.
+   * Returns true on success, false if graph not ready.
+   */
+  async saveUserNote(note: string, files: string[] = []): Promise<boolean> {
+    if (!this.graph || !this.sessionId) return false;
+
+    const event: ProjectGraphEvent = {
+      id: `user-note-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      toolName: "user_note",
+      keyTerms: note.split(/\s+/).slice(0, 20).join(" "),
+      eventType: "user_note",
+      files: files.map((f) => this.relativizePath(f)),
+      sessionId: this.sessionId,
+      timestamp: Date.now(),
+      summary: note,
+    };
+
+    try {
+      await this.graph.writeEvent(event);
+      this.log(`user_note: ${event.id} — ${note.slice(0, 80)}`);
+      return true;
+    } catch (err: any) {
+      this.log(`user_note error: ${err.message}`);
+      return false;
+    }
+  }
+
   // ── Query delegations ──────────────────────────────────
 
   async queryByFile(filePath: string): Promise<ProjectGraphEvent[]> {
@@ -207,10 +238,17 @@ export class ProjectMemoryBridge {
       recentErrors = allKeyword.filter((e) => e.eventType === "error").slice(0, 5);
     } catch { /* non-fatal */ }
 
+    // Find user notes
+    let userNotes: ProjectGraphEvent[] = [];
+    try {
+      userNotes = await this.graph.queryByEventType("user_note", 10);
+    } catch { /* non-fatal */ }
+
     return {
       hotFiles,
       recentSessions: recentSessions.slice(0, 5),
       recentErrors,
+      userNotes,
     };
   }
 
@@ -224,7 +262,7 @@ export class ProjectMemoryBridge {
     if (!this.graph) return "";
 
     const briefing = await this.getSessionBriefing();
-    if (briefing.hotFiles.length === 0 && briefing.recentSessions.length === 0) return "";
+    if (briefing.hotFiles.length === 0 && briefing.recentSessions.length === 0 && briefing.userNotes.length === 0) return "";
 
     const lines: string[] = [
       "📁 Project Memory:",
@@ -242,6 +280,15 @@ export class ProjectMemoryBridge {
       lines.push("  Hot files:");
       for (const f of briefing.hotFiles) {
         lines.push(`    ${f.path} (${f.refCount} refs)`);
+      }
+    }
+
+    // User notes
+    if (briefing.userNotes.length > 0) {
+      lines.push("  📝 Notes:");
+      for (const n of briefing.userNotes) {
+        const fileStr = n.files.length > 0 ? ` (${n.files.join(", ")})` : "";
+        lines.push(`    - ${n.summary}${fileStr}`);
       }
     }
 
