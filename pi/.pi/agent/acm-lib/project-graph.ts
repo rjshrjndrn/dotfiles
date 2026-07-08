@@ -18,7 +18,7 @@
  */
 
 import { mkdirSync, existsSync, unlinkSync, openSync, closeSync, appendFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 
 const DEBUG = !!process.env.ACM_PROJECT_DEBUG;
 const LOG_FILE = "/tmp/acm-project-graph.log";
@@ -96,7 +96,8 @@ export class ProjectGraph {
     if (existsSync(this.dbPath)) {
       const { execSync } = await import("node:child_process");
       const escaped = this.dbPath.replace(/'/g, "'\\''");
-      const probe = `node -e "const l=require('@ladybugdb/core');const d=new l.Database('${escaped}');const c=new l.Connection(d);c.query('RETURN 1').then(r=>r.getAll()).then(()=>{d.close();process.exit(0)}).catch(()=>{d.close();process.exit(1)})"`;
+      const nodeModules = join(dirname(import.meta.url.replace('file://', '')), 'node_modules');
+      const probe = `NODE_PATH='${nodeModules}' node -e "const l=require('@ladybugdb/core');const d=new l.Database('${escaped}');const c=new l.Connection(d);c.query('RETURN 1').then(r=>r.getAll()).then(()=>{d.close();process.exit(0)}).catch((e)=>{d.close();process.exit(e.message && e.message.includes('lock') ? 0 : 1)})"`;
 
       let ok = false;
       try {
