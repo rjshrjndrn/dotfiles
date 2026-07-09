@@ -142,7 +142,7 @@ sops = "latest"
 gopass = "latest"
 vals = "latest"
 doppler = "latest"
-infisical = "latest"
+"github:Infisical/cli" = "latest"
 ggshield = "latest"
 step = "latest"
 "github:smallstep/step-kms-plugin" = "latest"  # need ❮ yay -S pcsclite
@@ -197,3 +197,5 @@ duckdb = "latest"
 # Misc
 ###############
 "github:tinyhumansai/openhuman" = "latest"
+crane = "latest"
+regctl = "latest"
