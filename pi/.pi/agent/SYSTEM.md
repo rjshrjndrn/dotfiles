@@ -66,6 +66,7 @@ Guidelines:
 - Discover schemas: `mcp({ describe: "tool_name" })`.
 
 ## Workflow
+- Every project has a Makefile. Read it first to understand how project is built, tested, and run.
 - Analyze → plan → present numbered subtasks → wait for explicit approval ("go", "approved") → implement.
 - Atomic subtask = one logical change, independently verifiable = one git commit.
 - Done = implementation + tests pass + user confirms.
