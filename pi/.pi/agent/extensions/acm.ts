@@ -1024,23 +1024,31 @@ export default function (pi: ExtensionAPI) {
         // Tier 3: Session history search (fires when Tier 1+2 have few results)
         let sessionHistorySection = "";
         const tier12Count = matches.length + (graphSection ? 1 : 0) + (projectSection ? 1 : 0);
+        acmLog(`recall Tier3: tier12Count=${tier12Count}, threshold=3, will_search=${tier12Count < 3}`);
         if (tier12Count < 3) {
           try {
             const sessionDir = ctx.sessionManager.getSessionDir();
             const jsonlFiles = readdirSync(sessionDir)
               .filter((f: string) => f.endsWith(".jsonl"))
               .map((f: string) => join(sessionDir, f));
+            acmLog(`recall Tier3: sessionDir=${sessionDir}, jsonlFiles=${jsonlFiles.length}`);
             
             if (jsonlFiles.length > 0) {
               // Search all session files in this project dir
               const allHits: Array<{ content: string; role: string; toolName: string; score: number; filePath: string; lineNo: number }> = [];
               for (const f of jsonlFiles) {
+                const t0 = performance.now();
                 const result = await searchSessions(params.query, f, { maxResults: 5 });
+                acmLog(`recall Tier3: searched ${f.split('/').pop()} → ${result.hits.length} hits, ${result.total} rg matches, ${(performance.now()-t0).toFixed(0)}ms`);
                 allHits.push(...result.hits);
               }
               // Re-sort across files, take top 5
               allHits.sort((a, b) => b.score - a.score);
               const top = allHits.slice(0, 5);
+              acmLog(`recall Tier3: total=${allHits.length} hits across files, returning top ${top.length}`);
+              if (top.length > 0) {
+                acmLog(`recall Tier3 top hit: [${top[0].score.toFixed(2)}] ${top[0].role}/${top[0].toolName} L${top[0].lineNo} — ${top[0].content.slice(0,60)}`);
+              }
               if (top.length > 0) {
                 const lines = top.map((h, i) => {
                   const tag = h.toolName ? `${h.role}/${h.toolName}` : h.role;
