@@ -167,6 +167,7 @@ export default function (pi: ExtensionAPI) {
     logFile: "/tmp/acm-project-bridge.log",
   });
   let projectBriefingCache = ""; // cached briefing text, set on session_start
+  let _sessionDir = ""; // captured on session_start for Tier 3 search
   let filePrecheckCache = ""; // precheck warnings for files touched this turn
 
   // ── Rehydrate on session load ──────────────────────────────────────
@@ -179,6 +180,7 @@ export default function (pi: ExtensionAPI) {
     const stats = rehydrateState(ctx.sessionManager.getEntries());
     // Rehydrate cachedToFile map from existing cache files
     const sessionDir = ctx.sessionManager.getSessionDir();
+    _sessionDir = sessionDir;
     const cacheDir = getCacheDir(sessionDir);
     if (existsSync(cacheDir)) {
       try {
@@ -1027,7 +1029,7 @@ export default function (pi: ExtensionAPI) {
         acmLog(`recall Tier3: tier12Count=${tier12Count}, always searching`);
         {
           try {
-            const sessionDir = ctx.sessionManager.getSessionDir();
+            const sessionDir = _sessionDir;
             const jsonlFiles = readdirSync(sessionDir)
               .filter((f: string) => f.endsWith(".jsonl"))
               .map((f: string) => join(sessionDir, f));
