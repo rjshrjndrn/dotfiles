@@ -928,7 +928,7 @@ export default function (pi: ExtensionAPI) {
     promptSnippet: "acm_recall: Search index of cached/cleared results AND cross-session project memory. Returns paths + keywords, NO content. Use bash to read cache files. IMPORTANT: When user asks about prior work on a file or topic (e.g. 'what did we do with X', 'why was X changed'), ALWAYS call acm_recall first before reading the file.",
     parameters: Type.Object({
       entryId: Type.Optional(Type.String({ description: "Exact session entry ID to look up." })),
-      query: Type.Optional(Type.String({ description: "Keyword search across cleared tool results." })),
+      query: Type.Optional(Type.String({ description: "Space-separated keywords to search across cleared tool results and session history. Use specific terms, not natural language." })),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
       // Index-only: return metadata + file paths, never content

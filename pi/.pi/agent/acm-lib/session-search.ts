@@ -163,11 +163,15 @@ export async function searchSessions(
   const now = Date.now();
   const t0 = performance.now();
 
-  // Step 1: rg grep
+  // Step 1: rg grep (OR terms for broad retrieval, scoring handles ranking)
+  const terms = query.split(/\s+/).filter(Boolean);
+  const rgPattern = terms.length > 1
+    ? terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")
+    : query;
   let rgOutput = "";
   try {
     rgOutput = execSync(
-      `rg --json -i ${JSON.stringify(query)} ${JSON.stringify(sessionPath)}`,
+      `rg --json -i -e ${JSON.stringify(rgPattern)} ${JSON.stringify(sessionPath)}`,
       { encoding: "utf-8", maxBuffer: 50 * 1024 * 1024 },
     );
   } catch (e: any) {
