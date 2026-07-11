@@ -923,185 +923,72 @@ export default function (pi: ExtensionAPI) {
     name: "acm_recall",
     label: "ACM Recall",
     description:
-      "Search the index of cleared/cached tool results. Returns file paths and metadata only — no content. " +
-      "Use bash (rg, grep, head, jq) on returned file paths to retrieve actual content.",
-    promptSnippet: "acm_recall: Search index of cached/cleared results AND cross-session project memory. Returns paths + keywords, NO content. Use bash to read cache files. IMPORTANT: When user asks about prior work on a file or topic (e.g. 'what did we do with X', 'why was X changed'), ALWAYS call acm_recall first before reading the file.",
+      "Search session history across all sessions in this project. Returns ranked results from JSONL session files. " +
+      "Use bash (sed -n 'Lp' <file>) to retrieve full content from line numbers.",
+    promptSnippet: "acm_recall: Search session history (all user messages, tool results, assistant responses). Returns ranked snippets with file + line number. Use `sed -n 'Lp' <file>` to read full content. IMPORTANT: When user asks about prior work on a file or topic, ALWAYS call acm_recall first.",
     parameters: Type.Object({
-      entryId: Type.Optional(Type.String({ description: "Exact session entry ID to look up." })),
-      query: Type.Optional(Type.String({ description: "Space-separated keywords to search across cleared tool results and session history. Use specific terms, not natural language." })),
+      query: Type.String({ description: "Space-separated keywords. Use specific terms, not natural language." }),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-      // Index-only: return metadata + file paths, never content
-      const formatEntry = (recall: RecallMetadata) => {
-        const cachePath = cachedToFile.get(recall.toolCallId);
-        const age = Math.round((Date.now() - recall.timestamp) / 60000);
-        return [
-          `  tool: ${recall.toolName}`,
-          `  keywords: ${recall.keyTerms.slice(0, 100)}`,
-          cachePath ? `  cached: ${cachePath}` : `  entryId: ${recall.entryId} (session-only, no cache file)`,
-          `  age: ${age}m ago | size: ${Math.round(recall.charCount / 1024)}KB`,
-        ].join("\n");
-      };
-
-      if (params.entryId) {
-        // Look up by entryId
-        const recall = [...recallIndex.values()].find(r => r.entryId === params.entryId);
-        if (!recall) return { content: [{ type: "text" as const, text: `[ACM] Entry ${params.entryId} not in recall index.` }], details: { found: false } };
-        const info = formatEntry(recall);
-        return {
-          content: [{ type: "text" as const, text: `[ACM Recall] Found:\n${info}\n\nUse bash to read the cached file.` }],
-          details: { source: "entryId", entryId: params.entryId },
-        };
+      if (!params.query) {
+        return { content: [{ type: "text" as const, text: "[ACM Recall] Provide a query with space-separated keywords." }], details: {} };
       }
 
-      if (params.query) {
-        const terms = params.query.toLowerCase().split(/\s+/).filter(Boolean);
-        const matches: Array<{ entry: RecallMetadata; score: number }> = [];
-        for (const recall of recallIndex.values()) {
-          const searchable = `${recall.toolName} ${recall.keyTerms} ${recall.filePaths.join(" ")}`.toLowerCase();
-          const score = terms.filter((t) => searchable.includes(t)).length;
-          if (score > 0) matches.push({ entry: recall, score });
-        }
-        matches.sort((a, b) => b.score - a.score);
+      acmLog(`recall query: "${params.query}"`);
 
-        // Augment with graph results — FTS first, CONTAINS fallback
-        let graphSection = "";
-        acmLog(`recall query: "${params.query}", graphReady=${isGraphReady()}, mapMatches=${matches.length}`);
-        if (isGraphReady()) {
-          try {
-            // FTS search (BM25 scored)
-            const ftsHits = await ftsSearch(params.query, 20);
-            acmLog(`fts hits: ${ftsHits.length}`);
-
-            let graphHits: Array<{ id: string; toolName: string; keyTerms: string; filePaths: string[]; score?: number }> = [];
-            if (ftsHits.length > 0) {
-              graphHits = ftsHits.map(h => ({ ...h.node, score: h.score }));
-            } else {
-              // Fallback to CONTAINS if FTS returned nothing
-              const containsHits = await graphQueryByKeyword(params.query);
-              graphHits = containsHits.map(h => ({ ...h, score: undefined }));
-              acmLog(`fts=0, contains fallback: ${containsHits.length}`);
-            }
-
-            // Find graph-only results not in Map matches
-            const mapIds = new Set(matches.map(m => m.entry.toolCallId || m.entry.entryId));
-            const graphOnly = graphHits.filter(g => !mapIds.has(g.id));
-            const scoredLabel = ftsHits.length > 0 ? "FTS" : "CONTAINS";
-            graphSection = `\n\n[Graph (${scoredLabel}): ${graphHits.length} total, ${graphOnly.length} unique]`;
-            if (graphOnly.length > 0) {
-              graphSection += `\n[Graph-only matches: ${graphOnly.length}]\n` +
-                graphOnly.slice(0, 5).map(g => {
-                  const scoreStr = g.score != null ? ` | score: ${g.score.toFixed(3)}` : "";
-                  return `  • ${g.toolName} | ${g.keyTerms.slice(0, 80)} | files: ${g.filePaths.join(", ") || "none"}${scoreStr}`;
-                }).join("\n");
-            }
-            // Also find related via co-file traversal from top match
-            const topId = graphHits[0]?.id || (matches.length > 0 ? matches[0].entry.toolCallId || matches[0].entry.entryId : null);
-            if (topId) {
-              const related = await graphGetRelated(topId);
-              acmLog(`related for ${topId}: ${related.length} results`);
-              if (related.length > 0) {
-                graphSection += `\n\n[Related (shared files): ${related.length}]\n` +
-                  related.slice(0, 5).map(r =>
-                    `  • ${r.toolName} | ${r.keyTerms.slice(0, 80)} | files: ${r.filePaths.join(", ") || "none"}`
-                  ).join("\n");
-              }
-            }
-          } catch (gErr: any) {
-            acmLog(`recall query ERROR: ${gErr?.message || gErr}`);
-          }
+      try {
+        const sessionDir = _sessionDir;
+        if (!sessionDir) {
+          return { content: [{ type: "text" as const, text: "[ACM Recall] No session dir available." }], details: {} };
         }
 
-        // Search project memory (cross-session)
-        let projectSection = "";
-        try {
-          const projectRecall = await projectBridge.formatProjectRecall(params.query);
-          if (projectRecall) {
-            projectSection = `\n\n${projectRecall}`;
-          }
-        } catch (pErr: any) {
-          acmLog(`recall projectBridge ERROR: ${pErr?.message || pErr}`);
+        const jsonlFiles = readdirSync(sessionDir)
+          .filter((f: string) => f.endsWith(".jsonl"))
+          .map((f: string) => join(sessionDir, f));
+
+        if (jsonlFiles.length === 0) {
+          return { content: [{ type: "text" as const, text: `[ACM Recall] No session files in ${sessionDir}` }], details: {} };
         }
 
-        // Tier 3: Session history search (fires when Tier 1+2 have few results)
-        let sessionHistorySection = "";
-        const tier12Count = matches.length + (graphSection ? 1 : 0) + (projectSection ? 1 : 0);
-        acmLog(`recall Tier3: tier12Count=${tier12Count}, always searching`);
-        {
-          try {
-            const sessionDir = _sessionDir;
-            const jsonlFiles = readdirSync(sessionDir)
-              .filter((f: string) => f.endsWith(".jsonl"))
-              .map((f: string) => join(sessionDir, f));
-            acmLog(`recall Tier3: sessionDir=${sessionDir}, jsonlFiles=${jsonlFiles.length}`);
-            
-            if (jsonlFiles.length > 0) {
-              // Search all session files in this project dir
-              const allHits: Array<{ content: string; role: string; toolName: string; score: number; filePath: string; lineNo: number }> = [];
-              for (const f of jsonlFiles) {
-                const t0 = performance.now();
-                const result = await searchSessions(params.query, f, { maxResults: 5 });
-                acmLog(`recall Tier3: searched ${f.split('/').pop()} → ${result.hits.length} hits, ${result.total} rg matches, ${(performance.now()-t0).toFixed(0)}ms`);
-                allHits.push(...result.hits);
-              }
-              // Re-sort across files, take top 5
-              allHits.sort((a, b) => b.score - a.score);
-              const top = allHits.slice(0, 5);
-              acmLog(`recall Tier3: total=${allHits.length} hits across files, returning top ${top.length}`);
-              if (top.length > 0) {
-                acmLog(`recall Tier3 top hit: [${top[0].score.toFixed(2)}] ${top[0].role}/${top[0].toolName} L${top[0].lineNo} — ${top[0].content.slice(0,60)}`);
-              }
-              if (top.length > 0) {
-                const lines = top.map((h, i) => {
-                  const tag = h.toolName ? `${h.role}/${h.toolName}` : h.role;
-                  return `  #${i + 1} [${h.score.toFixed(2)}] ${tag} L${h.lineNo} — ${h.content.replace(/\n/g, "\\n").slice(0, 80)}`;
-                });
-                sessionHistorySection = `\n📁 Session history (${allHits.length} matches, top ${top.length}):\n${lines.join("\n")}\n  → Full content: bash 'sed -n "<lineNo>p" <session_file>'`;
-              }
-            }
-          } catch (shErr: any) {
-            acmLog(`recall sessionHistory ERROR: ${shErr?.message || shErr}`);
-          }
+        const allHits: Array<{ content: string; role: string; toolName: string; score: number; filePath: string; lineNo: number }> = [];
+        for (const f of jsonlFiles) {
+          const t0 = performance.now();
+          const result = await searchSessions(params.query, f, { maxResults: 5 });
+          acmLog(`recall: searched ${f.split('/').pop()} → ${result.hits.length} hits, ${result.total} rg matches, ${(performance.now()-t0).toFixed(0)}ms`);
+          allHits.push(...result.hits);
         }
 
-        if (matches.length === 0 && !graphSection && !projectSection && !sessionHistorySection) {
-          return { content: [{ type: "text" as const, text: `[ACM] No results for: "${params.query}"` }], details: { found: false } };
+        allHits.sort((a, b) => b.score - a.score);
+        const top = allHits.slice(0, 5);
+
+        if (top.length === 0) {
+          return { content: [{ type: "text" as const, text: `[ACM Recall] No results for: "${params.query}"` }], details: { found: false } };
         }
 
-        const lines = matches.slice(0, 10).map((m, i) => `${i + 1}. ${formatEntry(m.entry)}`);
+        const lines = top.map((h, i) => {
+          const tag = h.toolName ? `${h.role}/${h.toolName}` : h.role;
+          const sessionFile = h.filePath.split('/').pop();
+          return `#${i + 1} [${h.score.toFixed(2)}] ${tag} — ${h.content.replace(/\n/g, "\\n").slice(0, 100)}\n   → sed -n '${h.lineNo}p' ${h.filePath}`;
+        });
+
         const report = [
-          `[ACM Recall] ${matches.length} match${matches.length > 1 ? "es" : ""}:`,
-          ...lines,
-          graphSection,
-          projectSection,
-          sessionHistorySection,
+          `[ACM Recall] ${allHits.length} matches across ${jsonlFiles.length} sessions, top ${top.length}:`,
           ``,
-          `Use bash (rg, grep, head) on cached file paths to retrieve content.`,
+          ...lines,
         ].join("\n");
 
         return {
           content: [{ type: "text" as const, text: report }],
-          details: { source: "keyword", matches: matches.length },
+          details: { source: "session-search", total: allHits.length, shown: top.length },
         };
+      } catch (err: any) {
+        acmLog(`recall ERROR: ${err?.message || err}`);
+        return { content: [{ type: "text" as const, text: `[ACM Recall] Error: ${err?.message || err}` }], details: {} };
       }
-
-      // No params: list all cached entries
-      const all = [...recallIndex.values()].sort((a, b) => b.timestamp - a.timestamp);
-      if (all.length === 0) {
-        return { content: [{ type: "text" as const, text: "[ACM] Recall index empty." }], details: {} };
-      }
-      const lines = all.slice(0, 15).map((r, i) => `${i + 1}. ${formatEntry(r)}`);
-      const report = [
-        `[ACM Recall] ${all.length} entries in index:`,
-        ...lines,
-        all.length > 15 ? `  ... +${all.length - 15} more` : "",
-        ``,
-        `Use bash (rg, grep, head) on cached file paths to retrieve content.`,
-      ].filter(Boolean).join("\n");
-
-      return { content: [{ type: "text" as const, text: report }], details: { total: all.length } };
     },
   });
+
+
 
   // ── Tool: acm_pin ───────────────────────────────────────────────────
 
