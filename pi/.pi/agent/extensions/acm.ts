@@ -62,6 +62,7 @@ import {
 } from "../acm-lib/graph.ts";
 import { ProjectMemoryBridge } from "../acm-lib/project-memory-bridge.ts";
 import { detectRepoRoot, detectWorktreeRoot } from "../acm-lib/git-root.ts";
+import { searchSessions } from "../acm-lib/session-search.ts";
 
 // ── Re-exports for backward compatibility (tests import from acm.ts) ──
 
@@ -1020,7 +1021,40 @@ export default function (pi: ExtensionAPI) {
           acmLog(`recall projectBridge ERROR: ${pErr?.message || pErr}`);
         }
 
-        if (matches.length === 0 && !graphSection && !projectSection) {
+        // Tier 3: Session history search (fires when Tier 1+2 have few results)
+        let sessionHistorySection = "";
+        const tier12Count = matches.length + (graphSection ? 1 : 0) + (projectSection ? 1 : 0);
+        if (tier12Count < 3) {
+          try {
+            const sessionDir = ctx.sessionManager.getSessionDir();
+            const jsonlFiles = readdirSync(sessionDir)
+              .filter((f: string) => f.endsWith(".jsonl"))
+              .map((f: string) => join(sessionDir, f));
+            
+            if (jsonlFiles.length > 0) {
+              // Search all session files in this project dir
+              const allHits: Array<{ content: string; role: string; toolName: string; score: number; filePath: string; lineNo: number }> = [];
+              for (const f of jsonlFiles) {
+                const result = await searchSessions(params.query, f, { maxResults: 5 });
+                allHits.push(...result.hits);
+              }
+              // Re-sort across files, take top 5
+              allHits.sort((a, b) => b.score - a.score);
+              const top = allHits.slice(0, 5);
+              if (top.length > 0) {
+                const lines = top.map((h, i) => {
+                  const tag = h.toolName ? `${h.role}/${h.toolName}` : h.role;
+                  return `  #${i + 1} [${h.score.toFixed(2)}] ${tag} L${h.lineNo} — ${h.content.replace(/\n/g, "\\n").slice(0, 80)}`;
+                });
+                sessionHistorySection = `\n📁 Session history (${allHits.length} matches, top ${top.length}):\n${lines.join("\n")}\n  → Full content: bash 'sed -n "<lineNo>p" <session_file>'`;
+              }
+            }
+          } catch (shErr: any) {
+            acmLog(`recall sessionHistory ERROR: ${shErr?.message || shErr}`);
+          }
+        }
+
+        if (matches.length === 0 && !graphSection && !projectSection && !sessionHistorySection) {
           return { content: [{ type: "text" as const, text: `[ACM] No results for: "${params.query}"` }], details: { found: false } };
         }
 
@@ -1030,6 +1064,7 @@ export default function (pi: ExtensionAPI) {
           ...lines,
           graphSection,
           projectSection,
+          sessionHistorySection,
           ``,
           `Use bash (rg, grep, head) on cached file paths to retrieve content.`,
         ].join("\n");
