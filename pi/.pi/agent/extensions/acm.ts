@@ -1024,8 +1024,8 @@ export default function (pi: ExtensionAPI) {
         // Tier 3: Session history search (fires when Tier 1+2 have few results)
         let sessionHistorySection = "";
         const tier12Count = matches.length + (graphSection ? 1 : 0) + (projectSection ? 1 : 0);
-        acmLog(`recall Tier3: tier12Count=${tier12Count}, threshold=3, will_search=${tier12Count < 3}`);
-        if (tier12Count < 3) {
+        acmLog(`recall Tier3: tier12Count=${tier12Count}, always searching`);
+        {
           try {
             const sessionDir = ctx.sessionManager.getSessionDir();
             const jsonlFiles = readdirSync(sessionDir)
