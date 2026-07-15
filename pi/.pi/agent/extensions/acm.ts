@@ -63,6 +63,8 @@ import {
 import { ProjectMemoryBridge } from "../acm-lib/project-memory-bridge.ts";
 import { detectRepoRoot, detectWorktreeRoot } from "../acm-lib/git-root.ts";
 import { searchSessions } from "../acm-lib/session-search.ts";
+import { resolveId } from "../acm-lib/id-resolver.ts";
+import { buildEntryMap } from "../acm-lib/entry-map.ts";
 
 // ── Re-exports for backward compatibility (tests import from acm.ts) ──
 
@@ -990,15 +992,37 @@ export default function (pi: ExtensionAPI) {
 
 
 
+  // ── Tool: acm_map ───────────────────────────────────────────────────
+
+  pi.registerTool({
+    name: "acm_map",
+    label: "ACM Map",
+    description: "Show all context entries with their IDs, roles, and content previews. Use before acm_pin to discover entry IDs.",
+    promptSnippet: "acm_map: List entries with IDs. Call before acm_pin.",
+    parameters: Type.Object({}),
+    async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
+      const branch = ctx.sessionManager.getBranch() as any[];
+      const rows = buildEntryMap(branch);
+      if (rows.length === 0) {
+        return { content: [{ type: "text" as const, text: "[ACM] No entries on branch." }], details: {} };
+      }
+      const header = "ID        ROLE       PREVIEW";
+      const separator = "─".repeat(60);
+      const lines = rows.map(r => `${r.id}  ${r.role.padEnd(10)} ${r.preview}`);
+      const table = [header, separator, ...lines].join("\n");
+      return { content: [{ type: "text" as const, text: table }], details: { count: rows.length } };
+    },
+  });
+
   // ── Tool: acm_pin ───────────────────────────────────────────────────
 
   pi.registerTool({
     name: "acm_pin",
     label: "ACM Pin",
-    description: "Pin a message to protect it from clearing and sliding. Pinned messages survive all ACM operations.",
-    promptSnippet: "acm_pin: Pin/unpin entries to protect from context clearing.",
+    description: "Pin a message to protect it from clearing and sliding. Pinned messages survive all ACM operations. Use acm_map first to discover entry IDs. Supports prefix matching (first 4+ chars).",
+    promptSnippet: "acm_pin: Pin/unpin entries. Use acm_map to find entry IDs first. Supports prefix matching.",
     parameters: Type.Object({
-      entryId: Type.String({ description: "Session entry ID to pin/unpin." }),
+      entryId: Type.String({ description: "Entry ID or unique prefix (4+ chars). Use acm_map to discover IDs." }),
       action: Type.Optional(Type.Union([Type.Literal("pin"), Type.Literal("unpin")], { description: "Pin or unpin. Default: pin." })),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
@@ -1006,23 +1030,25 @@ export default function (pi: ExtensionAPI) {
       const { entryId } = params;
 
       const branch = ctx.sessionManager.getBranch() as any[];
-      if (!branch.some((e: any) => e.id === entryId)) {
-        return { content: [{ type: "text" as const, text: `[ACM] Entry ${entryId} not found on branch.` }], details: {} };
+      const resolved = resolveId(entryId, branch);
+      if (!resolved.ok) {
+        return { content: [{ type: "text" as const, text: `[ACM] ${resolved.error}` }], details: {} };
       }
+      const resolvedId = resolved.entry.id;
 
       if (action === "pin") {
-        pinnedSet.add(entryId);
+        pinnedSet.add(resolvedId);
         for (const [tcId, eId] of toolCallIdToEntryId) {
-          if (eId === entryId) { clearSet.delete(tcId); recallIndex.delete(tcId); }
+          if (eId === resolvedId) { clearSet.delete(tcId); recallIndex.delete(tcId); }
         }
       } else {
-        pinnedSet.delete(entryId);
+        pinnedSet.delete(resolvedId);
       }
 
-      persistPin(pi.appendEntry.bind(pi), entryId, action);
-      const report = `[ACM] ${action === "pin" ? "📌 Pinned" : "🔓 Unpinned"} ${entryId} (${pinnedSet.size} total)`;
+      persistPin(pi.appendEntry.bind(pi), resolvedId, action);
+      const report = `[ACM] ${action === "pin" ? "📌 Pinned" : "🔓 Unpinned"} ${resolvedId} (${pinnedSet.size} total)`;
       ctx.ui.notify(report, "info");
-      return { content: [{ type: "text" as const, text: report }], details: { entryId, action } };
+      return { content: [{ type: "text" as const, text: report }], details: { entryId: resolvedId, action } };
     },
   });
 
