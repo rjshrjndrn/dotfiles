@@ -1019,36 +1019,50 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "acm_pin",
     label: "ACM Pin",
-    description: "Pin a message to protect it from clearing and sliding. Pinned messages survive all ACM operations. Use acm_map first to discover entry IDs. Supports prefix matching (first 4+ chars).",
-    promptSnippet: "acm_pin: Pin/unpin entries. Use acm_map to find entry IDs first. Supports prefix matching.",
+    description: "Pin/unpin messages to protect from clearing and sliding. Supports batch: pass entryIds array to pin multiple at once. Use acm_map first to discover entry IDs. Supports prefix matching (first 4+ chars).",
+    promptSnippet: "acm_pin: Pin/unpin entries (batch supported via entryIds[]). Use acm_map to find entry IDs first.",
     parameters: Type.Object({
-      entryId: Type.String({ description: "Entry ID or unique prefix (4+ chars). Use acm_map to discover IDs." }),
+      entryId: Type.Optional(Type.String({ description: "Single entry ID or unique prefix (4+ chars). Use acm_map to discover IDs." })),
+      entryIds: Type.Optional(Type.Array(Type.String(), { description: "Batch: array of entry IDs or prefixes to pin/unpin at once." })),
       action: Type.Optional(Type.Union([Type.Literal("pin"), Type.Literal("unpin")], { description: "Pin or unpin. Default: pin." })),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const action = params.action ?? "pin";
-      const { entryId } = params;
+      const ids: string[] = params.entryIds ?? (params.entryId ? [params.entryId] : []);
+
+      if (ids.length === 0) {
+        return { content: [{ type: "text" as const, text: "[ACM] Provide entryId or entryIds." }], details: {} };
+      }
 
       const branch = ctx.sessionManager.getBranch() as any[];
-      const resolved = resolveId(entryId, branch);
-      if (!resolved.ok) {
-        return { content: [{ type: "text" as const, text: `[ACM] ${resolved.error}` }], details: {} };
-      }
-      const resolvedId = resolved.entry.id;
+      const results: string[] = [];
+      const resolvedIds: string[] = [];
 
-      if (action === "pin") {
-        pinnedSet.add(resolvedId);
-        for (const [tcId, eId] of toolCallIdToEntryId) {
-          if (eId === resolvedId) { clearSet.delete(tcId); recallIndex.delete(tcId); }
+      for (const id of ids) {
+        const resolved = resolveId(id, branch);
+        if (!resolved.ok) {
+          results.push(`❌ ${id}: ${resolved.error}`);
+          continue;
         }
-      } else {
-        pinnedSet.delete(resolvedId);
+        const resolvedId = resolved.entry.id;
+        resolvedIds.push(resolvedId);
+
+        if (action === "pin") {
+          pinnedSet.add(resolvedId);
+          for (const [tcId, eId] of toolCallIdToEntryId) {
+            if (eId === resolvedId) { clearSet.delete(tcId); recallIndex.delete(tcId); }
+          }
+        } else {
+          pinnedSet.delete(resolvedId);
+        }
+
+        persistPin(pi.appendEntry.bind(pi), resolvedId, action);
+        results.push(`${action === "pin" ? "📌" : "🔓"} ${resolvedId}`);
       }
 
-      persistPin(pi.appendEntry.bind(pi), resolvedId, action);
-      const report = `[ACM] ${action === "pin" ? "📌 Pinned" : "🔓 Unpinned"} ${resolvedId} (${pinnedSet.size} total)`;
+      const report = `[ACM] ${action === "pin" ? "Pinned" : "Unpinned"} ${resolvedIds.length}/${ids.length} (${pinnedSet.size} total)\n${results.join("\n")}`;
       ctx.ui.notify(report, "info");
-      return { content: [{ type: "text" as const, text: report }], details: { entryId: resolvedId, action } };
+      return { content: [{ type: "text" as const, text: report }], details: { entryIds: resolvedIds, action } };
     },
   });
 
