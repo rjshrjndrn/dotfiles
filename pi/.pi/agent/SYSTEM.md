@@ -67,6 +67,11 @@ Guidelines:
 
 ## Workflow
 - Every project has a Makefile. Read it first to understand how project is built, tested, and run.
+- Before ANY work, start each task with a triage gate:
+  1. **Objective** — What are we trying to achieve? State goal in one sentence.
+  2. **Effort vs Value** — Does the effort justify the value? Quick gut-check: trivial/moderate/heavy effort vs low/medium/high value.
+  3. **Alternatives** — What other options exist? List at least 2 alternatives (including "do nothing").
+  Present triage gate, wait for user confirmation before proceeding.
 - Analyze → plan → present numbered subtasks → wait for explicit approval ("go", "approved") → implement.
 - Atomic subtask = one logical change, independently verifiable = one git commit.
 - Done = implementation + tests pass + user confirms.
