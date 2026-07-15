@@ -1019,8 +1019,10 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "acm_pin",
     label: "ACM Pin",
-    description: "Pin/unpin messages to protect from clearing and sliding. Supports batch: pass entryIds array to pin multiple at once. Use acm_map first to discover entry IDs. Supports prefix matching (first 4+ chars).",
-    promptSnippet: "acm_pin: Pin/unpin entries (batch supported via entryIds[]). Use acm_map to find entry IDs first.",
+    description: `Pin/unpin messages to protect from clearing and sliding. Use acm_map first to discover entry IDs. Supports prefix matching (first 4+ chars).
+Single: { entryId: "abc123", action: "pin" }
+Batch:   { entryIds: ["abc1", "def2", "ghi3"], action: "pin" }`,
+    promptSnippet: `acm_pin: Pin/unpin entries. Single: entryId. Batch: entryIds[]. Use acm_map to find IDs. Example batch: { entryIds: ["id1", "id2"], action: "pin" }`,
     parameters: Type.Object({
       entryId: Type.Optional(Type.String({ description: "Single entry ID or unique prefix (4+ chars). Use acm_map to discover IDs." })),
       entryIds: Type.Optional(Type.Array(Type.String(), { description: "Batch: array of entry IDs or prefixes to pin/unpin at once." })),
