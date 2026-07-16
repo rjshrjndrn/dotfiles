@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveId } from "./id-resolver";
+import { resolveId } from "../acm-lib/id-resolver.ts";
 
 const branch = [
   { id: "abc12def", type: "message", message: { role: "user", content: "hello" } },

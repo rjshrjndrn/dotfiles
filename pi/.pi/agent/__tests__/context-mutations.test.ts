@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { injectAcmContext, prependPinned } from "./context-mutations";
+import { injectAcmContext, prependPinned } from "../acm-lib/context-mutations.ts";
 
 // Helper: assert every message in array resolves to an entry ID
 function assertAllPinnable(messages: any[], msgEntryId: Map<any, string>) {
