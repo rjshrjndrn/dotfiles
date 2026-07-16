@@ -685,11 +685,11 @@ export default function (pi: ExtensionAPI) {
   });
 
   // ── Command: /acm-clear ────────────────────────────────────────────
-  // Steers the LLM to "pin important, then slide". Which entries are
-  // "important" is a judgment call, so we don't hardcode it — we reveal the
-  // map and let the model choose, mirroring the manual flow.
+  // Steers the LLM to "prune pins, pin important, then slide". Which entries
+  // matter is a judgment call, so we don't hardcode it — we reveal the map and
+  // let the model choose, mirroring the manual flow.
   pi.registerCommand("acm-clear", {
-    description: "Pin important entries, then slide away the rest",
+    description: "Prune stale pins, pin important, then slide away the rest",
     handler: async (_args, ctx) => {
       pi.sendUserMessage("/acm-clear");
       pi.sendMessage(
@@ -699,13 +699,17 @@ export default function (pi: ExtensionAPI) {
             "Compact this session now. Do NOT ask for confirmation.",
             "Steps, in order:",
             "1. Call acm_map to see the current entries and their IDs.",
-            "2. Identify the IMPORTANT entries: durable decisions, final",
-            "   results/summaries, config or design conclusions, and anything",
-            "   needed to continue the current task. Skip routine tool output,",
-            "   intermediate steps, and noise.",
-            "3. Call acm_pin with those entry IDs (action: pin).",
+            "2. Review the ALREADY-PINNED entries. Unpin any that are no longer",
+            "   useful: superseded decisions, stale intermediate results, or",
+            "   anything irrelevant to the current task. Call acm_pin with those",
+            "   entry IDs and action: unpin.",
+            "3. Identify the IMPORTANT entries not yet pinned: durable decisions,",
+            "   final results/summaries, config or design conclusions, and",
+            "   anything needed to continue the current task. Skip routine tool",
+            "   output, intermediate steps, and noise. Call acm_pin with those",
+            "   entry IDs and action: pin.",
             "4. Call acm_slide to discard the rest.",
-            "5. Report in 1-3 lines: what was pinned and the slide result.",
+            "5. Report in 1-3 lines: what was unpinned, pinned, and slide result.",
           ].join("\n"),
           display: false,
         },
