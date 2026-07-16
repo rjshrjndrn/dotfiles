@@ -170,3 +170,31 @@ export function findHybridCutoff(branch: any[], opts?: { keepMessages?: number; 
 
   return cutoff;
 }
+
+/**
+ * Select tool-result branch entries eligible for clearing.
+ *
+ * Pure decision predicate shared by the turn-boundary auto-clear hook and
+ * acm_slide (so a slide can flush pending clears before reporting context %).
+ *
+ * An entry is clearable when it is a toolResult message with a toolCallId that
+ * is not already cleared, whose entry id is not pinned, and whose toolCallId is
+ * not in the protected (recent) set.
+ */
+export function selectClearableToolResults(
+  entries: any[],
+  opts: { pinnedSet: Set<string>; clearedSet: Set<string>; protectedToolCallIds: Set<string> },
+): string[] {
+  const { pinnedSet, clearedSet, protectedToolCallIds } = opts;
+  const out: string[] = [];
+  for (const entry of entries) {
+    if (!entry || entry.type !== "message" || !entry.message) continue;
+    const msg = entry.message as any;
+    if (msg.role !== "toolResult" || !msg.toolCallId) continue;
+    if (clearedSet.has(msg.toolCallId)) continue;
+    if (entry.id && pinnedSet.has(entry.id)) continue;
+    if (protectedToolCallIds.has(msg.toolCallId)) continue;
+    out.push(msg.toolCallId);
+  }
+  return out;
+}

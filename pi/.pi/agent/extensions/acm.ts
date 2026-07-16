@@ -38,6 +38,7 @@ import {
   extractEntryContent,
   compactMessage,
   findHybridCutoff,
+  selectClearableToolResults,
 } from "../acm-lib/helpers.ts";
 import {
   getCacheDir,
@@ -398,6 +399,30 @@ export default function (pi: ExtensionAPI) {
     }
   });
 
+  // Apply the side effects of evicting one tool-result entry: index it for
+  // recall, cache its content to disk, track evicted paths, and add its
+  // toolCallId to clearSet. Selection is decided by selectClearableToolResults;
+  // this only performs the eviction. Shared by the auto-clear hook and
+  // acm_slide so a slide reflects freed tokens immediately.
+  function evictToolResultEntry(entry: any, branch: any[], ctx: any): void {
+    const msg = entry.message as any;
+    const tokens = estimateTokens(msg);
+    clearSet.add(msg.toolCallId);
+    acmState.totalTokensSaved += Math.max(tokens - 50, 0);
+    const textContent = Array.isArray(msg.content)
+      ? msg.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join(" ").slice(0, 2000)
+      : "";
+    const recall = buildRecallEntry(msg.toolCallId, msg.toolName || "unknown", textContent, tokens * 4, getBranchMessages(branch));
+    recallIndex.set(msg.toolCallId, recall);
+    syncToGraph(recall);
+    if (!cachedToFile.has(msg.toolCallId)) {
+      const sessionDir = ctx.sessionManager.getSessionDir();
+      const cachePath = cacheToolResult(sessionDir, msg.toolName || "unknown", msg.toolCallId, msg);
+      if (cachePath) cachedToFile.set(msg.toolCallId, cachePath);
+    }
+    for (const fp of recall.filePaths) evictedPaths.set(fp, msg.toolCallId);
+  }
+
   // ── Context event: apply clearing/compaction ───────────────────────
 
   pi.on("context", (event, ctx) => {
@@ -550,31 +575,18 @@ export default function (pi: ExtensionAPI) {
         if (m.role === "toolResult" && m.toolCallId) recentToolCallIds.add(m.toolCallId);
       }
 
+      const clearableIds = new Set(
+        selectClearableToolResults(branch, {
+          pinnedSet,
+          clearedSet: clearSet,
+          protectedToolCallIds: recentToolCallIds,
+        }),
+      );
       let autoClearCount = 0;
       for (const entry of branch) {
-        if (entry.type !== "message" || !entry.message) continue;
-        const msg = entry.message as any;
-        if (msg.role !== "toolResult" || !msg.toolCallId) continue;
-        if (clearSet.has(msg.toolCallId)) continue;
-        if (pinnedSet.has(entry.id)) continue;
-        if (recentToolCallIds.has(msg.toolCallId)) continue; // protect recent
-        const tokens = estimateTokens(msg);
-        clearSet.add(msg.toolCallId);
-        acmState.totalTokensSaved += Math.max(tokens - 50, 0);
-        const textContent = Array.isArray(msg.content)
-          ? msg.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join(" ").slice(0, 2000)
-          : "";
-        const recall = buildRecallEntry(msg.toolCallId, msg.toolName || "unknown", textContent, tokens * 4, getBranchMessages(branch));
-        recallIndex.set(msg.toolCallId, recall);
-        syncToGraph(recall);
-        // Cache local tool results to disk before clearing (prevents content loss)
-        if (!cachedToFile.has(msg.toolCallId)) {
-          const sessionDir = ctx.sessionManager.getSessionDir();
-          const cachePath = cacheToolResult(sessionDir, msg.toolName || "unknown", msg.toolCallId, msg);
-          if (cachePath) cachedToFile.set(msg.toolCallId, cachePath);
-        }
-        // Track evicted file paths for fault detection
-        for (const fp of recall.filePaths) evictedPaths.set(fp, msg.toolCallId);
+        const tcId = (entry.message as any)?.toolCallId;
+        if (!tcId || !clearableIds.has(tcId)) continue;
+        evictToolResultEntry(entry, branch, ctx);
         autoClearCount++;
       }
       // Cap evictedPaths to prevent unbounded growth
@@ -957,12 +969,39 @@ export default function (pi: ExtensionAPI) {
         if (!remainingToolCallIds.has(tcId)) cachedToFile.delete(tcId);
       }
 
+      // Flush pending tool-result clears in the KEPT region now, so the
+      // reported context reflects freed tokens immediately instead of waiting
+      // for the next turn-boundary auto-clear. Protect the last kept turn's
+      // results (everything after the final kept user message) — the LLM may
+      // still need them on the next turn.
+      let lastUserIdx = branch.length;
+      for (let i = branch.length - 1; i >= cutoff; i--) {
+        if (branch[i].type === "message" && (branch[i].message as any)?.role === "user") { lastUserIdx = i; break; }
+      }
+      const protectedToolCallIds = new Set<string>();
+      for (let i = lastUserIdx; i < branch.length; i++) {
+        const tc = (branch[i].message as any)?.toolCallId;
+        if (tc) protectedToolCallIds.add(tc);
+      }
+      const keptRegion = branch.slice(cutoff);
+      const flushIds = new Set(
+        selectClearableToolResults(keptRegion, { pinnedSet, clearedSet: clearSet, protectedToolCallIds }),
+      );
+      let slideFlushCount = 0;
+      for (const entry of keptRegion) {
+        const tcId = (entry.message as any)?.toolCallId;
+        if (!tcId || !flushIds.has(tcId)) continue;
+        evictToolResultEntry(entry, branch, ctx);
+        slideFlushCount++;
+      }
+
       // Reset auto-clear counter — post-slide branch has fewer user messages,
       // so old count would block auto-clear from ever firing again.
       acmState.lastAutoClearUserCount = 0;
       persist(pi.appendEntry.bind(pi));
 
-      const report = `[ACM] ✅ Slide complete: ${discardedCount} messages discarded, ${kept} recent entries kept, branch head reset. Old context searchable via acm_recall.`;
+      const flushNote = slideFlushCount > 0 ? ` ${slideFlushCount} tool results cleared.` : "";
+      const report = `[ACM] ✅ Slide complete: ${discardedCount} messages discarded, ${kept} recent entries kept, branch head reset.${flushNote} Old context searchable via acm_recall.`;
       ctx.ui.notify(report, "info");
 
       return {
