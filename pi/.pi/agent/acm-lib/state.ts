@@ -14,9 +14,6 @@ export const toolCallIdToEntryId = new Map<string, string>();
 export const recallIndex = new Map<string, RecallMetadata>();
 export const pinnedSet = new Set<string>();
 export const compactSet = new Set<string>();
-// Ephemeral tier: single-use tool results (e.g. acm_map) cleared at next turn
-// boundary unconditionally. In-memory only — content is cheaply regenerable.
-export const ephemeralPending = new Set<string>();
 
 // Shared mutable object so cross-module mutation works (object ref stable, fields mutable).
 export const acmState = {
@@ -72,7 +69,6 @@ export function persist(appendEntry: (type: string, data?: any) => void) {
     toolCallIdToEntryId: Object.fromEntries(toolCallIdToEntryId),
     totalTokensSaved: acmState.totalTokensSaved,
     compactedEntryIds: [...compactSet],
-    ephemeralPendingIds: [...ephemeralPending],
     lastAutoClearUserCount: acmState.lastAutoClearUserCount,
     activeSlide: _activeSlide,
   });
@@ -118,8 +114,6 @@ export function rehydrateState(entries: Array<{ type: string; customType?: strin
     acmState.lastAutoClearUserCount = lastClearState.lastAutoClearUserCount ?? 0;
     compactSet.clear();
     for (const id of lastClearState.compactedEntryIds ?? []) compactSet.add(id);
-    ephemeralPending.clear();
-    for (const id of lastClearState.ephemeralPendingIds ?? []) ephemeralPending.add(id);
     _activeSlide = lastClearState.activeSlide ?? null;
   }
 

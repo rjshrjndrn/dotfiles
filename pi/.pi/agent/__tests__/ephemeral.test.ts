@@ -1,47 +1,51 @@
 import { describe, it, expect } from "vitest";
-import { promoteEphemeral } from "../acm-lib/ephemeral.ts";
+import { collectEphemeralToolCallIds } from "../acm-lib/ephemeral.ts";
 
-describe("promoteEphemeral", () => {
-  it("moves all pending ids into clearSet at a turn boundary", () => {
-    const pending = new Set<string>(["tc-map-1", "tc-map-2"]);
-    const clearSet = new Set<string>();
+describe("collectEphemeralToolCallIds", () => {
+  const ephemeral = new Set<string>(["acm_map"]);
 
-    promoteEphemeral(pending, clearSet);
-
-    expect(clearSet.has("tc-map-1")).toBe(true);
-    expect(clearSet.has("tc-map-2")).toBe(true);
+  it("collects toolCallId of an ephemeral tool call (toolCall block)", () => {
+    const messages = [
+      { role: "assistant", content: [{ type: "toolCall", id: "tc-1", name: "acm_map" }] },
+    ];
+    expect(collectEphemeralToolCallIds(messages, ephemeral)).toEqual(["tc-1"]);
   });
 
-  it("empties pending after promotion (each id promoted once)", () => {
-    const pending = new Set<string>(["tc-map-1"]);
-    const clearSet = new Set<string>();
-
-    promoteEphemeral(pending, clearSet);
-
-    expect(pending.size).toBe(0);
+  it("supports tool_use block shape and toolCallId field", () => {
+    const messages = [
+      { role: "assistant", content: [{ type: "tool_use", toolCallId: "tc-2", name: "acm_map" }] },
+    ];
+    expect(collectEphemeralToolCallIds(messages, ephemeral)).toEqual(["tc-2"]);
   });
 
-  it("preserves ids already in clearSet (union, no loss)", () => {
-    const pending = new Set<string>(["tc-map-2"]);
-    const clearSet = new Set<string>(["tc-old-1"]);
-
-    promoteEphemeral(pending, clearSet);
-
-    expect([...clearSet].sort()).toEqual(["tc-map-2", "tc-old-1"]);
+  it("ignores non-ephemeral tool calls", () => {
+    const messages = [
+      { role: "assistant", content: [{ type: "toolCall", id: "tc-1", name: "bash" }] },
+    ];
+    expect(collectEphemeralToolCallIds(messages, ephemeral)).toEqual([]);
   });
 
-  it("returns the number of ids promoted", () => {
-    const pending = new Set<string>(["a", "b", "c"]);
-    const clearSet = new Set<string>();
-
-    expect(promoteEphemeral(pending, clearSet)).toBe(3);
+  it("collects multiple across messages, in order", () => {
+    const messages = [
+      { role: "assistant", content: [{ type: "toolCall", id: "a", name: "acm_map" }] },
+      { role: "assistant", content: [{ type: "toolCall", id: "b", name: "bash" }] },
+      { role: "assistant", content: [{ type: "toolCall", id: "c", name: "acm_map" }] },
+    ];
+    expect(collectEphemeralToolCallIds(messages, ephemeral)).toEqual(["a", "c"]);
   });
 
-  it("no-op when nothing pending", () => {
-    const pending = new Set<string>();
-    const clearSet = new Set<string>(["x"]);
+  it("skips string content and blocks without id", () => {
+    const messages = [
+      { role: "assistant", content: "plain text" },
+      { role: "assistant", content: [{ type: "toolCall", name: "acm_map" }] },
+    ];
+    expect(collectEphemeralToolCallIds(messages, ephemeral)).toEqual([]);
+  });
 
-    expect(promoteEphemeral(pending, clearSet)).toBe(0);
-    expect([...clearSet]).toEqual(["x"]);
+  it("no-op with empty ephemeral set", () => {
+    const messages = [
+      { role: "assistant", content: [{ type: "toolCall", id: "tc-1", name: "acm_map" }] },
+    ];
+    expect(collectEphemeralToolCallIds(messages, new Set())).toEqual([]);
   });
 });

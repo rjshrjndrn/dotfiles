@@ -39,6 +39,9 @@ export interface PinnedContentEntry {
 export interface AcmConfig {
   cacheTools?: string[];
   localTools?: string[];
+  /** Tools whose results are single-use: cleared at the next turn boundary
+   *  unconditionally (no size/recency gate). E.g. ["acm_map"]. */
+  ephemeralTools?: string[];
   /** Skip caching for tool results smaller than this (chars). Default: 2000 */
   cacheMinChars?: number;
   /** Include first N chars as preview in cached stubs. Default: 1000 */
