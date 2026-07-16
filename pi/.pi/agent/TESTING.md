@@ -63,6 +63,19 @@ done
 Flags: `-e <ext>` load extension · `-p` non-interactive · `--mode json`
 machine-readable · `--session-id <id>` reuse session · `--no-session` ephemeral.
 
+Resuming a session for scripted multi-turn:
+- `--session-id <id>` — exact reuse, creates if missing. **Use this.** Rehydrates
+  the extension's persisted state from the session JSONL.
+- `--continue` / `-c` — last session; fought accumulation in testing. Avoid.
+- `--resume` / `-r` — INTERACTIVE picker (prompts for selection). Not scriptable.
+
+PROCESS-ISOLATION GOTCHA: each `pi -p` invocation is a SEPARATE process. Any
+in-memory module state (Sets/Maps) does NOT carry across turns — only state
+persisted to the session JSONL and rehydrated on load survives. If a turn-N
+action must influence turn N+1, PERSIST it (and persist at the moment you set
+it, since the context handler may have already run for that turn). This also
+makes the behavior testable headless, not just in a single interactive process.
+
 ### Inspect results
 Parse JSON-mode output (assistant text / tool results) with python:
 ```bash
