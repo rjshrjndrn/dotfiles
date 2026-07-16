@@ -1,5 +1,6 @@
 /**
- * Build a table of branch entries with short IDs, roles, and content previews.
+ * Build a table of context messages with short IDs, roles, and content previews.
+ * Only includes messages currently in LLM context (not slid-away ones).
  * Used by acm_map tool so LLM can discover entry IDs for pinning.
  */
 
@@ -28,16 +29,17 @@ function extractPreview(message: any): string {
   return "";
 }
 
-export function buildEntryMap(branch: any[]): EntryMapRow[] {
+export function buildEntryMap(messages: any[], msgEntryId: Map<any, string>): EntryMapRow[] {
   const rows: EntryMapRow[] = [];
 
-  for (const entry of branch) {
-    if (entry.type !== "message" || !entry.message) continue;
+  for (const msg of messages) {
+    const entryId = msgEntryId.get(msg);
+    if (!entryId) continue;
 
     rows.push({
-      id: entry.id.slice(0, SHORT_ID_LEN),
-      role: entry.message.role,
-      preview: extractPreview(entry.message),
+      id: entryId.slice(0, SHORT_ID_LEN),
+      role: msg.role ?? "unknown",
+      preview: extractPreview(msg),
     });
   }
 

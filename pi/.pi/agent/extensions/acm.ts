@@ -127,6 +127,10 @@ import {
   setActiveSlide,
 } from "../acm-lib/state.ts";
 
+// ── Shared context state (updated each turn by context handler) ──
+let lastContextMessages: any[] = [];
+let lastMsgEntryId = new Map<any, string>();
+
 // ── Graph sync helper ────────────────────────────────────────────────
 
 import { appendFileSync } from "node:fs";
@@ -439,6 +443,10 @@ export default function (pi: ExtensionAPI) {
         tcEntryId.set(entry.message.toolCallId, entry.id);
       }
     }
+
+    // Share with tools (acm_map needs context messages + ID mapping)
+    lastContextMessages = event.messages;
+    lastMsgEntryId = msgEntryId;
 
     // Purge stale clearSet entries not in current branch (source of truth).
     // event.messages may not contain all toolCallIds (intercepted results etc.).
@@ -1000,9 +1008,8 @@ export default function (pi: ExtensionAPI) {
     description: "Show all context entries with their IDs, roles, and content previews. Use before acm_pin to discover entry IDs.",
     promptSnippet: "acm_map: List entries with IDs. Call before acm_pin.",
     parameters: Type.Object({}),
-    async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
-      const branch = ctx.sessionManager.getBranch() as any[];
-      const rows = buildEntryMap(branch);
+    async execute(_toolCallId, _params, _signal, _onUpdate, _ctx) {
+      const rows = buildEntryMap(lastContextMessages, lastMsgEntryId);
       if (rows.length === 0) {
         return { content: [{ type: "text" as const, text: "[ACM] No entries on branch." }], details: {} };
       }
