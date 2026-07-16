@@ -19,6 +19,30 @@ Enable with `ACM_DEBUG=1`. Clear the log before a run: `rm -f /tmp/ladybug-acm.l
 
 ---
 
+## Ephemeral tier (acm_map)
+
+acm_map is single-use: read once to pick an ID, then bloat (~13k). It is
+cleared at the NEXT turn boundary unconditionally (no size/recency gate) but
+survives its own turn so acm_pin can still read it.
+
+Flow: `execute()` -> `ephemeralPending.add(toolCallId)` + `persist()` ->
+next turn boundary -> `promoteEphemeral(pending, clearSet)` -> line 590 stubs.
+
+GOTCHA: each `pi -p` is a SEPARATE process; `ephemeralPending` is in-memory,
+so it MUST be persisted (via `acm-clear-state` -> `ephemeralPendingIds`) or
+cross-process/reload loses the registration. acm_map persists on register
+because the context handler already ran before its execute.
+
+Verify live (separate processes via `--session-id`):
+```bash
+# turn 1 seed, turn 2 acm_map, turn 3 anything
+grep -c "ephemeral promoted" /tmp/ladybug-acm.log   # 0 after map turn, 1 after N+1
+grep -o "ephemeralPendingIds[^]]*]" <session>.jsonl  # [id] after map, [] after N+1
+grep -o "clearedToolCallIds[^]]*]" <session>.jsonl   # contains map id after N+1
+```
+
+---
+
 ## Unit tests
 
 vitest binary is under `acm-lib/node_modules`:
