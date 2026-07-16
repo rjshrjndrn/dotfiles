@@ -684,6 +684,36 @@ export default function (pi: ExtensionAPI) {
     return { messages };
   });
 
+  // ── Command: /acm-clear ────────────────────────────────────────────
+  // Steers the LLM to "pin important, then slide". Which entries are
+  // "important" is a judgment call, so we don't hardcode it — we reveal the
+  // map and let the model choose, mirroring the manual flow.
+  pi.registerCommand("acm-clear", {
+    description: "Pin important entries, then slide away the rest",
+    handler: async (_args, ctx) => {
+      pi.sendUserMessage("/acm-clear");
+      pi.sendMessage(
+        {
+          customType: "acm-clear",
+          content: [
+            "Compact this session now. Do NOT ask for confirmation.",
+            "Steps, in order:",
+            "1. Call acm_map to see the current entries and their IDs.",
+            "2. Identify the IMPORTANT entries: durable decisions, final",
+            "   results/summaries, config or design conclusions, and anything",
+            "   needed to continue the current task. Skip routine tool output,",
+            "   intermediate steps, and noise.",
+            "3. Call acm_pin with those entry IDs (action: pin).",
+            "4. Call acm_slide to discard the rest.",
+            "5. Report in 1-3 lines: what was pinned and the slide result.",
+          ].join("\n"),
+          display: false,
+        },
+        { deliverAs: "steer" },
+      );
+    },
+  });
+
   // ── Tool: acm_status ───────────────────────────────────────────────
 
   pi.registerTool({
