@@ -1,11 +1,11 @@
 /**
- * Build a table of context messages with short IDs, roles, and content previews.
- * Only includes messages currently in LLM context (not slid-away ones).
- * Used by acm_map tool so LLM can discover entry IDs for pinning.
+ * Format the LLM-visible messages + their aligned entry IDs into a table.
+ * Preview reflects the PROCESSED content the LLM sees (cleared stubs, etc.).
+ * Used by acm_map so the LLM can correlate what it sees with entry IDs.
  */
 
 export interface EntryMapRow {
-  id: string;       // first 8 chars of entry ID
+  id: string;       // first 8 chars of entry ID, or "—" if none (e.g. slide summary)
   role: string;
   preview: string;
 }
@@ -22,24 +22,24 @@ function extractPreview(message: any): string {
   }
 
   if (Array.isArray(content)) {
-    const textBlock = content.find((b: any) => b.type === "text");
-    if (textBlock?.text) return textBlock.text.slice(0, MAX_PREVIEW);
+    const texts = content.filter((b: any) => b.type === "text").map((b: any) => b.text);
+    if (texts.length) return texts.join(" ").slice(0, MAX_PREVIEW);
+    return `[${content.map((b: any) => b.type).join(",")}]`.slice(0, MAX_PREVIEW);
   }
 
   return "";
 }
 
-export function buildEntryMap(messages: any[], msgEntryId: Map<any, string>): EntryMapRow[] {
+export function buildEntryMap(messages: any[], entryIds: (string | null)[]): EntryMapRow[] {
   const rows: EntryMapRow[] = [];
 
-  for (const msg of messages) {
-    const entryId = msgEntryId.get(msg);
-    if (!entryId) continue;
-
+  for (let i = 0; i < messages.length; i++) {
+    const m = messages[i] as any;
+    const id = entryIds[i];
     rows.push({
-      id: entryId.slice(0, SHORT_ID_LEN),
-      role: msg.role ?? "unknown",
-      preview: extractPreview(msg),
+      id: id ? id.slice(0, SHORT_ID_LEN) : "—",
+      role: m.role ?? "unknown",
+      preview: extractPreview(m),
     });
   }
 

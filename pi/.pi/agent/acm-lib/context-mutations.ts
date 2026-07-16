@@ -1,25 +1,21 @@
 /**
  * Context pipeline mutations that create NEW message objects.
  *
- * Invariant: entry ID is immutable identity from JSONL. When a message
- * object is replaced or synthesized, its entry ID must transfer to the
- * new object ref so acm_map / acm_pin can still resolve it.
+ * Entry-ID mapping is handled separately by position alignment
+ * (see context-mapping.ts). These functions keep positions stable
+ * (injectAcmContext replaces in place) or report what they prepend
+ * (prependPinned returns the entry IDs it added, in message order).
  */
 
 /**
  * Inject the acm-context block into the first user message.
- * Replaces the message object (spread) — transfers entry ID to the new ref.
+ * Replaces the message object at the SAME index (position preserved).
  */
-export function injectAcmContext(
-  messages: any[],
-  msgEntryId: Map<any, string>,
-  acmText: string,
-): void {
+export function injectAcmContext(messages: any[], acmText: string): void {
   for (let i = 0; i < messages.length; i++) {
     const m = messages[i] as any;
     if (m.role !== "user") continue;
 
-    const oldId = msgEntryId.get(m);
     messages[i] = {
       ...m,
       content: [
@@ -27,24 +23,23 @@ export function injectAcmContext(
         ...(Array.isArray(m.content) ? m.content : [{ type: "text", text: m.content }]),
       ],
     };
-    // Transfer entry ID to the new object ref
-    if (oldId) msgEntryId.set(messages[i], oldId);
     return;
   }
 }
 
 /**
  * Prepend pinned content (survives slides) as synthetic user messages.
- * Each synthetic message is mapped to its original entry ID.
+ * Returns the entry IDs of the prepended messages, in message order,
+ * so the caller can keep a parallel entryIds[] aligned.
  */
 export function prependPinned(
   messages: any[],
-  msgEntryId: Map<any, string>,
   pinnedContentStore: Map<string, { content: string; role?: string }>,
   pinnedSet: Set<string>,
   branch: any[],
-): void {
+): string[] {
   const pinnedMessages: any[] = [];
+  const entryIds: string[] = [];
 
   for (const [entryId, entry] of pinnedContentStore) {
     // Skip if pin was removed
@@ -55,16 +50,15 @@ export function prependPinned(
 
     // Re-inject as "user" role — original tool_use context is gone after slide,
     // so a toolResult without toolCallId would fail API validation.
-    const synthetic = {
+    pinnedMessages.push({
       role: "user",
       content: [{ type: "text", text: `[pinned:${entryId.slice(0, 8)}] ${entry.content}` }],
-    };
-    pinnedMessages.push(synthetic);
-    // Map synthetic message to its entry ID
-    msgEntryId.set(synthetic, entryId);
+    });
+    entryIds.push(entryId);
   }
 
   if (pinnedMessages.length > 0) {
     messages.unshift(...pinnedMessages);
   }
+  return entryIds;
 }

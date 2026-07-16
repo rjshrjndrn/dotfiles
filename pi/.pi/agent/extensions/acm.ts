@@ -66,6 +66,7 @@ import { searchSessions } from "../acm-lib/session-search.ts";
 import { resolveId } from "../acm-lib/id-resolver.ts";
 import { buildEntryMap } from "../acm-lib/entry-map.ts";
 import { injectAcmContext, prependPinned } from "../acm-lib/context-mutations.ts";
+import { alignEntryIds } from "../acm-lib/context-mapping.ts";
 
 // ── Re-exports for backward compatibility (tests import from acm.ts) ──
 
@@ -129,8 +130,8 @@ import {
 } from "../acm-lib/state.ts";
 
 // ── Shared context state (updated each turn by context handler) ──
-let lastContextMessages: any[] = [];
-let lastMsgEntryId = new Map<any, string>();
+let lastVisibleMessages: any[] = [];
+let lastVisibleEntryIds: (string | null)[] = [];
 
 // ── Graph sync helper ────────────────────────────────────────────────
 
@@ -447,6 +448,8 @@ export default function (pi: ExtensionAPI) {
 
     // msgEntryId used below for clearing/compacting; lastContext* set at end after all mutations
 
+    // msgEntryId built above; PROOF diagnostic runs at end of handler (see below)
+
     // Purge stale clearSet entries not in current branch (source of truth).
     // event.messages may not contain all toolCallIds (intercepted results etc.).
     if (clearSet.size > 0) {
@@ -631,19 +634,42 @@ export default function (pi: ExtensionAPI) {
         `</acm-context>`,
       ].filter(Boolean).join("\n");
 
-      injectAcmContext(messages, msgEntryId, acmText);
+      injectAcmContext(messages, acmText);
     }
 
-    // Prepend pinned content from store (survives slides)
+    // Map each visible message to its entry ID via position alignment,
+    // BEFORE pinned prepend shifts positions.
+    const entryIds = alignEntryIds(branch, messages, slide);
+
+    // Prepend pinned content from store (survives slides).
     // Done AFTER acm-context injection so pinned messages don't absorb it.
-    prependPinned(messages, msgEntryId, pinnedContentStore, pinnedSet, branch);
+    // prependPinned returns the entry IDs it prepended (message order);
+    // keep entryIds[] aligned by unshifting them too.
+    const pinnedIds = prependPinned(messages, pinnedContentStore, pinnedSet, branch);
+    if (pinnedIds.length > 0) entryIds.unshift(...pinnedIds);
 
     const usage = ctx.getContextUsage();
     const pct = usage?.percent != null ? `${Math.round(usage.percent)}%` : "?";
 
-    // Share final messages with tools (acm_map needs what LLM actually sees)
-    lastContextMessages = messages;
-    lastMsgEntryId = msgEntryId;
+    // Share final visible messages + aligned entry IDs with tools (acm_map / acm_pin).
+    lastVisibleMessages = messages;
+    lastVisibleEntryIds = entryIds;
+
+    // Regression guard: toolResults have independent truth via toolCallId.
+    // If position alignment ever mislabels one, this catches it (ACM_DEBUG).
+    if (ACM_DEBUG) {
+      let ok = 0, bad = 0;
+      for (let i = 0; i < messages.length; i++) {
+        const m = messages[i] as any;
+        if (m.role === "toolResult" && m.toolCallId) {
+          const truth = tcEntryId.get(m.toolCallId);
+          const got = entryIds[i];
+          if (truth && got && truth.startsWith(got)) ok++;
+          else { bad++; acmLog(`ALIGN-MISMATCH i=${i} got=${got} truth=${truth} tc=${m.toolCallId?.slice(0,10)}`); }
+        }
+      }
+      acmLog(`ALIGN-CHECK slide=${slide ? "active" : "none"} msgs=${messages.length} toolRes ok=${ok} bad=${bad}`);
+    }
 
     return { messages };
   });
@@ -985,7 +1011,7 @@ export default function (pi: ExtensionAPI) {
     promptSnippet: "acm_map: List entries with IDs. Call before acm_pin.",
     parameters: Type.Object({}),
     async execute(_toolCallId, _params, _signal, _onUpdate, _ctx) {
-      const rows = buildEntryMap(lastContextMessages, lastMsgEntryId);
+      const rows = buildEntryMap(lastVisibleMessages, lastVisibleEntryIds);
       if (rows.length === 0) {
         return { content: [{ type: "text" as const, text: "[ACM] No entries on branch." }], details: {} };
       }
