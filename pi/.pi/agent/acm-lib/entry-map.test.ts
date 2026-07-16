@@ -72,4 +72,26 @@ describe("buildEntryMap", () => {
   it("handles empty messages", () => {
     expect(buildEntryMap([], msgEntryId)).toEqual([]);
   });
+
+  it("message identity survives mutation", () => {
+    // Original message with known entry ID
+    const original = { role: "user", content: "hello world" };
+    const map = new Map<any, string>([[original, "aaa11111-0000-0000"]]);
+
+    // Mutations: spread, content replace, synthetic pinned
+    const spreadMutated = { ...original, content: "[acm-context] hello world" };
+    const contentReplaced = { ...original, content: "[cleared: stub]" };
+    const syntheticPinned = { ...original, content: "[pinned:aaa11111] hello world" };
+
+    // Transfer entry ID to new refs
+    const oldId = map.get(original)!;
+    map.set(spreadMutated, oldId);
+    map.set(contentReplaced, oldId);
+    map.set(syntheticPinned, oldId);
+
+    // All mutated forms should appear with same entry ID
+    const rows = buildEntryMap([spreadMutated, contentReplaced, syntheticPinned], map);
+    expect(rows).toHaveLength(3);
+    rows.forEach(r => expect(r.id).toBe("aaa11111"));
+  });
 });
