@@ -65,6 +65,7 @@ import { detectRepoRoot, detectWorktreeRoot } from "../acm-lib/git-root.ts";
 import { searchSessions } from "../acm-lib/session-search.ts";
 import { resolveId } from "../acm-lib/id-resolver.ts";
 import { buildEntryMap } from "../acm-lib/entry-map.ts";
+import { injectAcmContext, prependPinned } from "../acm-lib/context-mutations.ts";
 
 // ── Re-exports for backward compatibility (tests import from acm.ts) ──
 
@@ -444,9 +445,7 @@ export default function (pi: ExtensionAPI) {
       }
     }
 
-    // Share with tools (acm_map needs context messages + ID mapping)
-    lastContextMessages = event.messages;
-    lastMsgEntryId = msgEntryId;
+    // msgEntryId used below for clearing/compacting; lastContext* set at end after all mutations
 
     // Purge stale clearSet entries not in current branch (source of truth).
     // event.messages may not contain all toolCallIds (intercepted results etc.).
@@ -632,42 +631,19 @@ export default function (pi: ExtensionAPI) {
         `</acm-context>`,
       ].filter(Boolean).join("\n");
 
-      for (let i = 0; i < messages.length; i++) {
-        if ((messages[i] as any).role === "user") {
-          const m = messages[i] as any;
-          messages[i] = {
-            ...m,
-            content: [{ type: "text", text: acmText }, ...(Array.isArray(m.content) ? m.content : [{ type: "text", text: m.content }])],
-          };
-          break;
-        }
-      }
+      injectAcmContext(messages, msgEntryId, acmText);
     }
 
     // Prepend pinned content from store (survives slides)
     // Done AFTER acm-context injection so pinned messages don't absorb it.
-    if (pinnedContentStore.size > 0) {
-      const pinnedMessages: any[] = [];
-      for (const [entryId, entry] of pinnedContentStore) {
-        // Skip if pin was removed
-        if (!pinnedSet.has(entryId)) continue;
-        // Skip if entry still exists in current branch (not yet slid)
-        const alreadyInBranch = branch.some((e: any) => e.id === entryId);
-        if (alreadyInBranch) continue;
-        // Re-inject as "user" role — original tool_use context is gone after slide,
-        // so toolResult without toolCallId would fail API validation.
-        pinnedMessages.push({
-          role: "user",
-          content: [{ type: "text", text: `[pinned:${entryId.slice(0, 8)}] ${entry.content}` }],
-        });
-      }
-      if (pinnedMessages.length > 0) {
-        messages.unshift(...pinnedMessages);
-      }
-    }
+    prependPinned(messages, msgEntryId, pinnedContentStore, pinnedSet, branch);
 
     const usage = ctx.getContextUsage();
     const pct = usage?.percent != null ? `${Math.round(usage.percent)}%` : "?";
+
+    // Share final messages with tools (acm_map needs what LLM actually sees)
+    lastContextMessages = messages;
+    lastMsgEntryId = msgEntryId;
 
     return { messages };
   });
