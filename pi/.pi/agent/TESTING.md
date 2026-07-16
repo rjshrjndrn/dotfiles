@@ -1,7 +1,11 @@
-# ACM Testing Guidelines
+# Extension Testing Guidelines
+
+General methodology for testing pi extensions. For extension-specific setup
+(debug flags, log paths, state-forcing prompts), see that extension's own
+`TESTING.md` (e.g. `acm-lib/TESTING.md`).
 
 Two layers: **pure unit tests** (fast, deterministic) and **live headless runs**
-(real SDK pipeline, catches integration truths that unit tests can't).
+(real SDK pipeline, catches integration truths unit tests can't).
 
 Principle: nothing is proven until proven with data. Unit tests prove logic;
 live runs prove the logic holds against the real SDK message pipeline.
@@ -10,23 +14,21 @@ live runs prove the logic holds against the real SDK message pipeline.
 
 ## 1. Unit tests
 
-- Location: `__tests__/` (repo convention). NOT colocated in `acm-lib/`.
+- Location: `__tests__/` (repo convention). NOT colocated with source.
 - Import source via relative path with `.ts`:
-  `import { fn } from "../acm-lib/module.ts";`
-- Runner: vitest binary lives in `acm-lib/node_modules`. Run from agent root
-  so `../acm-lib/*.ts` imports resolve:
+  `import { fn } from "../<lib>/module.ts";`
+- Runner: vitest binary lives in a lib's `node_modules`. Run from agent root
+  so `../<lib>/*.ts` imports resolve:
 
 ```bash
 cd ~/.pi/agent
-node acm-lib/node_modules/vitest/vitest.mjs run __tests__/<file>.test.ts
+node <lib>/node_modules/vitest/vitest.mjs run __tests__/<file>.test.ts
 # all:
-node acm-lib/node_modules/vitest/vitest.mjs run __tests__/
+node <lib>/node_modules/vitest/vitest.mjs run __tests__/
 ```
 
-- Extract pure functions from the context handler so they're unit-testable
-  (e.g. `alignEntryIds`, `buildEntryMap`, `resolveId`, `injectAcmContext`,
-  `prependPinned`). The handler itself is SDK-coupled — keep it thin, push
-  logic into pure modules.
+- Extension handlers are SDK-coupled and hard to unit-test directly. Keep the
+  handler thin; push logic into pure, dependency-free functions and test those.
 
 ### TDD loop
 1. Write the test first (behavior = spec). Run → it MUST fail (red).
@@ -40,50 +42,28 @@ node acm-lib/node_modules/vitest/vitest.mjs run __tests__/
 Use when a claim depends on the real SDK pipeline (message rebuild, slide,
 clear, tool-call ordering, extension wiring). Do NOT assume — measure.
 
-### Enable debug logging
-The extension logs to `/tmp/ladybug-acm.log` when `ACM_DEBUG` is set:
-
-```ts
-const ACM_LOG = "/tmp/ladybug-acm.log";
-const ACM_DEBUG = process.env.ACM_DEBUG === "true" || process.env.ACM_DEBUG === "1";
-function acmLog(s: string) { if (ACM_DEBUG) appendFileSync(ACM_LOG, `[${new Date().toISOString()}] ${s}\n`); }
-```
-
-Gate all diagnostics behind `ACM_DEBUG`. Keep cheap self-checks permanently
-(e.g. the ALIGN-CHECK cross-check); remove verbose dumps after use.
+### Debug logging
+Gate all diagnostics behind an env flag; write to a temp log file. Keep cheap
+self-checks permanently; remove verbose dumps after use. (Exact flag/path is
+per-extension — see its TESTING.md.)
 
 ### Run pi headless
 ```bash
 # single turn, no persistence
-ACM_DEBUG=1 pi -e ~/.pi/agent/extensions/acm.ts --no-session --mode json -p "prompt"
+<DEBUG_ENV>=1 pi -e ~/.pi/agent/extensions/<ext>.ts --no-session --mode json -p "prompt"
 
 # multi-turn accumulation: reuse --session-id (creates if missing).
-# WARNING: do NOT add -c / --continue — it fought accumulation in testing.
+# WARNING: do NOT add -c / --continue — it breaks accumulation in headless mode.
 SID=test-$(date +%s)
 for m in "msg one" "msg two" "msg three"; do
-  ACM_DEBUG=1 pi -e ~/.pi/agent/extensions/acm.ts --session-id "$SID" --mode json -p "$m" >/dev/null 2>&1
+  <DEBUG_ENV>=1 pi -e ~/.pi/agent/extensions/<ext>.ts --session-id "$SID" --mode json -p "$m" >/dev/null 2>&1
 done
 ```
 
 Flags: `-e <ext>` load extension · `-p` non-interactive · `--mode json`
-machine-readable output · `--session-id <id>` reuse session · `--no-session`
-ephemeral.
-
-### Force specific pipeline states
-- **Tool calls / toolResults**: `-p "run bash: echo alpha"` (gives an
-  independent-truth key `toolCallId` for cross-checks).
-- **Parallel tool calls** (timestamp-collision stress):
-  `-p "Read these 3 files in parallel in one turn: a b c"`.
-- **Slide**: `-p "Call acm_slide with keepMessages=1 now."`
-- **Pin flow**: `-p "Call acm_map, find the row whose preview mentions X,
-  then acm_pin its 8-char id prefix."`
+machine-readable · `--session-id <id>` reuse session · `--no-session` ephemeral.
 
 ### Inspect results
-```bash
-rm -f /tmp/ladybug-acm.log        # clear before a run
-grep -E "ALIGN-CHECK|ALIGN-MISMATCH" /tmp/ladybug-acm.log   # guard
-```
-
 Parse JSON-mode output (assistant text / tool results) with python:
 ```bash
 python3 -c "
@@ -99,29 +79,26 @@ for l in open('/tmp/out.json'):
 
 Session JSONL (source of truth for entry IDs / structure):
 ```bash
-ls -t ~/.pi/agent/sessions/--tmp--/*<sid>*.jsonl | head -1
+ls -t ~/.pi/agent/sessions/<project-slug>/*<sid>*.jsonl | head -1
 ```
 
 ---
 
 ## 3. Cross-check pattern (independent truth)
 
-When verifying a mapping/alignment, validate against a DIFFERENT source that
-you did not use to build it. Example: entry-ID position alignment is
-cross-checked against `toolCallId → entryId` (`tcEntryId`), which is
-independent of position. `bad=0` across scenarios = proven.
-
-Keep the cross-check as a permanent `ACM_DEBUG` guard so future refactors
-that break alignment surface immediately.
+When verifying a mapping/alignment, validate against a DIFFERENT source than the
+one used to build it. If they agree across scenarios (`bad=0`), it's proven.
+Keep the cross-check as a permanent debug-gated guard so future refactors that
+break the invariant surface immediately.
 
 ---
 
 ## 4. Checklist before committing a pipeline change
 
 - [ ] Pure logic extracted + unit-tested (red → green).
-- [ ] `node acm-lib/node_modules/vitest/vitest.mjs run __tests__/` all green.
-- [ ] Live headless run: no-slide AND slide-active, `bad=0`.
-- [ ] Verbose diagnostics removed; cheap guards kept behind `ACM_DEBUG`.
-- [ ] Clean up `/tmp/ladybug-acm.log` and temp session files.
-- [ ] Do NOT stage unrelated changes (keyd/mise/settings.json) — stage
-      explicit files only.
+- [ ] `node <lib>/node_modules/vitest/vitest.mjs run __tests__/` all green.
+- [ ] Live headless run covers the relevant pipeline states, guard `bad=0`.
+- [ ] Verbose diagnostics removed; cheap guards kept behind the debug flag.
+- [ ] Clean up temp logs and temp session files.
+- [ ] Do NOT stage unrelated changes (keyd/mise/settings.json) — stage explicit
+      files only.
