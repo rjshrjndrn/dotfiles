@@ -1,7 +1,7 @@
 {
-  "lastChangelogVersion": "0.80.3",
+  "lastChangelogVersion": "0.80.7",
   "defaultProvider": "anthropic",
-  "defaultModel": "claude-opus-4-6",
+  "defaultModel": "claude-sonnet-4-8",
   "packages": [
     "npm:@aliou/pi-guardrails",
     "npm:pi-auth-profiles",
@@ -27,6 +27,7 @@
     "anthropicExtraUsage": false
   },
   "enabledModels": [
+    "anthropic/claude-opus-4-8",
     "anthropic/claude-sonnet-4-6",
     "anthropic/claude-opus-4-6",
     "anthropic/claude-haiku-4-5"
