@@ -177,7 +177,7 @@ fzf = "latest"
 # CLI Utilities
 ###############
 jq = "latest"
-"github:mikefarah/yq" = "latest"
+yq = "latest"
 ripgrep = "latest"
 bat = "latest"
 fd = "latest"
