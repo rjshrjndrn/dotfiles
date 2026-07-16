@@ -67,6 +67,7 @@ import { resolveId } from "../acm-lib/id-resolver.ts";
 import { buildEntryMap } from "../acm-lib/entry-map.ts";
 import { injectAcmContext, prependPinned } from "../acm-lib/context-mutations.ts";
 import { alignEntryIds } from "../acm-lib/context-mapping.ts";
+import { promoteEphemeral } from "../acm-lib/ephemeral.ts";
 
 // ── Re-exports for backward compatibility (tests import from acm.ts) ──
 
@@ -107,6 +108,7 @@ import {
   recallIndex,
   pinnedSet,
   compactSet,
+  ephemeralPending,
   acmState,
   evictedPaths,
   FAULT_PIN_TTL,
@@ -521,6 +523,12 @@ export default function (pi: ExtensionAPI) {
     // Mid-turn tool results stay — LLM may still need them for reasoning.
     if (currentUserCount > acmState.lastAutoClearUserCount) {
       acmState.lastAutoClearUserCount = currentUserCount;
+
+      // ── Ephemeral tier: single-use results (acm_map) cleared at N+1 ──
+      // Registered during their own turn; promoted to clearSet at the next
+      // turn boundary unconditionally (no size/recency gate).
+      const promoted = promoteEphemeral(ephemeralPending, clearSet);
+      if (promoted > 0) acmLog(`ephemeral promoted ${promoted} -> clearSet`);
 
       // ── Fault-pin TTL: expire stale fault-pins ──
       // Manual pins (acm_pin) are permanent. Only fault-pins decay after FAULT_PIN_TTL turns.
@@ -1011,6 +1019,13 @@ export default function (pi: ExtensionAPI) {
     promptSnippet: "acm_map: List entries with IDs. Call before acm_pin.",
     parameters: Type.Object({}),
     async execute(_toolCallId, _params, _signal, _onUpdate, _ctx) {
+      // Ephemeral: single-use. Survives this turn; stubbed at next turn boundary.
+      // Persist now — context handler already ran before this execute, so the
+      // registration would be lost on process exit without an explicit persist.
+      if (_toolCallId) {
+        ephemeralPending.add(_toolCallId);
+        persist(pi.appendEntry.bind(pi));
+      }
       const rows = buildEntryMap(lastVisibleMessages, lastVisibleEntryIds);
       if (rows.length === 0) {
         return { content: [{ type: "text" as const, text: "[ACM] No entries on branch." }], details: {} };
