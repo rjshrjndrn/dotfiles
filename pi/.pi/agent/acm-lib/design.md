@@ -92,16 +92,19 @@ Set at the END of the context handler (after all mutations). `acm_map` reads it.
 
 ## Implementation checklist
 
-1. Remove diagnostic logging from acm.ts.
-2. Revert moot work:
-   - buildEntryMap(messages, msgEntryId) signature
-   - context-mutations.ts entry-ID transfer (not needed)
-   - lastContextMessages / lastMsgEntryId / tsToEntryId
-3. In context handler, maintain `entryIds[]` parallel to `messages` through
-   slide / clear / compact / pin; build `lastVisible` at the end.
-4. buildEntryMap(lastVisible) → pure formatter (id short, role, preview).
-5. acm_map tool → format lastVisible.
-6. acm_pin → resolveId against lastVisible entry IDs (exclude nulls).
+1. Remove diagnostic logging — DONE (replaced by ACM_DEBUG ALIGN-CHECK guard).
+2. Revert moot work — DONE (dropped msgEntryId transfer, ts/ref maps).
+3. Maintain `entryIds[]` via alignEntryIds + prependPinned unshift — DONE.
+4. buildEntryMap(messages, entryIds) pure formatter — DONE.
+5. acm_map → buildEntryMap(lastVisibleMessages, lastVisibleEntryIds) — DONE.
+6. acm_pin → resolveId against getBranch(). Kept: visible IDs ⊆ branch, and
+   the LLM only learns IDs from acm_map (visible), so branch resolution is
+   both correct and harmless. resolveId finds slid entries too (branch =
+   full history), so pinning-to-restore still works.
+
+Status: IMPLEMENTED + verified live. acm_map shows real IDs + processed
+previews; acm_pin resolves 8-char prefix. Alignment guard bad=0 across
+no-slide and slide-active. 33 unit tests pass.
 
 ## Tests (spec)
 
