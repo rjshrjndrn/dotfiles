@@ -696,17 +696,17 @@ export default function (pi: ExtensionAPI) {
     return { messages };
   });
 
-  // ── Command: /acm-clear ────────────────────────────────────────────
+  // ── Command: /acm-prune ────────────────────────────────────────────
   // Steers the LLM to "prune pins, pin important, then slide". Which entries
   // matter is a judgment call, so we don't hardcode it — we reveal the map and
   // let the model choose, mirroring the manual flow.
-  pi.registerCommand("acm-clear", {
+  pi.registerCommand("acm-prune", {
     description: "Prune stale pins, pin important, then slide away the rest",
     handler: async (_args, ctx) => {
-      pi.sendUserMessage("/acm-clear");
+      pi.sendUserMessage("/acm-prune");
       pi.sendMessage(
         {
-          customType: "acm-clear",
+          customType: "acm-prune",
           content: [
             "Compact this session now. Do NOT ask for confirmation.",
             "Steps, in order:",
