@@ -107,7 +107,7 @@ export default function (pi: ExtensionAPI) {
       "--intercept-tool-results",        // compress Read/bash tool results
       "--no-subscription-tracking",      // pi doesn't use Claude Code subscription
       "--no-telemetry",
-      "--no-http2",                      // force HTTP/1.1: HTTP/2 shared-conn TLS corruption breaks buffered->SSE on cold first request
+      "--lossless",                      // no CCR retrieve tool -> avoids buffered->SSE reconvert 502
     ];
     if (process.env.HEADROOM_LOG_FILE) {
       args.push("--log-file", process.env.HEADROOM_LOG_FILE);
