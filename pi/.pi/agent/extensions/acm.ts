@@ -7,7 +7,7 @@
  * Runtime-only context management. Does NOT intercept /compact (stock pi
  * LLM compaction runs unmodified).
  *
- * Manual: user says "acm prune" → LLM inspects context, calls acm_clear/acm_status.
+ * Manual: user asks to free tokens → LLM inspects context, calls acm_clear/acm_status.
  *
  * See acm-lib/ for extracted modules (types, config, helpers, cache, state).
  */
@@ -810,7 +810,7 @@ export default function (pi: ExtensionAPI) {
       "Call acm_status first to see what's clearable.",
     promptSnippet: "acm_clear: Clear tool results from context (replace with stubs). Use to free tokens.",
     promptGuidelines: [
-      "When user says 'acm prune': 1) acm_status, 2) acm_clear, 3) acm_compact_messages if still high, 4) acm_slide as last resort.",
+      "When user asks to free context tokens: 1) acm_status, 2) acm_clear, 3) acm_compact_messages if still high, 4) acm_slide as last resort. (The /acm-prune command has its own map/pin/slide flow — do not run acm_clear for it.)",
       "Tool results are ephemeral — safe to drop entirely. Just stubs + recall index.",
     ],
     parameters: Type.Object({
