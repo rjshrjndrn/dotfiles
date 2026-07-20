@@ -82,6 +82,18 @@ export class RepoStore {
     return "file::" + path;
   }
 
+  // Build an FTS5 OR query from free text: each whitespace-delimited term is
+  // quoted (so punctuation can't break MATCH) and combined with OR, matching
+  // the legacy "any word" search contract.
+  private ftsQuery(text: string): string {
+    return text
+      .trim()
+      .split(/\s+/)
+      .filter((t) => t.length > 0)
+      .map((t) => `"${t.replace(/"/g, '""')}"`)
+      .join(" OR ");
+  }
+
   registerSession(info: RepoSession): void {
     const db = this.conn();
     db.prepare(
@@ -347,7 +359,7 @@ export class RepoStore {
     label: string;
     body: string;
   }[] {
-    const q = query.trim();
+    const q = this.ftsQuery(query);
     if (!q) return [];
     const limit = opts.limit ?? 20;
     let sql =
@@ -418,14 +430,16 @@ export class RepoStore {
   // FTS over tool_result events, returning the reconstructed event plus its
   // bm25 rank (lower is a better match).
   ftsSearchEvents(query: string, limit = 20): { event: RepoEvent; score: number }[] {
-    const q = query.trim();
+    const q = this.ftsQuery(query);
     if (!q) return [];
+    // bm25 returns more-negative for better matches; negate so callers get a
+    // positive relevance score where higher = better, sorted descending.
     const rows = this.conn()
       .prepare(
-        `SELECT n.*, bm25(nodes_fts) AS score FROM nodes_fts f
+        `SELECT n.*, -bm25(nodes_fts) AS score FROM nodes_fts f
          JOIN nodes n ON n.id = f.id
          WHERE nodes_fts MATCH ? AND n.type = 'tool_result'
-         ORDER BY score LIMIT ?`,
+         ORDER BY score DESC LIMIT ?`,
       )
       .all(q, limit) as any[];
     return rows.map((r) => ({ event: this.toEvent(r), score: r.score }));

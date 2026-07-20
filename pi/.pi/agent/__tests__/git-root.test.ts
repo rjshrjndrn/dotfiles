@@ -126,9 +126,9 @@ describe("detectWorktreeRoot", () => {
 });
 
 describe("projectDbPath", () => {
-  it("returns .pi/memory.lbug under repo root", () => {
+  it("returns .pi/memory.db under repo root", () => {
     const repo = "/Users/skynet/project-x";
     const dbPath = projectDbPath(repo);
-    expect(dbPath).toBe("/Users/skynet/project-x/.pi/memory.lbug");
+    expect(dbPath).toBe("/Users/skynet/project-x/.pi/memory.db");
   });
 });

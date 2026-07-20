@@ -7,7 +7,6 @@ import {
   ftsSearch,
   ftsRebuild,
   ftsInit,
-  ftsDirty,
   queryByKeyword,
 } from "../acm-lib/graph.ts";
 
@@ -142,8 +141,12 @@ describe("FTS Recall Integration", () => {
 
   // ── Rebuild timing ─────────────────────────────────────────────────
 
-  describe("rebuild timing", () => {
-    it("insert marks dirty but does NOT rebuild", async () => {
+  describe("always-live index (SQLite FTS5)", () => {
+    // Unlike the old LadybugDB engine, FTS5 updates incrementally on every
+    // insert. There is no dirty state and no batch rebuild — the index is
+    // always current, so a search immediately after an insert finds the row.
+
+    it("search finds a row immediately after insert (no rebuild needed)", async () => {
       await insertToolResult({
         id: "t1",
         toolName: "read",
@@ -151,59 +154,10 @@ describe("FTS Recall Integration", () => {
         filePaths: [],
         timestamp: 1000,
       });
-
-      // Dirty after insert
-      expect(ftsDirty()).toBe(true);
-
-      // Insert more — still dirty, no auto-rebuild happened
-      await insertToolResult({
-        id: "t2",
-        toolName: "edit",
-        keyTerms: "more timing data",
-        filePaths: [],
-        timestamp: 2000,
-      });
-      expect(ftsDirty()).toBe(true);
+      expect((await ftsSearch("timing")).length).toBe(1);
     });
 
-    it("lazy rebuild: first search after inserts triggers rebuild", async () => {
-      await insertToolResult({
-        id: "t3",
-        toolName: "read",
-        keyTerms: "lazy rebuild verification",
-        filePaths: [],
-        timestamp: 1000,
-      });
-      expect(ftsDirty()).toBe(true);
-
-      // Search triggers lazy rebuild
-      const results = await ftsSearch("lazy");
-      expect(ftsDirty()).toBe(false);
-      expect(results.length).toBe(1);
-    });
-
-    it("batch rebuild pre-warms: search after rebuild is instant (no dirty)", async () => {
-      await insertToolResult({
-        id: "t4",
-        toolName: "read",
-        keyTerms: "batch prewarm testing",
-        filePaths: [],
-        timestamp: 1000,
-      });
-      expect(ftsDirty()).toBe(true);
-
-      // Explicit batch rebuild (like after acm_clear)
-      await ftsRebuild();
-      expect(ftsDirty()).toBe(false);
-
-      // Search should work without needing another rebuild
-      const results = await ftsSearch("batch");
-      expect(ftsDirty()).toBe(false); // still clean
-      expect(results.length).toBe(1);
-    });
-
-    it("multiple inserts then one search = one rebuild", async () => {
-      // Simulate burst of inserts (like acm_clear flushing)
+    it("finds all rows from a burst of inserts in one search", async () => {
       for (let i = 0; i < 5; i++) {
         await insertToolResult({
           id: `burst${i}`,
@@ -213,15 +167,22 @@ describe("FTS Recall Integration", () => {
           timestamp: 1000 + i,
         });
       }
-      expect(ftsDirty()).toBe(true);
-
-      // Single search triggers one rebuild, finds all 5
-      const results = await ftsSearch("searchable");
-      expect(results.length).toBe(5);
-      expect(ftsDirty()).toBe(false);
+      expect((await ftsSearch("searchable")).length).toBe(5);
     });
 
-    it("insert after search re-dirties, next search rebuilds again", async () => {
+    it("ftsRebuild is a harmless no-op that leaves the index queryable", async () => {
+      await insertToolResult({
+        id: "t4",
+        toolName: "read",
+        keyTerms: "batch prewarm testing",
+        filePaths: [],
+        timestamp: 1000,
+      });
+      await ftsRebuild();
+      expect((await ftsSearch("batch")).length).toBe(1);
+    });
+
+    it("stays current across interleaved inserts and searches", async () => {
       await insertToolResult({
         id: "cycle1",
         toolName: "read",
@@ -229,12 +190,8 @@ describe("FTS Recall Integration", () => {
         filePaths: [],
         timestamp: 1000,
       });
+      expect((await ftsSearch("cycle")).length).toBe(1);
 
-      // Search 1: rebuilds
-      await ftsSearch("cycle");
-      expect(ftsDirty()).toBe(false);
-
-      // New insert: dirty again
       await insertToolResult({
         id: "cycle2",
         toolName: "edit",
@@ -242,12 +199,7 @@ describe("FTS Recall Integration", () => {
         filePaths: [],
         timestamp: 2000,
       });
-      expect(ftsDirty()).toBe(true);
-
-      // Search 2: rebuilds again, finds both
-      const results = await ftsSearch("cycle");
-      expect(results.length).toBe(2);
-      expect(ftsDirty()).toBe(false);
+      expect((await ftsSearch("cycle")).length).toBe(2);
     });
   });
 });

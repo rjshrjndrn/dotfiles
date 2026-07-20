@@ -106,6 +106,13 @@ export async function ftsInit(): Promise<boolean> {
   return isGraphReady();
 }
 
+/**
+ * No-op. The SQLite FTS5 index updates incrementally on every insert, so it is
+ * always live — there is no batch rebuild to perform. Kept for API
+ * compatibility with callers that used to pre-warm the LadybugDB index.
+ */
+export async function ftsRebuild(): Promise<void> {}
+
 export async function ftsSearch(query: string, limit = 20): Promise<FtsSearchResult[]> {
   return ensureInit()
     .ftsSearchEvents(query, limit)
