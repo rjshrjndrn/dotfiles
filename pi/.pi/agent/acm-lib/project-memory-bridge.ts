@@ -99,7 +99,7 @@ export class ProjectMemoryBridge {
 
     try {
       const dbDir = this.config.dbDir || join(event.gitRoot!, ".pi");
-      const dbPath = join(dbDir, "memory.lbug");
+      const dbPath = join(dbDir, "memory.db");
       this.graph = new ProjectGraph(dbPath, "exclusive");
       await this.graph.init();
 

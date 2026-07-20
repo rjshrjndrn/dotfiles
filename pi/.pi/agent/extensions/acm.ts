@@ -138,7 +138,7 @@ let lastVisibleEntryIds: (string | null)[] = [];
 // ── Graph sync helper ────────────────────────────────────────────────
 
 import { appendFileSync } from "node:fs";
-const ACM_LOG = "/tmp/ladybug-acm.log";
+const ACM_LOG = "/tmp/acm.log";
 const ACM_DEBUG = process.env.ACM_DEBUG === "true" || process.env.ACM_DEBUG === "1";
 function acmLog(msg: string): void {
   if (!ACM_DEBUG) return;
@@ -162,7 +162,7 @@ function syncToGraph(recall: RecallMetadata): void {
     acmLog(`inserted ${recall.toolCallId || recall.entryId} ok, filePaths=[${recall.filePaths.join(",")}]`);
     if (_setStatus) {
       const gs = await getGraphStats();
-      _setStatus("ladybugdb", `\ud83e\udd8e ${gs.toolResults} entries, ${gs.filePaths} files`);
+      _setStatus("acm-graph", `\ud83d\uddc3\ufe0f ${gs.toolResults} entries, ${gs.filePaths} files`);
     }
   }).catch((err: any) => {
     acmLog(`syncToGraph ERROR: ${err?.message || err}`);
@@ -215,16 +215,16 @@ export default function (pi: ExtensionAPI) {
       ctx.ui.notify(`[ACM] Restored: ${stats.cleared} cleared, ${stats.pinned} pinned, ${stats.recalled} in recall, ${cachedToFile.size} cached`, "info");
     }
 
-    // Initialize LadybugDB graph for relational recall
+    // Initialize session graph (sqlite) for relational recall
     const graphDir = join(getCacheDir(sessionDir), "graph");
-    acmLog(`initGraph at ${join(graphDir, "acm.lbug")}`);
-    initGraph(join(graphDir, "acm.lbug")).then(async () => {
+    acmLog(`initGraph at ${join(graphDir, "acm.db")}`);
+    initGraph(join(graphDir, "acm.db")).then(async () => {
       acmLog(`initGraph SUCCESS, ready=${isGraphReady()}`);
       // Load FTS extension + build index from existing data
       const ftsOk = await ftsInit();
       acmLog(`ftsInit: ${ftsOk ? 'OK' : 'FAILED'}`);
       const gs = await getGraphStats();
-      ctx.ui.setStatus("ladybugdb", `🦎 ${gs.toolResults} entries, ${gs.filePaths} files`);
+      ctx.ui.setStatus("acm-graph", `🗃️ ${gs.toolResults} entries, ${gs.filePaths} files`);
     }).catch((err: any) => {
       acmLog(`initGraph FAILED: ${err.message}`);
       ctx.ui.notify(`[ACM] Graph init failed: ${err.message}`, "warn");
@@ -762,17 +762,17 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
-  // ── Tool: ladybug_status ──────────────────────────────────────────
+  // ── Tool: acm_graph_status ──────────────────────────────────────────
 
   pi.registerTool({
-    name: "ladybug_status",
-    label: "LadybugDB Status",
-    description: "Show LadybugDB graph stats: node/edge counts, top files, recent tool results.",
-    promptSnippet: "ladybug_status: Show LadybugDB graph database stats.",
+    name: "acm_graph_status",
+    label: "ACM Graph Status",
+    description: "Show session graph stats: node/edge counts, top files, recent tool results.",
+    promptSnippet: "acm_graph_status: Show the session graph database stats.",
     parameters: Type.Object({}),
     async execute(_toolCallId, _params, _signal, _onUpdate, _ctx) {
       if (!isGraphReady()) {
-        return { content: [{ type: "text" as const, text: "LadybugDB not initialized." }], details: {} };
+        return { content: [{ type: "text" as const, text: "Session graph not initialized." }], details: {} };
       }
 
       try {
@@ -781,7 +781,7 @@ export default function (pi: ExtensionAPI) {
 
         // Get edge counts
         const lines = [
-          `── LadybugDB Status ──`,
+          `── ACM Graph Status ──`,
           ``,
           `Nodes:`,
           `  ToolResult: ${gs.toolResults}`,
@@ -794,7 +794,7 @@ export default function (pi: ExtensionAPI) {
 
         return { content: [{ type: "text" as const, text: lines }], details: {} };
       } catch (err: any) {
-        return { content: [{ type: "text" as const, text: `LadybugDB error: ${err.message}` }], details: {} };
+        return { content: [{ type: "text" as const, text: `Session graph error: ${err.message}` }], details: {} };
       }
     },
   });

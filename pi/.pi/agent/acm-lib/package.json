@@ -1,0 +1,8 @@
+{
+  "name": "pi-acm",
+  "private": true,
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}

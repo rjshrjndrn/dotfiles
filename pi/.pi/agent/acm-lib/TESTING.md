@@ -8,14 +8,14 @@ ACM-specific setup for the general method in `~/.pi/agent/TESTING.md`.
 
 ```ts
 // extensions/acm.ts
-const ACM_LOG = "/tmp/ladybug-acm.log";
+const ACM_LOG = "/tmp/acm.log";
 const ACM_DEBUG = process.env.ACM_DEBUG === "true" || process.env.ACM_DEBUG === "1";
 function acmLog(s: string) {
   if (ACM_DEBUG) appendFileSync(ACM_LOG, `[${new Date().toISOString()}] ${s}\n`);
 }
 ```
 
-Enable with `ACM_DEBUG=1`. Clear the log before a run: `rm -f /tmp/ladybug-acm.log`.
+Enable with `ACM_DEBUG=1`. Clear the log before a run: `rm -f /tmp/acm.log`.
 
 ---
 
@@ -36,7 +36,7 @@ across separate `pi -p` processes with no persist gotcha.
 Verify live (separate processes via `--session-id`):
 ```bash
 # turn 1 seed, turn 2 acm_map, turn 3 anything
-grep -c "ephemeral -> clearSet" /tmp/ladybug-acm.log   # 0 after map turn, 1 after N+1
+grep -c "ephemeral -> clearSet" /tmp/acm.log   # 0 after map turn, 1 after N+1
 grep -o "clearedToolCallIds[^]]*]" <session>.jsonl     # contains map id after N+1
 # same-turn acm_map -> acm_pin must still succeed (survives own turn)
 ```
@@ -87,7 +87,7 @@ The context handler cross-checks position-aligned `entryIds[]` against
 `tcEntryId` (toolCallId → entryId, an independent source). Look for:
 
 ```bash
-grep -E "ALIGN-CHECK|ALIGN-MISMATCH" /tmp/ladybug-acm.log
+grep -E "ALIGN-CHECK|ALIGN-MISMATCH" /tmp/acm.log
 ```
 
 Expect `bad=0` in both no-slide and slide-active runs. Any `ALIGN-MISMATCH`

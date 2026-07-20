@@ -126,9 +126,13 @@ export class RepoStore {
         "INSERT INTO edges(src, dst, rel, session, ts) VALUES(?, ?, 'references', ?, ?)",
       ).run(event.id, fid, event.sessionId, event.timestamp);
     }
-    db.prepare(
-      "INSERT INTO edges(src, dst, rel, session, ts) VALUES(?, ?, 'belongs_to', ?, ?)",
-    ).run(event.id, event.sessionId, event.sessionId, event.timestamp);
+    // Session-scoped events link to their session; the session graph passes an
+    // empty sessionId (single global chain) and has no session node to link.
+    if (event.sessionId) {
+      db.prepare(
+        "INSERT INTO edges(src, dst, rel, session, ts) VALUES(?, ?, 'belongs_to', ?, ?)",
+      ).run(event.id, event.sessionId, event.sessionId, event.timestamp);
+    }
 
     // Chain within the same session only.
     if (prevId) {
@@ -200,14 +204,26 @@ export class RepoStore {
     return rows.map((r) => this.toEvent(r));
   }
 
-  getSequence(id: string, direction: "forward" | "backward" = "forward"): RepoEvent[] {
-    const sql =
+  getSequence(
+    id: string,
+    direction: "forward" | "backward" = "forward",
+    maxDepth = 1,
+  ): RepoEvent[] {
+    // Walk the follows chain up to maxDepth hops (cycle-safe via UNION).
+    const seed =
       direction === "forward"
-        ? `SELECT n.* FROM nodes n JOIN edges e ON e.dst = n.id
-           WHERE e.rel = 'follows' AND e.src = ? ORDER BY n.ts ASC`
-        : `SELECT n.* FROM nodes n JOIN edges e ON e.src = n.id
-           WHERE e.rel = 'follows' AND e.dst = ? ORDER BY n.ts DESC`;
-    const rows = this.conn().prepare(sql).all(id) as any[];
+        ? "SELECT dst AS id, 1 AS depth FROM edges WHERE src = ? AND rel = 'follows'"
+        : "SELECT src AS id, 1 AS depth FROM edges WHERE dst = ? AND rel = 'follows'";
+    const step =
+      direction === "forward"
+        ? "SELECT e.dst, s.depth + 1 FROM edges e JOIN seq s ON e.src = s.id WHERE e.rel = 'follows' AND s.depth < ?"
+        : "SELECT e.src, s.depth + 1 FROM edges e JOIN seq s ON e.dst = s.id WHERE e.rel = 'follows' AND s.depth < ?";
+    const order = direction === "forward" ? "ASC" : "DESC";
+    const sql =
+      `WITH RECURSIVE seq(id, depth) AS (${seed} UNION ${step})
+       SELECT DISTINCT n.* FROM seq JOIN nodes n ON n.id = seq.id
+       ORDER BY n.ts ${order}`;
+    const rows = this.conn().prepare(sql).all(id, maxDepth) as any[];
     return rows.map((r) => this.toEvent(r));
   }
 
@@ -390,6 +406,36 @@ export class RepoStore {
        GROUP BY n.id ORDER BY depth, n.id`;
     const args: any[] = opts.rel ? [id, maxDepth, opts.rel, id] : [id, maxDepth, id];
     return this.conn().prepare(sql).all(...args) as any[];
+  }
+
+  // All distinct file paths, sorted — used by the session graph summary.
+  fileList(): string[] {
+    return (
+      this.conn().prepare("SELECT label FROM nodes WHERE type = 'file' ORDER BY label").all() as any[]
+    ).map((r) => r.label);
+  }
+
+  // FTS over tool_result events, returning the reconstructed event plus its
+  // bm25 rank (lower is a better match).
+  ftsSearchEvents(query: string, limit = 20): { event: RepoEvent; score: number }[] {
+    const q = query.trim();
+    if (!q) return [];
+    const rows = this.conn()
+      .prepare(
+        `SELECT n.*, bm25(nodes_fts) AS score FROM nodes_fts f
+         JOIN nodes n ON n.id = f.id
+         WHERE nodes_fts MATCH ? AND n.type = 'tool_result'
+         ORDER BY score LIMIT ?`,
+      )
+      .all(q, limit) as any[];
+    return rows.map((r) => ({ event: this.toEvent(r), score: r.score }));
+  }
+
+  // Wipe all data (session graph reset between runs/tests).
+  clear(): void {
+    const db = this.conn();
+    db.exec("DELETE FROM edges; DELETE FROM nodes; DELETE FROM nodes_fts;");
+    this.lastPerSession.clear();
   }
 
   cooccur(id: string, rel: string): { id: string; type: string; label: string }[] {

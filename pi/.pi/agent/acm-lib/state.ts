@@ -253,7 +253,7 @@ export function buildStub(msg: any): string {
 
 import { appendFileSync } from "node:fs";
 const _stateDebug = process.env.ACM_DEBUG === "true" || process.env.ACM_DEBUG === "1";
-function _graphLog(msg: string) { if (!_stateDebug) return; try { appendFileSync("/tmp/ladybug-acm.log", `[${new Date().toISOString()}] [state] ${msg}\n`); } catch {} }
+function _graphLog(msg: string) { if (!_stateDebug) return; try { appendFileSync("/tmp/acm.log", `[${new Date().toISOString()}] [state] ${msg}\n`); } catch {} }
 
 export function buildRecallEntry(toolCallId: string, toolName: string, keyTerms: string, charCount: number, messages: AgentMessage[]): RecallMetadata {
   const filePaths: string[] = [];

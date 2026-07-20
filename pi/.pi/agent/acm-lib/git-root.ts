@@ -113,5 +113,5 @@ export function clearRootCache(): void {
  * Get the project DB path for a repo root.
  */
 export function projectDbPath(repoRoot: string): string {
-  return join(repoRoot, ".pi", "memory.lbug");
+  return join(repoRoot, ".pi", "memory.db");
 }
