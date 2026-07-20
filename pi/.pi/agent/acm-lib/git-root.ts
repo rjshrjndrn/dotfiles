@@ -55,21 +55,20 @@ export function detectRepoRoot(cwd: string): string | null {
 /** Uncached detection via git subprocess. Exported for testing. */
 export function detectRepoRootUncached(cwd: string): string | null {
   try {
+    // `--git-common-dir` throws (exit 128) outside a repo, which the catch
+    // below turns into null — so it doubles as the "am I in a repo" guard; no
+    // separate --show-toplevel probe is needed.
     const gitCommonDir = execSync("git rev-parse --git-common-dir", {
       cwd,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
     }).trim();
 
-    const toplevel = execSync("git rev-parse --show-toplevel", {
-      cwd,
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"],
-    }).trim();
-
+    // `--git-common-dir` already resolves to the shared .git for every
+    // worktree (verified in git-root-integration.test.ts), so its parent is the
+    // repo root directly — no /worktrees/<name> suffix ever needs stripping.
     const resolved = resolve(cwd, gitCommonDir);
-    const normalized = resolved.replace(/\/worktrees\/[^/]+$/, "");
-    return realpathSync(dirname(normalized));
+    return realpathSync(dirname(resolved));
   } catch {
     return null;
   }
