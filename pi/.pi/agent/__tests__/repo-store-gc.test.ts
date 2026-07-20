@@ -132,3 +132,32 @@ describe("collectGarbageStale", () => {
     expect(store.collectGarbageStale(() => true)).toBe(0);
   });
 });
+
+describe("collectGarbageDedup", () => {
+  it("collapses identical events, keeping the newest by timestamp", () => {
+    // same toolName + keyTerms + files + eventType => duplicates
+    store.writeEvent(ev({ id: "d1", toolName: "read", keyTerms: "same", files: ["a.ts"], timestamp: 100 }));
+    store.writeEvent(ev({ id: "d2", toolName: "read", keyTerms: "same", files: ["a.ts"], timestamp: 300 }));
+    store.writeEvent(ev({ id: "d3", toolName: "read", keyTerms: "same", files: ["a.ts"], timestamp: 200 }));
+
+    const removed = store.collectGarbageDedup();
+
+    expect(removed).toBe(2);
+    expect(store.getSessionEvents("s1").map((e) => e.id)).toEqual(["d2"]); // newest kept
+  });
+
+  it("treats file order as irrelevant (sorted key)", () => {
+    store.writeEvent(ev({ id: "x1", toolName: "edit", keyTerms: "k", files: ["a.ts", "b.ts"], timestamp: 10 }));
+    store.writeEvent(ev({ id: "x2", toolName: "edit", keyTerms: "k", files: ["b.ts", "a.ts"], timestamp: 20 }));
+    expect(store.collectGarbageDedup()).toBe(1);
+    expect(store.getSessionEvents("s1").map((e) => e.id)).toEqual(["x2"]);
+  });
+
+  it("leaves distinct events untouched", () => {
+    store.writeEvent(ev({ id: "a", toolName: "read", keyTerms: "one", files: ["a.ts"], timestamp: 1 }));
+    store.writeEvent(ev({ id: "b", toolName: "bash", keyTerms: "one", files: ["a.ts"], timestamp: 2 }));
+    store.writeEvent(ev({ id: "c", toolName: "read", keyTerms: "two", files: ["a.ts"], timestamp: 3 }));
+    expect(store.collectGarbageDedup()).toBe(0);
+    expect(store.getSessionEvents("s1").length).toBe(3);
+  });
+});

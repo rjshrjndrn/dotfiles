@@ -375,6 +375,32 @@ export class RepoStore {
     return dead.length;
   }
 
+  // E: collapse identical tool_result events, keeping the newest by timestamp.
+  // Identity = (toolName, keyTerms, event_type, sorted file list). The follows
+  // chain may fragment when a middle event is removed; that is accepted for
+  // simplicity.
+  collectGarbageDedup(): number {
+    const db = this.conn();
+    const events = db
+      .prepare("SELECT id, label, body, event_type, ts FROM nodes WHERE type = 'tool_result'")
+      .all() as any[];
+    const groups = new Map<string, { id: string; ts: number }[]>();
+    for (const e of events) {
+      const files = this.filesFor(e.id).slice().sort().join("|");
+      const key = JSON.stringify([e.label, e.body, e.event_type, files]);
+      const arr = groups.get(key) ?? [];
+      arr.push({ id: e.id, ts: e.ts });
+      groups.set(key, arr);
+    }
+    const toDelete: string[] = [];
+    for (const arr of groups.values()) {
+      if (arr.length < 2) continue;
+      arr.sort((a, b) => b.ts - a.ts); // newest first
+      toDelete.push(...arr.slice(1).map((x) => x.id)); // drop all but newest
+    }
+    return this.deleteEvents(toDelete);
+  }
+
   // ---- Knowledge-graph layer: facts, relations, discovery ----
 
   addNode(node: {
