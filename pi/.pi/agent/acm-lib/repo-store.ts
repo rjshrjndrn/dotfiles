@@ -40,7 +40,8 @@ CREATE TABLE IF NOT EXISTS nodes (
   summary     TEXT,
   session     TEXT,
   worktree    TEXT,
-  ts          INTEGER NOT NULL
+  ts          INTEGER NOT NULL,
+  expires_at  INTEGER                 -- explicit TTL for facts; null = never
 );
 
 CREATE TABLE IF NOT EXISTS edges (
@@ -333,17 +334,28 @@ export class RepoStore {
     session?: string;
     worktree?: string;
     timestamp?: number;
+    expiresAt?: number;
   }): void {
     const db = this.conn();
     const body = node.body ?? "";
     const ts = node.timestamp ?? Date.now();
     db.prepare(
-      `INSERT INTO nodes(id, type, label, body, session, worktree, ts)
-       VALUES(?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO nodes(id, type, label, body, session, worktree, ts, expires_at)
+       VALUES(?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          type = excluded.type, label = excluded.label, body = excluded.body,
-         session = excluded.session, worktree = excluded.worktree, ts = excluded.ts`,
-    ).run(node.id, node.type, node.label, body, node.session ?? null, node.worktree ?? null, ts);
+         session = excluded.session, worktree = excluded.worktree, ts = excluded.ts,
+         expires_at = excluded.expires_at`,
+    ).run(
+      node.id,
+      node.type,
+      node.label,
+      body,
+      node.session ?? null,
+      node.worktree ?? null,
+      ts,
+      node.expiresAt ?? null,
+    );
     this.upsertFts(node.id, node.label, body);
   }
 
@@ -471,7 +483,16 @@ export class RepoStore {
     db.exec("PRAGMA journal_mode = WAL");
     db.exec("PRAGMA busy_timeout = 5000");
     db.exec(SCHEMA);
+    this.migrate(db);
     this.db = db;
+  }
+
+  // Idempotent, additive schema migrations for dbs created by older versions.
+  private migrate(db: DatabaseSync): void {
+    const cols = (db.prepare("PRAGMA table_info(nodes)").all() as any[]).map((r) => r.name);
+    if (!cols.includes("expires_at")) {
+      db.exec("ALTER TABLE nodes ADD COLUMN expires_at INTEGER");
+    }
   }
 
   isReady(): boolean {
