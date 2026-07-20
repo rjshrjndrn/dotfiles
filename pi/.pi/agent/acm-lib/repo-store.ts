@@ -295,6 +295,115 @@ export class RepoStore {
     return deleted;
   }
 
+  // ---- Knowledge-graph layer: facts, relations, discovery ----
+
+  addNode(node: {
+    id: string;
+    type: string;
+    label: string;
+    body?: string;
+    session?: string;
+    worktree?: string;
+    timestamp?: number;
+  }): void {
+    const db = this.conn();
+    const body = node.body ?? "";
+    const ts = node.timestamp ?? Date.now();
+    db.prepare(
+      `INSERT INTO nodes(id, type, label, body, session, worktree, ts)
+       VALUES(?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         type = excluded.type, label = excluded.label, body = excluded.body,
+         session = excluded.session, worktree = excluded.worktree, ts = excluded.ts`,
+    ).run(node.id, node.type, node.label, body, node.session ?? null, node.worktree ?? null, ts);
+    this.upsertFts(node.id, node.label, body);
+  }
+
+  addRelation(src: string, dst: string, rel: string, opts: { session?: string; timestamp?: number } = {}): void {
+    this.conn()
+      .prepare("INSERT INTO edges(src, dst, rel, session, ts) VALUES(?, ?, ?, ?, ?)")
+      .run(src, dst, rel, opts.session ?? null, opts.timestamp ?? Date.now());
+  }
+
+  search(query: string, opts: { types?: string[]; limit?: number } = {}): {
+    id: string;
+    type: string;
+    label: string;
+    body: string;
+  }[] {
+    const q = query.trim();
+    if (!q) return [];
+    const limit = opts.limit ?? 20;
+    let sql =
+      `SELECT n.id, n.type, n.label, n.body FROM nodes_fts f
+       JOIN nodes n ON n.id = f.id
+       WHERE nodes_fts MATCH ?`;
+    const args: any[] = [q];
+    if (opts.types && opts.types.length > 0) {
+      sql += ` AND n.type IN (${opts.types.map(() => "?").join(",")})`;
+      args.push(...opts.types);
+    }
+    sql += " ORDER BY bm25(nodes_fts) LIMIT ?";
+    args.push(limit);
+    return this.conn().prepare(sql).all(...args) as any[];
+  }
+
+  neighbors(id: string, opts: { rel?: string; direction?: "out" | "in" } = {}): {
+    id: string;
+    type: string;
+    label: string;
+    rel: string;
+  }[] {
+    const dir = opts.direction ?? "out";
+    const joinCol = dir === "out" ? "e.dst" : "e.src";
+    const matchCol = dir === "out" ? "e.src" : "e.dst";
+    let sql =
+      `SELECT n.id, n.type, n.label, e.rel FROM edges e JOIN nodes n ON n.id = ${joinCol}
+       WHERE ${matchCol} = ?`;
+    const args: any[] = [id];
+    if (opts.rel) {
+      sql += " AND e.rel = ?";
+      args.push(opts.rel);
+    }
+    sql += " ORDER BY e.rel, n.id";
+    return this.conn().prepare(sql).all(...args) as any[];
+  }
+
+  traverse(id: string, opts: { maxDepth?: number; rel?: string } = {}): {
+    id: string;
+    type: string;
+    label: string;
+    depth: number;
+  }[] {
+    const maxDepth = opts.maxDepth ?? 3;
+    const relFilter = opts.rel ? "AND e.rel = ?" : "";
+    const sql =
+      `WITH RECURSIVE reach(id, depth) AS (
+         SELECT ?, 0
+         UNION
+         SELECT e.dst, r.depth + 1 FROM edges e JOIN reach r ON e.src = r.id
+         WHERE r.depth < ? ${relFilter}
+       )
+       SELECT n.id, n.type, n.label, min(reach.depth) AS depth
+       FROM reach JOIN nodes n ON n.id = reach.id
+       WHERE reach.id <> ?
+       GROUP BY n.id ORDER BY depth, n.id`;
+    const args: any[] = opts.rel ? [id, maxDepth, opts.rel, id] : [id, maxDepth, id];
+    return this.conn().prepare(sql).all(...args) as any[];
+  }
+
+  cooccur(id: string, rel: string): { id: string; type: string; label: string }[] {
+    return this.conn()
+      .prepare(
+        `SELECT DISTINCT n.id, n.type, n.label
+         FROM edges e1 JOIN edges e2 ON e1.dst = e2.dst
+         JOIN nodes n ON n.id = e2.src
+         WHERE e1.src = ? AND e2.src <> ? AND e1.rel = ? AND e2.rel = ?
+         ORDER BY n.id`,
+      )
+      .all(id, id, rel, rel) as any[];
+  }
+
   init(): void {
     if (this.db) return; // idempotent
     mkdirSync(dirname(this.dbPath), { recursive: true });
