@@ -324,6 +324,20 @@ export class RepoStore {
     return deleted;
   }
 
+  // ---- Garbage collection ----
+
+  // A: delete tool_result events older than cutoffMs. Facts are never touched
+  // here; their obsolescence is governed solely by explicit TTL (see
+  // collectGarbageExpired).
+  collectGarbageByAge(cutoffMs: number): number {
+    const ids = (
+      this.conn()
+        .prepare("SELECT id FROM nodes WHERE type = 'tool_result' AND ts < ?")
+        .all(cutoffMs) as any[]
+    ).map((r) => r.id);
+    return this.deleteEvents(ids);
+  }
+
   // ---- Knowledge-graph layer: facts, relations, discovery ----
 
   addNode(node: {
