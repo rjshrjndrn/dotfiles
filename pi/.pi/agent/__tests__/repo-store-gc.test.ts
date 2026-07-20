@@ -161,3 +161,37 @@ describe("collectGarbageDedup", () => {
     expect(store.getSessionEvents("s1").length).toBe(3);
   });
 });
+
+describe("collectGarbageExpired", () => {
+  it("deletes facts whose expires_at is in the past", () => {
+    store.addNode({ id: "f1", type: "fact", label: "temporary", expiresAt: 100 });
+    store.addNode({ id: "f2", type: "fact", label: "future", expiresAt: 900 });
+
+    const removed = store.collectGarbageExpired(500); // now = 500
+
+    expect(removed).toBe(1);
+    expect(store.search("temporary").map((n) => n.id)).not.toContain("f1");
+    expect(store.search("future").map((n) => n.id)).toContain("f2");
+  });
+
+  it("NEVER deletes facts with no expiry (null = permanent)", () => {
+    store.addNode({ id: "perm", type: "fact", label: "permanent note" });
+    expect(store.collectGarbageExpired(1e18)).toBe(0);
+    expect(store.search("permanent").map((n) => n.id)).toContain("perm");
+  });
+
+  it("only targets facts, never tool_result events", () => {
+    store.writeEvent(ev({ id: "e1", timestamp: 1 }));
+    expect(store.collectGarbageExpired(1e18)).toBe(0);
+    expect(store.getSessionEvents("s1").map((e) => e.id)).toEqual(["e1"]);
+  });
+
+  it("cleans FTS and relations for an expired fact", () => {
+    store.addNode({ id: "f1", type: "fact", label: "gone concept", expiresAt: 1 });
+    store.addNode({ id: "c1", type: "concept", label: "topic" });
+    store.addRelation("f1", "c1", "relates_to");
+    store.collectGarbageExpired(500);
+    expect(store.search("gone")).toEqual([]);
+    expect(store.neighbors("f1")).toEqual([]);
+  });
+});

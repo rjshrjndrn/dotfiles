@@ -401,6 +401,26 @@ export class RepoStore {
     return this.deleteEvents(toDelete);
   }
 
+  // Fact TTL: delete facts whose explicit expiry has passed. Facts with a null
+  // expires_at are permanent and never removed, preserving the durable
+  // save-memory contract. Cleans the node, its edges, and its FTS entry.
+  collectGarbageExpired(now: number): number {
+    const db = this.conn();
+    const ids = (
+      db
+        .prepare(
+          "SELECT id FROM nodes WHERE type = 'fact' AND expires_at IS NOT NULL AND expires_at < ?",
+        )
+        .all(now) as any[]
+    ).map((r) => r.id);
+    for (const id of ids) {
+      db.prepare("DELETE FROM edges WHERE src = ? OR dst = ?").run(id, id);
+      db.prepare("DELETE FROM nodes_fts WHERE id = ?").run(id);
+      db.prepare("DELETE FROM nodes WHERE id = ?").run(id);
+    }
+    return ids.length;
+  }
+
   // ---- Knowledge-graph layer: facts, relations, discovery ----
 
   addNode(node: {
