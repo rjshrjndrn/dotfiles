@@ -63,3 +63,42 @@ describe("collectGarbageByAge", () => {
     expect(store.collectGarbageByAge(500)).toBe(0);
   });
 });
+
+describe("collectGarbageOrphans", () => {
+  it("deletes file nodes whose path no longer exists, keeps present ones", () => {
+    store.writeEvent(ev({ id: "e1", files: ["gone.ts", "here.ts"], timestamp: 1 }));
+    const present = new Set(["here.ts"]);
+
+    const removed = store.collectGarbageOrphans((p) => present.has(p));
+
+    expect(removed).toBe(1);
+    const files = store.getHotFiles().map((h) => h.path);
+    expect(files).toContain("here.ts");
+    expect(files).not.toContain("gone.ts");
+  });
+
+  it("keeps events; only the dead file node + its reference edge go", () => {
+    store.writeEvent(ev({ id: "e1", files: ["gone.ts"], timestamp: 1 }));
+    store.collectGarbageOrphans(() => false);
+    // the event itself survives, just loses the dangling file reference
+    expect(store.getSessionEvents("s1").map((e) => e.id)).toEqual(["e1"]);
+    expect(store.queryByFile("gone.ts")).toEqual([]);
+  });
+
+  it("#3: a file present in the main repo is NOT orphaned when a worktree dies", () => {
+    // Path is worktree-relative ('src/a.ts'); the existence check resolves it
+    // against the shared main repo root, where it still lives.
+    store.writeEvent(ev({ id: "e1", files: ["src/a.ts"], timestamp: 1 }));
+    const existsInMain = (p: string) => p === "src/a.ts"; // still on disk in main
+
+    const removed = store.collectGarbageOrphans(existsInMain);
+
+    expect(removed).toBe(0);
+    expect(store.getHotFiles().map((h) => h.path)).toContain("src/a.ts");
+  });
+
+  it("returns 0 when every file still exists", () => {
+    store.writeEvent(ev({ id: "e1", files: ["a.ts", "b.ts"], timestamp: 1 }));
+    expect(store.collectGarbageOrphans(() => true)).toBe(0);
+  });
+});

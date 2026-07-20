@@ -338,6 +338,22 @@ export class RepoStore {
     return this.deleteEvents(ids);
   }
 
+  // B: delete file nodes whose (worktree-relative) path no longer exists. The
+  // caller supplies fileExists, which must resolve the path against the SHARED
+  // main repo root -- so deleting a worktree never orphans a file still present
+  // in the canonical checkout. Events survive; only the dangling file node and
+  // its reference edges are removed.
+  collectGarbageOrphans(fileExists: (relPath: string) => boolean): number {
+    const db = this.conn();
+    const files = db.prepare("SELECT id, label FROM nodes WHERE type = 'file'").all() as any[];
+    const dead = files.filter((f) => !fileExists(f.label));
+    for (const f of dead) {
+      db.prepare("DELETE FROM edges WHERE dst = ? AND rel = 'references'").run(f.id);
+      db.prepare("DELETE FROM nodes WHERE id = ?").run(f.id);
+    }
+    return dead.length;
+  }
+
   // ---- Knowledge-graph layer: facts, relations, discovery ----
 
   addNode(node: {
