@@ -354,6 +354,27 @@ export class RepoStore {
     return dead.length;
   }
 
+  // D: delete sessions whose worktree directory (session.cwd) is gone, along
+  // with their events. worktreeAlive is injected so the fs check stays out of
+  // the store. Events are removed via deleteEvents (cascading edges/files);
+  // the session node itself is then dropped.
+  collectGarbageStale(worktreeAlive: (cwd: string) => boolean): number {
+    const db = this.conn();
+    const sessions = db.prepare("SELECT id, label FROM nodes WHERE type = 'session'").all() as any[];
+    const dead = sessions.filter((s) => !worktreeAlive(s.label));
+    for (const s of dead) {
+      const eventIds = (
+        db
+          .prepare("SELECT src FROM edges WHERE dst = ? AND rel = 'belongs_to'")
+          .all(s.id) as any[]
+      ).map((r) => r.src);
+      this.deleteEvents(eventIds);
+      db.prepare("DELETE FROM edges WHERE src = ? OR dst = ?").run(s.id, s.id);
+      db.prepare("DELETE FROM nodes WHERE id = ?").run(s.id);
+    }
+    return dead.length;
+  }
+
   // ---- Knowledge-graph layer: facts, relations, discovery ----
 
   addNode(node: {

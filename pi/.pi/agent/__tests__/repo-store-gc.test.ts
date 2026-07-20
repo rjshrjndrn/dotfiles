@@ -102,3 +102,33 @@ describe("collectGarbageOrphans", () => {
     expect(store.collectGarbageOrphans(() => true)).toBe(0);
   });
 });
+
+describe("collectGarbageStale", () => {
+  it("deletes sessions whose worktree dir is gone, plus their events", () => {
+    store.registerSession({ id: "live", startTime: 1, cwd: "/repo", gitRoot: "/repo" });
+    store.registerSession({ id: "dead", startTime: 2, cwd: "/repo/wt-x", gitRoot: "/repo" });
+    store.writeEvent(ev({ id: "e-live", sessionId: "live", timestamp: 10 }));
+    store.writeEvent(ev({ id: "e-dead", sessionId: "dead", timestamp: 20 }));
+
+    const alive = (cwd: string) => cwd === "/repo"; // wt-x removed
+
+    const removed = store.collectGarbageStale(alive);
+
+    expect(removed).toBe(1); // one session
+    expect(store.getSessions().map((s) => s.id)).toEqual(["live"]);
+    expect(store.getSessionEvents("dead")).toEqual([]);
+    expect(store.getSessionEvents("live").map((e) => e.id)).toEqual(["e-live"]);
+  });
+
+  it("cascades file cleanup for the dead session's events", () => {
+    store.registerSession({ id: "dead", startTime: 1, cwd: "/repo/wt-x", gitRoot: "/repo" });
+    store.writeEvent(ev({ id: "e-dead", sessionId: "dead", files: ["only.ts"], timestamp: 1 }));
+    store.collectGarbageStale(() => false);
+    expect(store.getHotFiles().some((h) => h.path === "only.ts")).toBe(false);
+  });
+
+  it("returns 0 when all worktrees are alive", () => {
+    store.registerSession({ id: "s1", startTime: 1, cwd: "/repo", gitRoot: "/repo" });
+    expect(store.collectGarbageStale(() => true)).toBe(0);
+  });
+});
