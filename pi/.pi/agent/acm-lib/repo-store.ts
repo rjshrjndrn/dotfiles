@@ -141,6 +141,160 @@ export class RepoStore {
   // Writes are immediate and durable under WAL; nothing to flush.
   flushWrites(): void {}
 
+  private filesFor(id: string): string[] {
+    return (
+      this.conn()
+        .prepare(
+          `SELECT n.label AS label FROM edges e JOIN nodes n ON n.id = e.dst
+           WHERE e.src = ? AND e.rel = 'references' ORDER BY n.label`,
+        )
+        .all(id) as any[]
+    ).map((r) => r.label);
+  }
+
+  private toEvent(row: any): RepoEvent {
+    return {
+      id: row.id,
+      toolName: row.label,
+      keyTerms: row.body,
+      eventType: row.event_type,
+      files: this.filesFor(row.id),
+      sessionId: row.session,
+      timestamp: row.ts,
+      summary: row.summary ?? "",
+    };
+  }
+
+  queryByFile(filePath: string): RepoEvent[] {
+    const rows = this.conn()
+      .prepare(
+        `SELECT n.* FROM nodes n JOIN edges e ON e.src = n.id
+         WHERE e.rel = 'references' AND e.dst = ? AND n.type = 'tool_result'
+         ORDER BY n.ts DESC`,
+      )
+      .all(this.fileNodeId(filePath)) as any[];
+    return rows.map((r) => this.toEvent(r));
+  }
+
+  queryByKeyword(keyword: string): RepoEvent[] {
+    const words = keyword.toLowerCase().split(/\s+/).filter((w) => w.length > 0);
+    if (words.length === 0) return [];
+    const clause = words.map(() => "(lower(body) LIKE ? OR lower(summary) LIKE ?)").join(" OR ");
+    const args: string[] = [];
+    for (const w of words) args.push(`%${w}%`, `%${w}%`);
+    const rows = this.conn()
+      .prepare(`SELECT * FROM nodes WHERE type = 'tool_result' AND (${clause}) ORDER BY ts DESC`)
+      .all(...args) as any[];
+    return rows.map((r) => this.toEvent(r));
+  }
+
+  getRelated(id: string): RepoEvent[] {
+    const rows = this.conn()
+      .prepare(
+        `SELECT DISTINCT n.* FROM nodes n JOIN edges e ON e.src = n.id
+         WHERE e.rel = 'references' AND n.type = 'tool_result' AND n.id <> ?
+           AND e.dst IN (SELECT dst FROM edges WHERE src = ? AND rel = 'references')
+         ORDER BY n.ts DESC`,
+      )
+      .all(id, id) as any[];
+    return rows.map((r) => this.toEvent(r));
+  }
+
+  getSequence(id: string, direction: "forward" | "backward" = "forward"): RepoEvent[] {
+    const sql =
+      direction === "forward"
+        ? `SELECT n.* FROM nodes n JOIN edges e ON e.dst = n.id
+           WHERE e.rel = 'follows' AND e.src = ? ORDER BY n.ts ASC`
+        : `SELECT n.* FROM nodes n JOIN edges e ON e.src = n.id
+           WHERE e.rel = 'follows' AND e.dst = ? ORDER BY n.ts DESC`;
+    const rows = this.conn().prepare(sql).all(id) as any[];
+    return rows.map((r) => this.toEvent(r));
+  }
+
+  getSessions(): RepoSession[] {
+    return (
+      this.conn().prepare("SELECT * FROM nodes WHERE type = 'session' ORDER BY ts DESC").all() as any[]
+    ).map((r) => ({ id: r.id, startTime: r.ts, cwd: r.label, gitRoot: r.body }));
+  }
+
+  getSessionEvents(sessionId: string): RepoEvent[] {
+    const rows = this.conn()
+      .prepare("SELECT * FROM nodes WHERE type = 'tool_result' AND session = ? ORDER BY ts ASC")
+      .all(sessionId) as any[];
+    return rows.map((r) => this.toEvent(r));
+  }
+
+  queryByEventType(eventType: string, limit = 20): RepoEvent[] {
+    const rows = this.conn()
+      .prepare(
+        "SELECT * FROM nodes WHERE type = 'tool_result' AND event_type = ? ORDER BY ts DESC LIMIT ?",
+      )
+      .all(eventType, limit) as any[];
+    return rows.map((r) => this.toEvent(r));
+  }
+
+  precheckFile(filePath: string): {
+    eventCount: number;
+    lastTouched: number;
+    sessions: string[];
+    recentKeyTerms: string[];
+  } {
+    const events = this.queryByFile(filePath);
+    if (events.length === 0) return { eventCount: 0, lastTouched: 0, sessions: [], recentKeyTerms: [] };
+    return {
+      eventCount: events.length,
+      lastTouched: Math.max(...events.map((e) => e.timestamp)),
+      sessions: [...new Set(events.map((e) => e.sessionId))],
+      recentKeyTerms: events
+        .slice(0, 5)
+        .flatMap((e) => e.keyTerms.split(/\s+/))
+        .filter((w, i, arr) => w.length > 0 && arr.indexOf(w) === i)
+        .slice(0, 10),
+    };
+  }
+
+  getStats(): { events: number; files: number; sessions: number } {
+    const c = (t: string) =>
+      (this.conn().prepare("SELECT count(*) AS c FROM nodes WHERE type = ?").get(t) as any).c as number;
+    return { events: c("tool_result"), files: c("file"), sessions: c("session") };
+  }
+
+  getHotFiles(limit = 10): { path: string; refCount: number }[] {
+    return (
+      this.conn()
+        .prepare(
+          `SELECT n.label AS path, count(*) AS refCount
+           FROM edges e JOIN nodes n ON n.id = e.dst
+           WHERE e.rel = 'references' GROUP BY e.dst
+           ORDER BY refCount DESC LIMIT ?`,
+        )
+        .all(limit) as any[]
+    ).map((r) => ({ path: r.path, refCount: r.refCount }));
+  }
+
+  deleteEvents(ids: string[]): number {
+    if (ids.length === 0) return 0;
+    const db = this.conn();
+    let deleted = 0;
+    for (const id of ids) {
+      db.prepare("DELETE FROM edges WHERE src = ? OR dst = ?").run(id, id);
+      db.prepare("DELETE FROM nodes_fts WHERE id = ?").run(id);
+      const res = db.prepare("DELETE FROM nodes WHERE id = ? AND type = 'tool_result'").run(id);
+      if (Number(res.changes) > 0) {
+        deleted++;
+        this.lastPerSession.forEach((v, k) => {
+          if (v === id) this.lastPerSession.delete(k);
+        });
+      }
+    }
+    // Orphan-clean file nodes no longer referenced by any event.
+    db.prepare(
+      `DELETE FROM nodes WHERE type = 'file'
+       AND id NOT IN (SELECT dst FROM edges WHERE rel = 'references')`,
+    ).run();
+    return deleted;
+  }
+
   init(): void {
     if (this.db) return; // idempotent
     mkdirSync(dirname(this.dbPath), { recursive: true });
