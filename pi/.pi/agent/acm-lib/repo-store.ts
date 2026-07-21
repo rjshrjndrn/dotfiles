@@ -329,12 +329,13 @@ export class RepoStore {
   // A: delete tool_result events older than cutoffMs. Facts are never touched
   // here; their obsolescence is governed solely by explicit TTL (see
   // collectGarbageExpired).
-  collectGarbageByAge(cutoffMs: number): number {
+  collectGarbageByAge(cutoffMs: number, dryRun = false): number {
     const ids = (
       this.conn()
         .prepare("SELECT id FROM nodes WHERE type = 'tool_result' AND ts < ?")
         .all(cutoffMs) as any[]
     ).map((r) => r.id);
+    if (dryRun) return ids.length;
     return this.deleteEvents(ids);
   }
 
@@ -343,10 +344,11 @@ export class RepoStore {
   // main repo root -- so deleting a worktree never orphans a file still present
   // in the canonical checkout. Events survive; only the dangling file node and
   // its reference edges are removed.
-  collectGarbageOrphans(fileExists: (relPath: string) => boolean): number {
+  collectGarbageOrphans(fileExists: (relPath: string) => boolean, dryRun = false): number {
     const db = this.conn();
     const files = db.prepare("SELECT id, label FROM nodes WHERE type = 'file'").all() as any[];
     const dead = files.filter((f) => !fileExists(f.label));
+    if (dryRun) return dead.length;
     for (const f of dead) {
       db.prepare("DELETE FROM edges WHERE dst = ? AND rel = 'references'").run(f.id);
       db.prepare("DELETE FROM nodes WHERE id = ?").run(f.id);
@@ -358,10 +360,11 @@ export class RepoStore {
   // with their events. worktreeAlive is injected so the fs check stays out of
   // the store. Events are removed via deleteEvents (cascading edges/files);
   // the session node itself is then dropped.
-  collectGarbageStale(worktreeAlive: (cwd: string) => boolean): number {
+  collectGarbageStale(worktreeAlive: (cwd: string) => boolean, dryRun = false): number {
     const db = this.conn();
     const sessions = db.prepare("SELECT id, label FROM nodes WHERE type = 'session'").all() as any[];
     const dead = sessions.filter((s) => !worktreeAlive(s.label));
+    if (dryRun) return dead.length;
     for (const s of dead) {
       const eventIds = (
         db
@@ -379,7 +382,7 @@ export class RepoStore {
   // Identity = (toolName, keyTerms, event_type, sorted file list). The follows
   // chain may fragment when a middle event is removed; that is accepted for
   // simplicity.
-  collectGarbageDedup(): number {
+  collectGarbageDedup(dryRun = false): number {
     const db = this.conn();
     const events = db
       .prepare("SELECT id, label, body, event_type, ts FROM nodes WHERE type = 'tool_result'")
@@ -398,13 +401,14 @@ export class RepoStore {
       arr.sort((a, b) => b.ts - a.ts); // newest first
       toDelete.push(...arr.slice(1).map((x) => x.id)); // drop all but newest
     }
+    if (dryRun) return toDelete.length;
     return this.deleteEvents(toDelete);
   }
 
   // Fact TTL: delete facts whose explicit expiry has passed. Facts with a null
   // expires_at are permanent and never removed, preserving the durable
   // save-memory contract. Cleans the node, its edges, and its FTS entry.
-  collectGarbageExpired(now: number): number {
+  collectGarbageExpired(now: number, dryRun = false): number {
     const db = this.conn();
     const ids = (
       db
@@ -413,6 +417,7 @@ export class RepoStore {
         )
         .all(now) as any[]
     ).map((r) => r.id);
+    if (dryRun) return ids.length;
     for (const id of ids) {
       db.prepare("DELETE FROM edges WHERE src = ? OR dst = ?").run(id, id);
       db.prepare("DELETE FROM nodes_fts WHERE id = ?").run(id);
@@ -433,6 +438,41 @@ export class RepoStore {
     const db = this.conn();
     db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
     db.exec("VACUUM");
+  }
+
+  // Orchestrate all GC categories and report per-category counts. Categories
+  // whose predicate is omitted are skipped (count 0). Order: stale (drops whole
+  // dead sessions first) -> age -> dedup -> expired -> orphan (cleans file
+  // nodes whose path is gone) -> vacuum (reclaim space). dryRun counts
+  // candidates and mutates nothing.
+  collectGarbage(opts: {
+    now?: number;
+    maxAgeDays?: number;
+    worktreeAlive?: (cwd: string) => boolean;
+    fileExists?: (relPath: string) => boolean;
+    dedup?: boolean;
+    vacuum?: boolean;
+    dryRun?: boolean;
+  }): { stale: number; age: number; dedup: number; expired: number; orphan: number } {
+    const now = opts.now ?? Date.now();
+    const dry = opts.dryRun ?? false;
+
+    const stale = opts.worktreeAlive ? this.collectGarbageStale(opts.worktreeAlive, dry) : 0;
+
+    const age =
+      opts.maxAgeDays !== undefined
+        ? this.collectGarbageByAge(now - opts.maxAgeDays * 86_400_000, dry)
+        : 0;
+
+    const dedup = opts.dedup === false ? 0 : this.collectGarbageDedup(dry);
+
+    const expired = this.collectGarbageExpired(now, dry);
+
+    const orphan = opts.fileExists ? this.collectGarbageOrphans(opts.fileExists, dry) : 0;
+
+    if (!dry && opts.vacuum !== false) this.vacuum();
+
+    return { stale, age, dedup, expired, orphan };
   }
 
   // ---- Knowledge-graph layer: facts, relations, discovery ----
