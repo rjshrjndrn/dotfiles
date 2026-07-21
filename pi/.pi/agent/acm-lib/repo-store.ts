@@ -21,6 +21,7 @@ export interface RepoEvent {
   timestamp: number;
   summary?: string;
   worktree?: string;
+  expiresAt?: number;
 }
 
 export interface RepoSession {
@@ -110,12 +111,12 @@ export class RepoStore {
 
     // Upsert the tool_result node.
     db.prepare(
-      `INSERT INTO nodes(id, type, label, body, event_type, summary, session, worktree, ts)
-       VALUES(?, 'tool_result', ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO nodes(id, type, label, body, event_type, summary, session, worktree, ts, expires_at)
+       VALUES(?, 'tool_result', ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          label = excluded.label, body = excluded.body, event_type = excluded.event_type,
          summary = excluded.summary, session = excluded.session,
-         worktree = excluded.worktree, ts = excluded.ts`,
+         worktree = excluded.worktree, ts = excluded.ts, expires_at = excluded.expires_at`,
     ).run(
       event.id,
       event.toolName,
@@ -125,6 +126,7 @@ export class RepoStore {
       event.sessionId,
       event.worktree ?? null,
       event.timestamp,
+      event.expiresAt ?? null,
     );
     this.upsertFts(event.id, event.toolName, event.keyTerms);
 
@@ -330,9 +332,13 @@ export class RepoStore {
   // here; their obsolescence is governed solely by explicit TTL (see
   // collectGarbageExpired).
   collectGarbageByAge(cutoffMs: number, dryRun = false): number {
+    // user_note events are curated saved memory; they are durable and never
+    // age out. Their lifetime is governed only by explicit TTL.
     const ids = (
       this.conn()
-        .prepare("SELECT id FROM nodes WHERE type = 'tool_result' AND ts < ?")
+        .prepare(
+          "SELECT id FROM nodes WHERE type = 'tool_result' AND event_type != 'user_note' AND ts < ?",
+        )
         .all(cutoffMs) as any[]
     ).map((r) => r.id);
     if (dryRun) return ids.length;
@@ -405,16 +411,15 @@ export class RepoStore {
     return this.deleteEvents(toDelete);
   }
 
-  // Fact TTL: delete facts whose explicit expiry has passed. Facts with a null
-  // expires_at are permanent and never removed, preserving the durable
-  // save-memory contract. Cleans the node, its edges, and its FTS entry.
+  // TTL: delete any node whose explicit expiry has passed -- facts set via
+  // acm_save_memory and ttl'd user_note events alike. A null expires_at means
+  // permanent, so notes the user did not opt to expire are never removed,
+  // preserving the durable save-memory contract. Cleans node, edges, and FTS.
   collectGarbageExpired(now: number, dryRun = false): number {
     const db = this.conn();
     const ids = (
       db
-        .prepare(
-          "SELECT id FROM nodes WHERE type = 'fact' AND expires_at IS NOT NULL AND expires_at < ?",
-        )
+        .prepare("SELECT id FROM nodes WHERE expires_at IS NOT NULL AND expires_at < ?")
         .all(now) as any[]
     ).map((r) => r.id);
     if (dryRun) return ids.length;

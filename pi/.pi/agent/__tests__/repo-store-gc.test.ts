@@ -62,6 +62,16 @@ describe("collectGarbageByAge", () => {
     store.writeEvent(ev({ id: "new", timestamp: 900 }));
     expect(store.collectGarbageByAge(500)).toBe(0);
   });
+
+  it("NEVER deletes user_note events (curated, durable), even when old", () => {
+    store.writeEvent(ev({ id: "note", eventType: "user_note", keyTerms: "deploy via X", timestamp: 1 }));
+    store.writeEvent(ev({ id: "old", eventType: "tool_result", timestamp: 1 }));
+
+    const removed = store.collectGarbageByAge(500);
+
+    expect(removed).toBe(1); // only the tool_result
+    expect(store.queryByEventType("user_note").map((e) => e.id)).toEqual(["note"]);
+  });
 });
 
 describe("collectGarbageOrphans", () => {
@@ -193,6 +203,25 @@ describe("collectGarbageExpired", () => {
     store.collectGarbageExpired(500);
     expect(store.search("gone")).toEqual([]);
     expect(store.neighbors("f1")).toEqual([]);
+  });
+
+  it("also expires ttl'd user_note events (any expirable node)", () => {
+    store.writeEvent(ev({ id: "note", eventType: "user_note", keyTerms: "temp note", timestamp: 1, expiresAt: 100 }));
+    store.writeEvent(ev({ id: "perm", eventType: "user_note", keyTerms: "keep note", timestamp: 1 }));
+
+    const removed = store.collectGarbageExpired(500);
+
+    expect(removed).toBe(1);
+    expect(store.queryByEventType("user_note").map((e) => e.id)).toEqual(["perm"]);
+  });
+});
+
+describe("writeEvent expiresAt", () => {
+  it("persists an explicit expiry on an event", () => {
+    store.writeEvent(ev({ id: "e1", eventType: "user_note", timestamp: 1, expiresAt: 7777 }));
+    // round-trips through the store: expired after its expiry, kept before
+    expect(store.collectGarbageExpired(7000, true)).toBe(0); // not yet expired
+    expect(store.collectGarbageExpired(8000, true)).toBe(1); // now expired
   });
 });
 
