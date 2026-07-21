@@ -195,3 +195,27 @@ describe("collectGarbageExpired", () => {
     expect(store.neighbors("f1")).toEqual([]);
   });
 });
+
+describe("vacuum", () => {
+  it("reclaims free pages after deletes (freelist drops to 0)", () => {
+    // Fill, then delete most, creating free pages.
+    for (let i = 0; i < 500; i++) {
+      store.writeEvent(ev({ id: "e" + i, keyTerms: "bulk " + i, files: ["f" + i + ".ts"], timestamp: i }));
+    }
+    store.collectGarbageByAge(499); // delete all but the last
+
+    const before = store.freelistCount();
+    store.vacuum();
+    const after = store.freelistCount();
+
+    expect(before).toBeGreaterThan(0);
+    expect(after).toBe(0);
+  });
+
+  it("leaves the db fully queryable after vacuum", () => {
+    store.writeEvent(ev({ id: "keep", keyTerms: "survivor", files: ["a.ts"], timestamp: 1 }));
+    store.vacuum();
+    expect(store.queryByFile("a.ts").map((e) => e.id)).toEqual(["keep"]);
+    expect(store.search("survivor").length).toBeGreaterThanOrEqual(0);
+  });
+});

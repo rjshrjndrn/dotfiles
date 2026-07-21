@@ -421,6 +421,20 @@ export class RepoStore {
     return ids.length;
   }
 
+  // Number of free pages sitting in the db file (grows as rows are deleted).
+  freelistCount(): number {
+    return (this.conn().prepare("PRAGMA freelist_count").get() as any).freelist_count as number;
+  }
+
+  // F: fold the WAL back in and physically shrink the file, reclaiming pages
+  // freed by prior deletes. VACUUM cannot run inside a transaction; the store
+  // never holds an explicit one, so this is safe.
+  vacuum(): void {
+    const db = this.conn();
+    db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+    db.exec("VACUUM");
+  }
+
   // ---- Knowledge-graph layer: facts, relations, discovery ----
 
   addNode(node: {
