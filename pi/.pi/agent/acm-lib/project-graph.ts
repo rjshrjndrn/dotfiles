@@ -19,6 +19,25 @@ export interface ProjectGraphEvent {
   sessionId: string;
   timestamp: number;
   summary?: string;
+  expiresAt?: number;
+}
+
+export interface GcOptions {
+  now?: number;
+  maxAgeDays?: number;
+  worktreeAlive?: (cwd: string) => boolean;
+  fileExists?: (relPath: string) => boolean;
+  dedup?: boolean;
+  vacuum?: boolean;
+  dryRun?: boolean;
+}
+
+export interface GcReport {
+  stale: number;
+  age: number;
+  dedup: number;
+  expired: number;
+  orphan: number;
 }
 
 export interface SessionInfo {
@@ -117,6 +136,10 @@ export class ProjectGraph {
 
   async getHotFiles(limit = 10): Promise<HotFile[]> {
     return this.store.getHotFiles(limit);
+  }
+
+  async collectGarbage(opts: GcOptions): Promise<GcReport> {
+    return this.store.collectGarbage(opts);
   }
 
   async deleteEvents(ids: string[]): Promise<number> {

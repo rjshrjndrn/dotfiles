@@ -10,8 +10,15 @@
  */
 
 import { join } from "node:path";
-import { appendFileSync } from "node:fs";
-import { ProjectGraph, type ProjectGraphEvent, type SessionInfo, type FilePrecheck, type HotFile } from "./project-graph.ts";
+import { appendFileSync, existsSync } from "node:fs";
+import {
+  ProjectGraph,
+  type ProjectGraphEvent,
+  type SessionInfo,
+  type FilePrecheck,
+  type HotFile,
+  type GcReport,
+} from "./project-graph.ts";
 import { DecisionGate, type TurnContext, type ToolResultInfo } from "./decision-gate.ts";
 
 export interface TurnEndEvent {
@@ -49,6 +56,7 @@ export class ProjectMemoryBridge {
   private logFile: string;
   private turnCounter = 0;
   private worktreeRoot: string | null = null;
+  private gitRoot: string | null = null;
 
   constructor(config: BridgeConfig) {
     this.config = config;
@@ -96,6 +104,8 @@ export class ProjectMemoryBridge {
       this.log(`session_start: no git root, project memory disabled`);
       return;
     }
+
+    this.gitRoot = event.gitRoot;
 
     try {
       const dbDir = this.config.dbDir || join(event.gitRoot!, ".pi");
@@ -172,18 +182,21 @@ export class ProjectMemoryBridge {
    * Save a user-provided note to project memory.
    * Returns true on success, false if graph not ready.
    */
-  async saveUserNote(note: string, files: string[] = []): Promise<boolean> {
+  async saveUserNote(note: string, files: string[] = [], ttlDays?: number): Promise<boolean> {
     if (!this.graph || !this.sessionId) return false;
 
+    const now = Date.now();
     const event: ProjectGraphEvent = {
-      id: `user-note-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: `user-note-${now}-${Math.random().toString(36).slice(2, 8)}`,
       toolName: "user_note",
       keyTerms: note.split(/\s+/).slice(0, 20).join(" "),
       eventType: "user_note",
       files: files.map((f) => this.relativizePath(f)),
       sessionId: this.sessionId,
-      timestamp: Date.now(),
+      timestamp: now,
       summary: note,
+      // ttlDays opt-in: note self-expires after the window; omitted = permanent.
+      expiresAt: ttlDays !== undefined ? now + ttlDays * 86_400_000 : undefined,
     };
 
     try {
@@ -194,6 +207,36 @@ export class ProjectMemoryBridge {
       this.log(`user_note error: ${err.message}`);
       return false;
     }
+  }
+
+  // ── Garbage collection ─────────────────────────────────
+
+  /**
+   * Run GC over the project memory. Builds the filesystem- and git-dependent
+   * predicates the store needs:
+   *  - fileExists: worktree-relative paths resolve against the SHARED main repo
+   *    root (this.gitRoot), so deleting a worktree never orphans a file still
+   *    present in the canonical checkout.
+   *  - worktreeAlive: a session's cwd (its worktree dir) still exists on disk.
+   */
+  async collectGarbage(opts: {
+    maxAgeDays?: number;
+    dryRun?: boolean;
+    dedup?: boolean;
+    vacuum?: boolean;
+  }): Promise<GcReport> {
+    const empty: GcReport = { stale: 0, age: 0, dedup: 0, expired: 0, orphan: 0 };
+    if (!this.graph || !this.gitRoot) return empty;
+
+    const repoRoot = this.gitRoot;
+    return this.graph.collectGarbage({
+      maxAgeDays: opts.maxAgeDays,
+      dryRun: opts.dryRun,
+      dedup: opts.dedup,
+      vacuum: opts.vacuum,
+      fileExists: (relPath: string) => existsSync(join(repoRoot, relPath)),
+      worktreeAlive: (cwd: string) => existsSync(cwd),
+    });
   }
 
   // ── Query delegations ──────────────────────────────────

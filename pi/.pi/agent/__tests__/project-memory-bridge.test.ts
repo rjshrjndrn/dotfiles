@@ -94,6 +94,21 @@ describe("ProjectMemoryBridge — saveUserNote", () => {
     expect(event.sessionId).toBe("test-session");
   });
 
+  it("leaves expiresAt undefined when no ttlDays given (durable note)", async () => {
+    await bridge.saveUserNote("permanent note");
+    const event: ProjectGraphEvent = mockGraph.writeEvent.mock.calls[0][0];
+    expect(event.expiresAt).toBeUndefined();
+  });
+
+  it("sets expiresAt = now + ttlDays when ttlDays given", async () => {
+    const before = Date.now();
+    await bridge.saveUserNote("temporary note", [], 7);
+    const event: ProjectGraphEvent = mockGraph.writeEvent.mock.calls[0][0];
+    const expected = before + 7 * 86_400_000;
+    expect(event.expiresAt).toBeGreaterThanOrEqual(expected);
+    expect(event.expiresAt).toBeLessThan(expected + 5000); // within a few seconds
+  });
+
   it("includes relativized files when provided", async () => {
     bridge.setWorktreeRoot("/home/user/project");
     await bridge.saveUserNote("deploy config", ["/home/user/project/deploy/config.yaml"]);
@@ -156,5 +171,57 @@ describe("ProjectMemoryBridge — user notes in briefing", () => {
     const briefing = await bridge.formatSessionBriefing();
     expect(briefing).toContain("Notes:");
     expect(briefing).toContain("SSH tunnel: port 5432 via bastion");
+  });
+});
+
+describe("ProjectMemoryBridge — collectGarbage", () => {
+  let bridge: ProjectMemoryBridge;
+  let mockGraph: any;
+  let capturedOpts: any;
+
+  beforeEach(() => {
+    bridge = new ProjectMemoryBridge({});
+    mockGraph = {
+      isReady: () => true,
+      collectGarbage: vi.fn().mockImplementation((opts: any) => {
+        capturedOpts = opts;
+        return { stale: 0, age: 0, dedup: 0, expired: 0, orphan: 0 };
+      }),
+    };
+    (bridge as any).graph = mockGraph;
+    (bridge as any).sessionId = "test-session";
+    (bridge as any).gitRoot = "/repo"; // main repo root
+  });
+
+  it("delegates to graph.collectGarbage and returns the report", async () => {
+    const report = await bridge.collectGarbage({ maxAgeDays: 90, dryRun: true });
+    expect(mockGraph.collectGarbage).toHaveBeenCalledOnce();
+    expect(report).toEqual({ stale: 0, age: 0, dedup: 0, expired: 0, orphan: 0 });
+  });
+
+  it("passes through maxAgeDays and dryRun", async () => {
+    await bridge.collectGarbage({ maxAgeDays: 30, dryRun: true });
+    expect(capturedOpts.maxAgeDays).toBe(30);
+    expect(capturedOpts.dryRun).toBe(true);
+  });
+
+  it("builds fileExists resolving worktree-relative paths against the main repo root", async () => {
+    await bridge.collectGarbage({});
+    // fs check is real; a path that surely does not exist under /repo => false
+    expect(capturedOpts.fileExists("definitely/missing/xyz.ts")).toBe(false);
+    // the repo root's own dir resolves to something that exists
+    expect(typeof capturedOpts.fileExists).toBe("function");
+  });
+
+  it("builds worktreeAlive checking directory existence", async () => {
+    await bridge.collectGarbage({});
+    expect(capturedOpts.worktreeAlive("/definitely/missing/worktree")).toBe(false);
+    expect(capturedOpts.worktreeAlive("/")).toBe(true); // root always exists
+  });
+
+  it("returns a zeroed report when the graph is not ready", async () => {
+    (bridge as any).graph = null;
+    const report = await bridge.collectGarbage({});
+    expect(report).toEqual({ stale: 0, age: 0, dedup: 0, expired: 0, orphan: 0 });
   });
 });

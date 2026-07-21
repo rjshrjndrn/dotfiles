@@ -1247,13 +1247,60 @@ Batch:   { entryIds: ["abc1", "def2", "ghi3"], action: "pin" }`,
     parameters: Type.Object({
       note: Type.String({ description: "The note/information to save." }),
       files: Type.Optional(Type.Array(Type.String(), { description: "Related file paths (will be relativized to git root)." })),
+      ttlDays: Type.Optional(
+        Type.Number({
+          description:
+            "Optional expiry in days. If set, the note is auto-removed by garbage collection after this many days. Omit for a permanent note.",
+        }),
+      ),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-      const success = await projectBridge.saveUserNote(params.note, params.files ?? []);
+      const success = await projectBridge.saveUserNote(params.note, params.files ?? [], params.ttlDays);
       if (success) {
-        return { content: [{ type: "text" as const, text: `✅ Saved to project memory: ${params.note.slice(0, 80)}${params.note.length > 80 ? "..." : ""}` }] };
+        const ttl = params.ttlDays !== undefined ? ` (expires in ${params.ttlDays}d)` : "";
+        return { content: [{ type: "text" as const, text: `✅ Saved to project memory${ttl}: ${params.note.slice(0, 80)}${params.note.length > 80 ? "..." : ""}` }] };
       }
       return { content: [{ type: "text" as const, text: "❌ Failed to save — project memory not initialized (no git root?)." }] };
+    },
+  });
+
+  // ── Tool: acm_collect_garbage ──────────────────────────────────────
+
+  pi.registerTool({
+    name: "acm_collect_garbage",
+    label: "ACM Collect Garbage",
+    description:
+      "Garbage-collect the project memory: remove stale sessions (dead worktrees), old tool events, " +
+      "duplicate events, expired notes/facts, and vanished-file references, then reclaim space. " +
+      "Defaults to a dry-run preview; pass apply:true to actually delete.",
+    promptSnippet:
+      "acm_collect_garbage: Prune the project memory graph. Dry-run by default; pass apply:true to delete.",
+    parameters: Type.Object({
+      apply: Type.Optional(
+        Type.Boolean({ description: "Actually delete. Defaults to false (dry-run preview only)." }),
+      ),
+      maxAgeDays: Type.Optional(
+        Type.Number({ description: "Delete tool events older than this many days. Defaults to 90." }),
+      ),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
+      const dryRun = params.apply !== true;
+      const maxAgeDays = params.maxAgeDays ?? 90;
+      const r = await projectBridge.collectGarbage({ maxAgeDays, dryRun });
+      const total = r.stale + r.age + r.dedup + r.expired + r.orphan;
+      const mode = dryRun ? "DRY RUN (nothing deleted)" : "APPLIED";
+      const lines = [
+        `── ACM Garbage Collection — ${mode} ──`,
+        `  stale sessions : ${r.stale}`,
+        `  old events     : ${r.age}  (> ${maxAgeDays}d)`,
+        `  duplicates     : ${r.dedup}`,
+        `  expired notes  : ${r.expired}`,
+        `  vanished files : ${r.orphan}`,
+        `  ─────────────────────`,
+        `  total          : ${total}`,
+        dryRun && total > 0 ? `\n  Re-run with apply:true to delete.` : "",
+      ].join("\n");
+      return { content: [{ type: "text" as const, text: lines }] };
     },
   });
 
