@@ -462,22 +462,38 @@ export class RepoStore {
     const now = opts.now ?? Date.now();
     const dry = opts.dryRun ?? false;
 
-    const stale = opts.worktreeAlive ? this.collectGarbageStale(opts.worktreeAlive, dry) : 0;
+    // Run every category with real deletes so cascades resolve, giving accurate
+    // per-category attribution. For a dry-run we do this inside a transaction
+    // and roll it back, so the reported counts are exactly what an apply would
+    // produce, while nothing is actually mutated. lastPerSession is snapshotted
+    // since ROLLBACK reverts the db but not that in-memory chain map.
+    const run = (): GcReport => {
+      const stale = opts.worktreeAlive ? this.collectGarbageStale(opts.worktreeAlive) : 0;
+      const age =
+        opts.maxAgeDays !== undefined
+          ? this.collectGarbageByAge(now - opts.maxAgeDays * 86_400_000)
+          : 0;
+      const dedup = opts.dedup === false ? 0 : this.collectGarbageDedup();
+      const expired = this.collectGarbageExpired(now);
+      const orphan = opts.fileExists ? this.collectGarbageOrphans(opts.fileExists) : 0;
+      return { stale, age, dedup, expired, orphan };
+    };
 
-    const age =
-      opts.maxAgeDays !== undefined
-        ? this.collectGarbageByAge(now - opts.maxAgeDays * 86_400_000, dry)
-        : 0;
+    if (dry) {
+      const db = this.conn();
+      const snapshot = new Map(this.lastPerSession);
+      db.exec("BEGIN");
+      try {
+        return run();
+      } finally {
+        db.exec("ROLLBACK");
+        this.lastPerSession = snapshot;
+      }
+    }
 
-    const dedup = opts.dedup === false ? 0 : this.collectGarbageDedup(dry);
-
-    const expired = this.collectGarbageExpired(now, dry);
-
-    const orphan = opts.fileExists ? this.collectGarbageOrphans(opts.fileExists, dry) : 0;
-
-    if (!dry && opts.vacuum !== false) this.vacuum();
-
-    return { stale, age, dedup, expired, orphan };
+    const report = run();
+    if (opts.vacuum !== false) this.vacuum();
+    return report;
   }
 
   // ---- Knowledge-graph layer: facts, relations, discovery ----

@@ -325,4 +325,21 @@ describe("collectGarbage orchestrator", () => {
     // expired still runs off `now`
     expect(report.expired).toBe(1);
   });
+
+  it("dry-run per-category counts EXACTLY match the subsequent apply", () => {
+    // Overlap case: an OLD event is the SOLE referrer of a file that is ALSO
+    // gone from disk. On apply, age-cascade deletes the event and orphan-cleans
+    // the file, so the orphan pass finds nothing (0). A naive independent
+    // dry-run would over-count orphan (1). Running the real cascade in a
+    // rolled-back transaction makes dry-run attribution identical to apply.
+    store.writeEvent(ev({ id: "old", keyTerms: "ancient", files: ["gone.ts"], timestamp: 100 }));
+    const o = {
+      now: 5000,
+      maxAgeDays: 0, // cutoff = 5000 => 'old' (ts 100) is old
+      fileExists: (p: string) => p !== "gone.ts", // gone.ts missing on disk
+    };
+    const dryReport = store.collectGarbage({ ...o, dryRun: true });
+    const applyReport = store.collectGarbage({ ...o, dryRun: false });
+    expect(dryReport).toEqual(applyReport);
+  });
 });
