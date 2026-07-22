@@ -17,7 +17,8 @@ export default function (pi: ExtensionAPI) {
     name: "name_session",
     label: "Name Session",
     description:
-      "Set a 2-3 word topic name for this session. Call this after your first response. " +
+      "Set a 2-3 word topic name for this session. Call this after your first response, " +
+      "and whenever the user asks to name, rename, or retitle the session. " +
       "Focus on WHAT the work is about (subject/area), not what the user asked to do. " +
       "Examples: 'auth token expiry', 'settings dark mode', 'db connection pool'.",
     parameters: Type.Object({
@@ -53,8 +54,7 @@ export default function (pi: ExtensionAPI) {
     if (nudged || pi.getSessionName()) return;
     nudged = true;
 
-    const opts = event.systemPromptOptions;
     const nudge = "\nIMPORTANT: After your first response, call the `name_session` tool with a 2-3 word topic name for this session.";
-    opts.appendSystemPrompt = (opts.appendSystemPrompt || "") + nudge;
+    return { systemPrompt: event.systemPrompt + nudge };
   });
 }
