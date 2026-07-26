@@ -1,0 +1,5 @@
+default_harness = "pi"
+mounts = [
+  "~/.pi:/home/yolo/.pi:rw",
+  "~/dotfiles/pi:/home/yolo/dotfiles/pi:rw",
+]
