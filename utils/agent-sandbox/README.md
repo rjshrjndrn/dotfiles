@@ -25,13 +25,28 @@ Anything not bound simply **does not exist** inside the sandbox, so
 `~/.ssh`, `~/.aws`, and the rest of `$HOME` cannot be read or damaged.
 
 The working directory is preserved with `--chdir "$PWD"`, mounted at the
-same absolute path, so git worktrees resolve their `.git` pointers and
-`git commit` works normally.
+same absolute path, so `git commit` works normally.
+
+### Linked worktrees
+
+A linked worktree keeps its working tree in one place but its `.git`
+pointer and object store in the main repo. The launcher binds both:
 
 ```
-  HOST                          SANDBOX
-  /home/you/dotfiles      ───▶  /home/you/dotfiles   (RW, same path)
-  $PWD = .../worktree-x         cd $PWD → .git links resolve
+  worktree working tree   --show-toplevel       ── RW ─▶ same path
+  real .git + objects     --git-common-dir      ── RW ─▶ same path
+```
+
+Both are mounted at their original absolute paths, so the worktree's
+absolute `.git` pointer resolves and commits reach the shared object
+store. For a normal checkout the common dir sits under the working tree
+and the second bind is harmlessly redundant.
+
+```
+  HOST                              SANDBOX
+  /home/you/dotfiles/.git     ───▶  same path   (RW, shared objects)
+  /tmp/worktree-x             ───▶  same path   (RW, working tree)
+  $PWD = /tmp/worktree-x            cd $PWD → git resolves
 ```
 
 ## Requirements
@@ -73,6 +88,8 @@ make test          # all specs
 make test-dryrun   # asserts the generated bwrap command (secrets NOT bound)
 make test-live     # enters the real sandbox and probes the boundary
 make test-extra    # EXTRA_RO / EXTRA_RW behaviour
+make test-dns      # DNS resolution inside the sandbox
+make test-worktree # git works from a linked worktree
 ```
 
 ## Caveats

@@ -33,6 +33,14 @@ fi
 
 WORKDIR="$PWD"
 
+# For linked worktrees the working tree ($GITROOT) and the real git dir
+# live in different places: the worktree's .git points by absolute path
+# into the main repo's .git, and objects/refs live under the common dir.
+# Bind the common git dir at its own absolute path so commits resolve.
+# For a normal checkout the common dir sits under $GITROOT and this bind
+# is harmlessly redundant.
+GIT_COMMON_DIR="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+
 # Resolve /etc/resolv.conf to its real target. On systemd hosts this is a
 # symlink into /run; we bind the target at its own path (see below).
 RESOLV_CONF="$(readlink -f /etc/resolv.conf 2>/dev/null || echo /etc/resolv.conf)"
@@ -78,6 +86,9 @@ done
 
 # read-write: the project itself and pi's config/sessions
 args+=(--bind "$GITROOT" "$GITROOT")
+if [ -n "$GIT_COMMON_DIR" ] && [ "$GIT_COMMON_DIR" != "$GITROOT" ]; then
+  args+=(--bind-try "$GIT_COMMON_DIR" "$GIT_COMMON_DIR")
+fi
 args+=(--bind-try "$HOME/.pi" "$HOME/.pi")
 
 # extra read-write binds from env
