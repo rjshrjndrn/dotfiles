@@ -85,7 +85,7 @@ if [ "$DRY_RUN" -eq 1 ]; then
   printf 'bwrap'
   printf ' %s' "${args[@]}"
   printf ' pi'
-  printf ' %s' "$@"
+  for a in "$@"; do printf ' %s' "$a"; done
   printf '\n'
   exit 0
 fi
