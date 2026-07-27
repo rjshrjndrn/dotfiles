@@ -3,7 +3,7 @@ SHELL := /usr/bin/env bash
 PREFIX ?= $(HOME)/.local/bin
 SANDBOX := pi-sandbox
 
-.PHONY: test test-dryrun test-live test-extra test-dns test-worktree install uninstall help
+.PHONY: test test-dryrun test-live test-extra test-dns test-worktree test-gitconfig install uninstall help
 
 help:
 	@echo "targets:"
@@ -13,10 +13,11 @@ help:
 	@echo "  test-extra  run the extra-mounts spec"
 	@echo "  test-dns    run the DNS resolution spec"
 	@echo "  test-worktree run the linked-worktree git spec"
+	@echo "  test-gitconfig run the user gitconfig spec"
 	@echo "  install     symlink $(SANDBOX) into $(PREFIX)"
 	@echo "  uninstall   remove the symlink from $(PREFIX)"
 
-test: test-dryrun test-live test-extra test-dns test-worktree
+test: test-dryrun test-live test-extra test-dns test-worktree test-gitconfig
 
 test-dryrun:
 	@bash tests/test_dryrun.sh
@@ -32,6 +33,9 @@ test-dns:
 
 test-worktree:
 	@bash tests/test_worktree.sh
+
+test-gitconfig:
+	@bash tests/test_gitconfig.sh
 
 install:
 	@mkdir -p "$(PREFIX)"

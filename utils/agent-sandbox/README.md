@@ -17,6 +17,7 @@ kernel and network by design.
     ├─ RO  ~/.cargo ~/.bun ~/.local/bin   more toolchain
     ├─ RO  ~/go/bin ~/apps/bin ~/.config/mise
     ├─ RO  ~/dotfiles/pi ~/private-skills pi extensions / skills
+    ├─ RO  ~/.gitconfig ~/.gitaliases     user git config (resolved)
     ├─ RW  <git root>                     the project (auto-detected)
     └─ RW  ~/.pi                          pi config + sessions
 ```

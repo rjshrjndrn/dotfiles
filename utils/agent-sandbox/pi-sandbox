@@ -75,8 +75,13 @@ args=(
   --ro-bind-try "$HOME/apps/bin"      "$HOME/apps/bin"
   --ro-bind-try "$HOME/.config/mise"  "$HOME/.config/mise"
   # pi extensions / skills, read-only
-  --ro-bind-try "$HOME/dotfiles/pi"    "$HOME/dotfiles/pi"
-  --ro-bind-try "$HOME/private-skills" "$HOME/private-skills"
+  --bind-try "$HOME/dotfiles/pi"    "$HOME/dotfiles/pi"
+  --bind-try "$HOME/private-skills" "$HOME/private-skills"
+  # user git config (name/email, signing, aliases). $HOME is a tmpfs so
+  # bind the resolved files onto their home paths; the tmpfs is writable
+  # so bwrap can create the mount points here.
+  --ro-bind-try "$(readlink -f "$HOME/.gitconfig" 2>/dev/null || echo "$HOME/.gitconfig")" "$HOME/.gitconfig"
+  --ro-bind-try "$(readlink -f "$HOME/.gitaliases" 2>/dev/null || echo "$HOME/.gitaliases")" "$HOME/.gitaliases"
 )
 
 # extra read-only binds from env
