@@ -33,12 +33,21 @@ fi
 
 WORKDIR="$PWD"
 
+# Resolve /etc/resolv.conf to its real target. On systemd hosts this is a
+# symlink into /run; we bind the target at its own path (see below).
+RESOLV_CONF="$(readlink -f /etc/resolv.conf 2>/dev/null || echo /etc/resolv.conf)"
+
 # Build the bwrap argument list.
 args=(
   # system: read-only host tools + libc (no glibc mismatch)
   --ro-bind /usr /usr
   --ro-bind /etc /etc
   --ro-bind-try /opt /opt
+  # /etc/resolv.conf is a symlink into /run on systemd hosts, and /run is
+  # not mounted, so the link dangles and DNS dies. Mount the resolved
+  # target at its own path so the existing symlink resolves. /etc is a
+  # read-only bind, so we must not try to create a file inside it.
+  --ro-bind-try "$RESOLV_CONF" "$RESOLV_CONF"
   --symlink usr/bin /bin
   --symlink usr/lib /lib
   --symlink usr/lib64 /lib64
