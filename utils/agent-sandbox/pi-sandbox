@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+#
+# pi-sandbox — run pi with the host filesystem isolated via bubblewrap.
+#
+# Boundary model:
+#   * system dirs (/usr /etc /opt) mounted read-only  -> host tools work
+#   * $HOME wiped with an empty tmpfs                  -> secrets invisible
+#   * mise toolchain + a few tool dirs restored RO     -> pi & CLIs survive
+#   * git root + ~/.pi mounted read-write              -> project + sessions
+#   * working dir preserved with --chdir               -> worktree .git resolves
+#
+# Anything not explicitly bound simply does not exist inside the sandbox,
+# so ~/.ssh, ~/.aws, and the rest of $HOME cannot be read or damaged.
+#
+# Usage:
+#   pi-sandbox [--dry-run] [pi args...]
+#   EXTRA_RO="dir1 dir2"  extra read-only binds
+#   EXTRA_RW="dir1 dir2"  extra read-write binds
+#
+set -euo pipefail
+
+DRY_RUN=0
+if [ "${1:-}" = "--dry-run" ]; then
+  DRY_RUN=1
+  shift
+fi
+
+# Must be inside a git repo: the git root is the RW workspace.
+if ! GITROOT="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+  echo "pi-sandbox: not inside a git repository" >&2
+  exit 1
+fi
+
+WORKDIR="$PWD"
+
+# Build the bwrap argument list.
+args=(
+  # system: read-only host tools + libc (no glibc mismatch)
+  --ro-bind /usr /usr
+  --ro-bind /etc /etc
+  --ro-bind-try /opt /opt
+  --symlink usr/bin /bin
+  --symlink usr/lib /lib
+  --symlink usr/lib64 /lib64
+  --symlink usr/sbin /sbin
+  # kernel/runtime pseudo-filesystems
+  --proc /proc
+  --dev /dev
+  --tmpfs /tmp
+  # erase home, then restore only what is allowed
+  --tmpfs "$HOME"
+  # toolchain (pi lives here, plus every mise-managed CLI)
+  --ro-bind "$HOME/.local/share/mise" "$HOME/.local/share/mise"
+  --ro-bind-try "$HOME/.local/bin"    "$HOME/.local/bin"
+  --ro-bind-try "$HOME/.cargo"        "$HOME/.cargo"
+  --ro-bind-try "$HOME/.bun"          "$HOME/.bun"
+  --ro-bind-try "$HOME/go/bin"        "$HOME/go/bin"
+  --ro-bind-try "$HOME/apps/bin"      "$HOME/apps/bin"
+  --ro-bind-try "$HOME/.config/mise"  "$HOME/.config/mise"
+  # pi extensions / skills, read-only
+  --ro-bind-try "$HOME/dotfiles/pi"    "$HOME/dotfiles/pi"
+  --ro-bind-try "$HOME/private-skills" "$HOME/private-skills"
+)
+
+# extra read-only binds from env
+for d in ${EXTRA_RO:-}; do
+  args+=(--ro-bind-try "$d" "$d")
+done
+
+# read-write: the project itself and pi's config/sessions
+args+=(--bind "$GITROOT" "$GITROOT")
+args+=(--bind-try "$HOME/.pi" "$HOME/.pi")
+
+# extra read-write binds from env
+for d in ${EXTRA_RW:-}; do
+  args+=(--bind-try "$d" "$d")
+done
+
+# preserve PATH (most of it lives under the restored home dirs) and land in cwd
+args+=(--setenv PATH "$PATH")
+args+=(--chdir "$WORKDIR")
+args+=(--unshare-user)
+
+if [ "$DRY_RUN" -eq 1 ]; then
+  printf 'bwrap'
+  printf ' %s' "${args[@]}"
+  printf ' pi'
+  printf ' %s' "$@"
+  printf '\n'
+  exit 0
+fi
+
+exec bwrap "${args[@]}" pi "$@"
