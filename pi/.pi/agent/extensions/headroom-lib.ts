@@ -104,8 +104,17 @@ export function shouldReapOnShutdown(reason: ShutdownReason): boolean {
   return reason === "quit";
 }
 
-/** Extract the listening pid from an `ss -tlnp` line, e.g. `pid=210426`. */
+/**
+ * Extract the proxy master pid from an `ss -tlnp` line.
+ *
+ * With --workers>1 the socket is shared (SO_REUSEPORT) by the `headroom`
+ * master and several `python` workers. We must return the master, because
+ * SIGTERM to a worker is simply respawned by the master. Falls back to the
+ * first pid when no named master entry is present (single-worker case).
+ */
 export function parsePidFromSs(ssOutput: string): number | null {
-  const m = ssOutput.match(/pid=(\d+)/);
-  return m ? Number.parseInt(m[1], 10) : null;
+  const master = ssOutput.match(/"headroom",pid=(\d+)/);
+  if (master) return Number.parseInt(master[1], 10);
+  const any = ssOutput.match(/pid=(\d+)/);
+  return any ? Number.parseInt(any[1], 10) : null;
 }

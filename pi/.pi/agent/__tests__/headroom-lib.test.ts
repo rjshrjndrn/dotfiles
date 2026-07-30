@@ -165,6 +165,12 @@ describe("parsePidFromSs (adopt-orphan pid discovery)", () => {
       'LISTEN 0 2048 127.0.0.1:8787 0.0.0.0:* users:(("headroom",pid=210426,fd=7))';
     expect(parsePidFromSs(out)).toBe(210426);
   });
+
+  it("prefers the headroom master over python workers (SO_REUSEPORT, --workers>1)", () => {
+    const out =
+      'LISTEN 0 2048 127.0.0.1:8787 0.0.0.0:* users:(("python",pid=210553,fd=4),("python",pid=210550,fd=4),("headroom",pid=210426,fd=4))';
+    expect(parsePidFromSs(out)).toBe(210426);
+  });
   it("returns null when no pid is present", () => {
     expect(parsePidFromSs("LISTEN 0 2048 127.0.0.1:8787 0.0.0.0:*")).toBeNull();
   });
