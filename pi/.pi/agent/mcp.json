@@ -2,7 +2,10 @@
   "mcpServers": {
     "exa": {
       "url": "https://mcp.exa.ai/mcp",
-      "lifecycle": "lazy"
+      "lifecycle": "eager",
+      "headers": {
+        "x-api-key": "${EXA_API_KEY}"
+      }
     },
     "yahoo": {
       "command": "uvx",
@@ -80,6 +83,15 @@
         "-y",
         "mcp-remote",
         "https://docs.tinyfish.ai/mcp"
+      ],
+      "lifecycle": "lazy"
+    },
+    "drawio": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "drawio-mcp-server",
+        "--editor"
       ],
       "lifecycle": "lazy"
     }
