@@ -10,16 +10,34 @@
  *
  * Configuration (env vars):
  *   HEADROOM_PORT        — proxy port (default: 8787)
+ *   HEADROOM_WORKERS     — uvicorn worker processes (default: 4)
  *   HEADROOM_DISABLED    — set to "1" to skip proxy startup
  *   HEADROOM_LOG_FILE    — path for proxy request log (optional)
  *   HEADROOM_EXTRA_ARGS  — additional CLI args for headroom proxy (optional)
  */
 
-import { spawn, type ChildProcess } from "node:child_process";
-import { openSync, closeSync, appendFileSync } from "node:fs";
+import { spawn, execSync, type ChildProcess } from "node:child_process";
+import { openSync, closeSync, appendFileSync, mkdirSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import {
+  readPidFile,
+  writePidFile,
+  removePidFile,
+  isHeadroomPid,
+  decideStartAction,
+  decideExitAction,
+  shouldReapOnShutdown,
+  parsePidFromSs,
+  type ShutdownReason,
+} from "./headroom-lib.ts";
 
 const DEFAULT_LOG_FILE = "/tmp/headroom.log";
+
+// Cross-process source of truth for the shared proxy's pid, so any session can
+// discover, reuse, or reap it regardless of which session spawned it.
+const PIDFILE = join(homedir(), ".cache", "pi", "headroom.pid");
 
 const DEFAULT_PORT = 8787;
 const HEALTH_POLL_MS = 200;
@@ -81,11 +99,34 @@ export default function (pi: ExtensionAPI) {
     const gen = ++sessionGeneration;  // capture generation for this session
     proxyPort = parseInt(process.env.HEADROOM_PORT || String(DEFAULT_PORT), 10);
 
-    // Fast path: proxy already running (another session, external start, or persistent service)
-    if (await isProxyHealthy(proxyPort)) {
+    // Decide what to do about the shared proxy: reuse a live one, adopt an
+    // orphan whose pidfile is stale, kill a hung proxy, or spawn fresh.
+    const healthy = await isProxyHealthy(proxyPort);
+    const action = decideStartAction({
+      healthy,
+      pidFromFile: readPidFile(PIDFILE),
+      isHeadroom: (p) => isHeadroomPid(p),
+    });
+
+    if (action.action === "reuse") {
       overrideProvider();
       ctx.ui.setStatus("headroom", "⚡ headroom (reused)");
       return;
+    }
+
+    if (action.action === "adopt") {
+      // Healthy proxy but no owning pidfile (orphan from an older run) — record
+      // its pid so the last session out can still reap it.
+      const discovered = discoverProxyPid(proxyPort);
+      if (discovered) persistPid(discovered);
+      overrideProvider();
+      ctx.ui.setStatus("headroom", "⚡ headroom (reused)");
+      return;
+    }
+
+    if (action.action === "kill_then_spawn") {
+      killByPid(action.killPid); // guarded: only signals a real headroom pid
+      removePidFile(PIDFILE);
     }
 
     // Check if headroom CLI is available
@@ -105,9 +146,11 @@ export default function (pi: ExtensionAPI) {
       "--mode", "token",                // compress prior turns for max token savings
       "--code-aware",                    // AST-based code compression
       "--intercept-tool-results",        // compress Read/bash tool results
-      "--no-subscription-tracking",      // pi doesn't use Claude Code subscription
       "--no-telemetry",
       "--lossless",                      // no CCR retrieve tool -> avoids buffered->SSE reconvert 502
+      "--workers", process.env.HEADROOM_WORKERS ?? "4",  // multiple agents share proxy -> parallel uvicorn workers so one compress doesn't block others
+      "--embedding-server",              // shared ONNX/HNSW sidecar across workers (avoids N x ~600MB model load)
+      "--no-rate-limit",                 // per-proxy rpm/tpm bucket is shared across all agents; let Anthropic enforce limits instead
     ];
     if (process.env.HEADROOM_LOG_FILE) {
       args.push("--log-file", process.env.HEADROOM_LOG_FILE);
@@ -124,13 +167,14 @@ export default function (pi: ExtensionAPI) {
 
     proxyProcess = spawn(headroomPath, args, {
       stdio: ["ignore", logFd, logFd],
-      detached: false,
+      detached: true, // own process group -> survives this session's exit until explicitly reaped
       env: {
         ...process.env,
         ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
         HEADROOM_OUTPUT_SHAPER: process.env.HEADROOM_OUTPUT_SHAPER ?? OUTPUT_SHAPER_ENABLED,
       },
     });
+    proxyProcess.unref(); // don't keep this process alive on the proxy's behalf
 
     // Close fd in parent — child inherited it
     closeSync(logFd);
@@ -154,6 +198,11 @@ export default function (pi: ExtensionAPI) {
       if (gen !== sessionGeneration) return;  // session was replaced, new one handles it
       try {
         if (ready) {
+          // Record the actual port listener (the proxy may re-exec on startup).
+          // Written only after health passes, so a losing double-spawn converges
+          // on the winner's pid instead of clobbering the pidfile with a dead one.
+          const discovered = discoverProxyPid(proxyPort) ?? proxyProcess?.pid ?? null;
+          if (discovered) persistPid(discovered);
           ctx.ui.setStatus("headroom", "⚡ headroom");
         } else {
           ctx.ui.setStatus("headroom", "⚠ headroom (failed)");
@@ -167,13 +216,22 @@ export default function (pi: ExtensionAPI) {
     });
   });
 
-  pi.on("session_shutdown", async () => {
-    // Only kill proxy we spawned, and only if no other pi sessions are using it
-    if (!proxyProcess || proxyProcess.killed) return;
-    const otherPiSessions = await countPiProcesses();
-    if (otherPiSessions <= 1) {
-      killProxy();
-    }
+  pi.on("session_shutdown", async (event) => {
+    // Survive in-process session swaps (resume/new/fork) and extension reloads.
+    // Only a real process quit reaps the shared proxy.
+    if (!shouldReapOnShutdown(event.reason as ShutdownReason)) return;
+
+    const total = await countPiProcesses();
+    const otherPiCount = Math.max(0, total - 1); // self is still alive here
+    const action = decideExitAction({
+      otherPiCount,
+      pidFromFile: readPidFile(PIDFILE),
+      isHeadroom: (p) => isHeadroomPid(p),
+    });
+
+    if (action.action === "leave") return;
+    if (action.action === "reap") killByPid(action.killPid);
+    removePidFile(PIDFILE); // reap and cleanup both clear the stale pidfile
   });
 
   function overrideProvider() {
@@ -251,5 +309,38 @@ async function countPiProcesses(): Promise<number> {
     return parseInt(output, 10) || 0;
   } catch {
     return 0;
+  }
+}
+
+/** Write the proxy pid to the shared pidfile, creating the cache dir as needed. */
+function persistPid(pid: number): void {
+  try {
+    mkdirSync(join(homedir(), ".cache", "pi"), { recursive: true });
+    writePidFile(PIDFILE, pid);
+  } catch {
+    // pidfile is best-effort; reaping degrades to leaving an orphan, not a crash
+  }
+}
+
+/** Find the pid listening on the proxy port (used to adopt an orphaned proxy). */
+function discoverProxyPid(port: number): number | null {
+  try {
+    const out = execSync(`ss -tlnpH 'sport = :${port}'`, {
+      encoding: "utf8",
+      timeout: 2000,
+    });
+    return parsePidFromSs(out);
+  } catch {
+    return null;
+  }
+}
+
+/** SIGTERM a pid, but only if it is genuinely a headroom process (recycling guard). */
+function killByPid(pid: number): void {
+  if (!isHeadroomPid(pid)) return;
+  try {
+    process.kill(pid, "SIGTERM");
+  } catch {
+    // already gone
   }
 }
