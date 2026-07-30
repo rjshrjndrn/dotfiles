@@ -45,3 +45,28 @@ export function isHeadroomPid(
     return false;
   }
 }
+
+export type StartAction =
+  | { action: "reuse" }
+  | { action: "adopt" }
+  | { action: "spawn" }
+  | { action: "kill_then_spawn"; killPid: number };
+
+/**
+ * Decide what a starting session should do about the shared proxy.
+ * Pure: caller performs the side effect (reuse/adopt/spawn/kill).
+ * `healthy` = probe of the proxy port; `pidFromFile` + `isHeadroom` locate
+ * and validate the owning process (guarding against PID recycling).
+ */
+export function decideStartAction(input: {
+  healthy: boolean;
+  pidFromFile: number | null;
+  isHeadroom: (pid: number) => boolean;
+}): StartAction {
+  const { healthy, pidFromFile, isHeadroom } = input;
+  const pidValid = pidFromFile != null && isHeadroom(pidFromFile);
+
+  if (healthy) return pidValid ? { action: "reuse" } : { action: "adopt" };
+  if (pidValid) return { action: "kill_then_spawn", killPid: pidFromFile! };
+  return { action: "spawn" };
+}

@@ -72,3 +72,45 @@ describe("isHeadroomPid (PID-recycling guard)", () => {
     expect(isHeadroomPid(999999, readCmdline)).toBe(false);
   });
 });
+
+import { decideStartAction } from "../extensions/headroom-lib.ts";
+
+describe("decideStartAction", () => {
+  const headroom = (pid: number) => pid === 210426; // only this pid is a real proxy
+
+  it("REUSE when healthy and pidfile points at a live headroom", () => {
+    expect(
+      decideStartAction({ healthy: true, pidFromFile: 210426, isHeadroom: headroom }),
+    ).toEqual({ action: "reuse" });
+  });
+
+  it("ADOPT when healthy but pidfile is missing (orphan from older run)", () => {
+    expect(
+      decideStartAction({ healthy: true, pidFromFile: null, isHeadroom: headroom }),
+    ).toEqual({ action: "adopt" });
+  });
+
+  it("ADOPT when healthy but pidfile pid is not a headroom process", () => {
+    expect(
+      decideStartAction({ healthy: true, pidFromFile: 999, isHeadroom: headroom }),
+    ).toEqual({ action: "adopt" });
+  });
+
+  it("KILL_THEN_SPAWN when unhealthy but pidfile pid is still a headroom proc", () => {
+    expect(
+      decideStartAction({ healthy: false, pidFromFile: 210426, isHeadroom: headroom }),
+    ).toEqual({ action: "kill_then_spawn", killPid: 210426 });
+  });
+
+  it("SPAWN when unhealthy and no pidfile", () => {
+    expect(
+      decideStartAction({ healthy: false, pidFromFile: null, isHeadroom: headroom }),
+    ).toEqual({ action: "spawn" });
+  });
+
+  it("SPAWN (never kill) when unhealthy and pidfile pid was recycled to a foreign process", () => {
+    expect(
+      decideStartAction({ healthy: false, pidFromFile: 999, isHeadroom: headroom }),
+    ).toEqual({ action: "spawn" });
+  });
+});
