@@ -70,3 +70,25 @@ export function decideStartAction(input: {
   if (pidValid) return { action: "kill_then_spawn", killPid: pidFromFile! };
   return { action: "spawn" };
 }
+
+export type ExitAction =
+  | { action: "leave" }
+  | { action: "cleanup" }
+  | { action: "reap"; killPid: number };
+
+/**
+ * Decide what a quitting session should do about the shared proxy.
+ * Only the last pi process reaps it; a recycled/dead pid is cleaned up
+ * (pidfile removed) but never signalled.
+ */
+export function decideExitAction(input: {
+  otherPiCount: number;
+  pidFromFile: number | null;
+  isHeadroom: (pid: number) => boolean;
+}): ExitAction {
+  const { otherPiCount, pidFromFile, isHeadroom } = input;
+  if (otherPiCount > 0) return { action: "leave" };
+  if (pidFromFile != null && isHeadroom(pidFromFile))
+    return { action: "reap", killPid: pidFromFile };
+  return { action: "cleanup" };
+}

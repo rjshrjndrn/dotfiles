@@ -114,3 +114,33 @@ describe("decideStartAction", () => {
     ).toEqual({ action: "spawn" });
   });
 });
+
+import { decideExitAction } from "../extensions/headroom-lib.ts";
+
+describe("decideExitAction", () => {
+  const headroom = (pid: number) => pid === 210426;
+
+  it("LEAVE when other pi processes are still running", () => {
+    expect(
+      decideExitAction({ otherPiCount: 2, pidFromFile: 210426, isHeadroom: headroom }),
+    ).toEqual({ action: "leave" });
+  });
+
+  it("REAP when I am the last pi and pidfile points at the live proxy", () => {
+    expect(
+      decideExitAction({ otherPiCount: 0, pidFromFile: 210426, isHeadroom: headroom }),
+    ).toEqual({ action: "reap", killPid: 210426 });
+  });
+
+  it("CLEANUP (no kill) when last but pidfile pid was recycled to a foreign process", () => {
+    expect(
+      decideExitAction({ otherPiCount: 0, pidFromFile: 999, isHeadroom: headroom }),
+    ).toEqual({ action: "cleanup" });
+  });
+
+  it("CLEANUP when last and no pidfile", () => {
+    expect(
+      decideExitAction({ otherPiCount: 0, pidFromFile: null, isHeadroom: headroom }),
+    ).toEqual({ action: "cleanup" });
+  });
+});
