@@ -92,3 +92,20 @@ export function decideExitAction(input: {
     return { action: "reap", killPid: pidFromFile };
   return { action: "cleanup" };
 }
+
+export type ShutdownReason = "quit" | "reload" | "new" | "resume" | "fork";
+
+/**
+ * The shared proxy is reaped only when the pi *process* is quitting. Session
+ * swaps (resume/new/fork) and extension reloads keep the process alive, so the
+ * proxy must survive them. This is the fix for the /resume dead-proxy bug.
+ */
+export function shouldReapOnShutdown(reason: ShutdownReason): boolean {
+  return reason === "quit";
+}
+
+/** Extract the listening pid from an `ss -tlnp` line, e.g. `pid=210426`. */
+export function parsePidFromSs(ssOutput: string): number | null {
+  const m = ssOutput.match(/pid=(\d+)/);
+  return m ? Number.parseInt(m[1], 10) : null;
+}

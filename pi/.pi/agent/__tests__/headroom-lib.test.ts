@@ -144,3 +144,31 @@ describe("decideExitAction", () => {
     ).toEqual({ action: "cleanup" });
   });
 });
+
+import { shouldReapOnShutdown, parsePidFromSs } from "../extensions/headroom-lib.ts";
+
+describe("shouldReapOnShutdown (only real process quit reaps)", () => {
+  it("reaps on quit", () => {
+    expect(shouldReapOnShutdown("quit")).toBe(true);
+  });
+  it.each(["resume", "new", "fork", "reload"] as const)(
+    "does NOT reap on %s (session swap / reload, process stays)",
+    (reason) => {
+      expect(shouldReapOnShutdown(reason)).toBe(false);
+    },
+  );
+});
+
+describe("parsePidFromSs (adopt-orphan pid discovery)", () => {
+  it("extracts the listener pid from an ss -tlnp line", () => {
+    const out =
+      'LISTEN 0 2048 127.0.0.1:8787 0.0.0.0:* users:(("headroom",pid=210426,fd=7))';
+    expect(parsePidFromSs(out)).toBe(210426);
+  });
+  it("returns null when no pid is present", () => {
+    expect(parsePidFromSs("LISTEN 0 2048 127.0.0.1:8787 0.0.0.0:*")).toBeNull();
+  });
+  it("returns null for empty output", () => {
+    expect(parsePidFromSs("")).toBeNull();
+  });
+});
