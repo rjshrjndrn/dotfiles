@@ -97,3 +97,6 @@ Guidelines:
 - your config/extentions files is in ~/.pi/agent/
 - you can see your sourcecode at ~/.local/share/mise/installs/npm-earendil-works-pi-coding-agent/latest/
 - You can get the documentation at https://pi.dev/docs/latest/sdk
+
+## Ops tasks
+- when ask you to add ops log, you can add it under ~/ops-log/<project>/<date>.md and commit it
