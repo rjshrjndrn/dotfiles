@@ -142,7 +142,7 @@ const ACM_LOG = "/tmp/acm.log";
 const ACM_DEBUG = process.env.ACM_DEBUG === "true" || process.env.ACM_DEBUG === "1";
 function acmLog(msg: string): void {
   if (!ACM_DEBUG) return;
-  try { appendFileSync(ACM_LOG, `[${new Date().toISOString()}] ${msg}\n`); } catch {}
+  try { appendFileSync(ACM_LOG, `[${new Date().toISOString()}] ${msg}\n`); } catch { }
 }
 
 // Stored ref for status updates from syncToGraph
@@ -687,7 +687,7 @@ export default function (pi: ExtensionAPI) {
           const truth = tcEntryId.get(m.toolCallId);
           const got = entryIds[i];
           if (truth && got && truth.startsWith(got)) ok++;
-          else { bad++; acmLog(`ALIGN-MISMATCH i=${i} got=${got} truth=${truth} tc=${m.toolCallId?.slice(0,10)}`); }
+          else { bad++; acmLog(`ALIGN-MISMATCH i=${i} got=${got} truth=${truth} tc=${m.toolCallId?.slice(0, 10)}`); }
         }
       }
       acmLog(`ALIGN-CHECK slide=${slide ? "active" : "none"} msgs=${messages.length} toolRes ok=${ok} bad=${bad}`);
@@ -709,6 +709,7 @@ export default function (pi: ExtensionAPI) {
           customType: "acm-prune",
           content: [
             "Compact this session now. Do NOT ask for confirmation.",
+            "Don't skip pinning because the data is written to file. This is your context",
             "Steps, in order:",
             "1. Call acm_map to see the current entries and their IDs.",
             "2. Review the ALREADY-PINNED entries. Unpin any that are no longer",
@@ -934,7 +935,7 @@ export default function (pi: ExtensionAPI) {
             if (basenames.length > 0) summary += `\nFiles: ${basenames.join(", ")}`;
             if (basenames.length < gs.filePaths.length) summary += ` (+${gs.filePaths.length - basenames.length} more)`;
           }
-        } catch {}
+        } catch { }
       }
       const kept = branch.length - cutoff;
 
@@ -1049,7 +1050,7 @@ export default function (pi: ExtensionAPI) {
         for (const f of jsonlFiles) {
           const t0 = performance.now();
           const result = await searchSessions(params.query, f, { maxResults: 5 });
-          acmLog(`recall: searched ${f.split('/').pop()} → ${result.hits.length} hits, ${result.total} rg matches, ${(performance.now()-t0).toFixed(0)}ms`);
+          acmLog(`recall: searched ${f.split('/').pop()} → ${result.hits.length} hits, ${result.total} rg matches, ${(performance.now() - t0).toFixed(0)}ms`);
           allHits.push(...result.hits);
         }
 
@@ -1357,7 +1358,7 @@ Batch:   { entryIds: ["abc1", "def2", "ghi3"], action: "pin" }`,
                 targets.push({ id: hit.node.id, toolName: hit.node.toolName, keyTerms: hit.node.keyTerms.slice(0, 80) });
               }
             }
-          } catch {}
+          } catch { }
         }
       } else {
         return { content: [{ type: "text" as const, text: "[ACM Forget] Provide query or ids." }] };
@@ -1387,10 +1388,11 @@ Batch:   { entryIds: ["abc1", "def2", "ghi3"], action: "pin" }`,
           `  ${i + 1}. ${t.toolName} | ${t.keyTerms} | id: ${t.id}`
         ).join("\n");
         return {
-          content: [{ type: "text" as const, text:
-            `[ACM Forget] DRY RUN — ${targets.length} entries would be deleted:\n${preview}` +
-            (targets.length > 20 ? `\n  ... +${targets.length - 20} more` : "") +
-            `\n\nCall again with confirm=true to delete.`
+          content: [{
+            type: "text" as const, text:
+              `[ACM Forget] DRY RUN — ${targets.length} entries would be deleted:\n${preview}` +
+              (targets.length > 20 ? `\n  ... +${targets.length - 20} more` : "") +
+              `\n\nCall again with confirm=true to delete.`
           }],
         };
       }
@@ -1414,7 +1416,7 @@ Batch:   { entryIds: ["abc1", "def2", "ghi3"], action: "pin" }`,
             const { unlinkSync } = await import("node:fs");
             unlinkSync(cachePath);
             deletedCache++;
-          } catch {}
+          } catch { }
           cachedToFile.delete(t.id);
         }
 
