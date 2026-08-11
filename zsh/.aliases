@@ -367,7 +367,6 @@ alias dr='docker run'
 alias po='podman'
 alias at='docker run --rm -it -v $(pwd):/work -w /work -urajeshr ansible_ubuntu:16.04 bash'
 alias civo="docker run -it --rm -v ${HOME}/.cred/civo/civo.json:/.civo.json civo/cli:latest"
-alias db=distrobox
 function dbx() {
   distrobox enter "$@"
 }
@@ -692,6 +691,7 @@ alias ocs='opencode serve --port 4096'
 alias occ='vim ~/.config/opencode/opencode.jsonc'
 alias p='pi'
 alias pr='pi -r'
+alias db='dolly board'
 
 ###############################################################################
 # Utilities & Web
