@@ -1,0 +1,21 @@
+#!/bin/bash
+# Shadow of omarchy-brightness-keyboard.
+#
+# The laptop's Fn+Space is a firmware key: it writes /sys kbd_backlight
+# directly and never updates brightnessctl's saved-state file. Omarchy's
+# lock/wake flow does `off` (brightnessctl -sd set 0 = save+off) on lock and
+# `restore` (brightnessctl -rd) on wake. Because the firmware key bypasses that
+# save, `restore` replays a stale value on every unlock and the light comes
+# back on regardless of what you set.
+#
+# Neutralize save (`off`) and restore so /sys — owned by the firmware key — is
+# the single source of truth and simply persists across lock/unlock.
+# Everything else (up/down/cycle) passes through to the real omarchy script.
+#
+# Wins over /usr/bin via ~/.config/uwsm/env.d/90-local-bin-first.sh, which
+# prepends ~/.local/bin to the graphical session PATH.
+case "${1:-}" in
+  restore | off) exit 0 ;;
+esac
+
+exec /usr/bin/omarchy-brightness-keyboard "$@"
