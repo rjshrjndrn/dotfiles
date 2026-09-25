@@ -14,7 +14,7 @@
 [core]
   pager = delta
 	excludesFile = ~/.gitignore_global
-	sshcommand = "ssh-add -D &>/dev/null; ssh -i ~/.cred/curr/git.pem"
+	sshcommand = "ssh-add -D &>/dev/null; ssh -i ~/.cred/curr/git"
   compression = 9  # trade cpu for network
   autocrlf = input  # keep newlines as in input
   fsync = none
@@ -32,8 +32,8 @@
   navigate = true    # use n and N to move between diff sections
 
 [merge]
-  conflictstyle = diff3
-    tool = vimdiff
+  conflictstyle = zdiff3
+  tool = vimdiff
 
 [diff]
   colorMoved = default
