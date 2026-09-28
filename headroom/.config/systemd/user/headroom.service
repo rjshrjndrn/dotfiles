@@ -8,7 +8,14 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-ExecStart=%h/.local/share/mise/shims/headroom proxy
+Environment=HEADROOM_ROLLOUT_CHANNEL=canary
+ExecStart=%h/.local/share/mise/shims/headroom proxy \
+    --mode token \
+    --code-aware \
+    --intercept-tool-results \
+    --no-telemetry \
+    --lossless \
+    --no-rate-limit
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
