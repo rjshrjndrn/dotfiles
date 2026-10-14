@@ -2,7 +2,6 @@
   "mcpServers": {
     "exa": {
       "url": "https://mcp.exa.ai/mcp",
-      "lifecycle": "eager",
       "headers": {
         "x-api-key": "${EXA_API_KEY}"
       }
@@ -14,7 +13,7 @@
         "git+https://github.com/Alex2Yang97/yahoo-finance-mcp",
         "yahoo-finance-mcp"
       ],
-      "lifecycle": "lazy"
+      "exposure": "deferred"
     },
     "alpaca": {
       "command": "uvx",
@@ -25,7 +24,7 @@
         "ALPACA_API_KEY": "${APCA_API_KEY_ID}",
         "ALPACA_SECRET_KEY": "${APCA_API_SECRET_KEY}"
       },
-      "lifecycle": "lazy"
+      "exposure": "deferred"
     },
     "notion": {
       "command": "npx",
@@ -34,7 +33,7 @@
         "mcp-remote",
         "https://mcp.notion.com/mcp"
       ],
-      "lifecycle": "lazy"
+      "exposure": "deferred"
     },
     "cc": {
       "command": "npx",
@@ -42,7 +41,7 @@
         "-y",
         "@upstash/context7-mcp@latest"
       ],
-      "lifecycle": "lazy"
+      "exposure": "deferred"
     },
     "linear": {
       "command": "npx",
@@ -51,7 +50,7 @@
         "mcp-remote",
         "https://mcp.linear.app/mcp"
       ],
-      "lifecycle": "lazy"
+      "exposure": "deferred"
     },
     "headroom": {
       "command": "headroom",
@@ -59,14 +58,14 @@
         "mcp",
         "serve"
       ],
-      "lifecycle": "lazy"
+      "exposure": "deferred"
     },
     "lp": {
       "command": "lightpanda",
       "args": [
         "mcp"
       ],
-      "lifecycle": "lazy"
+      "exposure": "deferred"
     },
     "tinyfish": {
       "command": "npx",
@@ -75,7 +74,7 @@
         "mcp-remote",
         "https://agent.tinyfish.ai/mcp"
       ],
-      "lifecycle": "lazy"
+      "exposure": "deferred"
     },
     "tinyfish-docs": {
       "command": "npx",
@@ -84,7 +83,7 @@
         "mcp-remote",
         "https://docs.tinyfish.ai/mcp"
       ],
-      "lifecycle": "lazy"
+      "exposure": "deferred"
     },
     "drawio": {
       "command": "npx",
@@ -93,7 +92,14 @@
         "drawio-mcp-server",
         "--editor"
       ],
-      "lifecycle": "lazy"
+      "exposure": "deferred"
+    },
+    "dolly": {
+      "command": "dolly",
+      "args": [
+        "mcp"
+      ],
+      "exposure": "deferred"
     }
   }
 }
