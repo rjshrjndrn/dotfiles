@@ -1,15 +1,12 @@
 {
-  "lastChangelogVersion": "0.80.7",
+  "lastChangelogVersion": "1.2.0",
   "defaultProvider": "anthropic",
   "defaultModel": "claude-sonnet-4-8",
   "packages": [
-    "npm:@aliou/pi-guardrails",
-    "npm:pi-auth-profiles",
     "npm:pi-boundary",
     "npm:@rjshrjndrn/pi-fetch",
     "npm:pi-caveman",
-    "git:github.com/igor-makarov/pi-mcp-adapter",
-    "git:github.com/minghinmatthewlam/pi-subagents"
+    "git:github.com/DietrichGebert/ponytail"
   ],
   "skills": [
     "~/private-skills",
