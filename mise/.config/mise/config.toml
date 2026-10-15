@@ -100,6 +100,7 @@ helm-diff = "latest"
 kubeconform = "latest"
 cilium-cli = "latest"
 kubens = "latest"
+argocd = "latest"
 
 ###############
 # Container / VM
@@ -171,11 +172,3 @@ duckdb = "latest"
 ###############
 # Misc
 ###############
-"github:tinyhumansai/openhuman" = "latest"
-crane = "latest"
-regctl = "latest"
-"pipx:graphifyy" = "latest"
-argocd = "latest"
-gcloud = "latest"
-"github:pranshuparmar/witr" = "latest"
-codex = "latest"
