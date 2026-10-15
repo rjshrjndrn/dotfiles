@@ -52,21 +52,6 @@
       ],
       "exposure": "deferred"
     },
-    "headroom": {
-      "command": "headroom",
-      "args": [
-        "mcp",
-        "serve"
-      ],
-      "exposure": "deferred"
-    },
-    "lp": {
-      "command": "lightpanda",
-      "args": [
-        "mcp"
-      ],
-      "exposure": "deferred"
-    },
     "tinyfish": {
       "command": "npx",
       "args": [
