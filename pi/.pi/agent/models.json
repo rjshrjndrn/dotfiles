@@ -1,9 +1,13 @@
 {
   "providers": {
     "anthropic": {
+      "baseUrl": "http://localhost:8787",
       "modelOverrides": {
+        "claude-opus-5-5": {
+          "contextWindow": 400000
+        },
         "claude-opus-4-8": {
-          "contextWindow": 200000
+          "contextWindow": 400000
         },
         "claude-opus-4-6": {
           "contextWindow": 200000
