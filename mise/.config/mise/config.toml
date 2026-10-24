@@ -167,7 +167,8 @@ croc = "latest"
 ###############
 # Databases
 ###############
-duckdb = "latest"
+# aqua registry still expects duckdb_cli-*.zip; 2.0.0 ships *.tar.gz
+"github:duckdb/duckdb" = "latest"
 
 ###############
 # Misc
