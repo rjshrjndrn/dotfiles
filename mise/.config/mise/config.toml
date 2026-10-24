@@ -39,7 +39,7 @@ github_attestations = false
 github_attestations = false
 
 [settings.npm]
-package_manager = "bun"
+# package_manager = "bun"
 
 [settings.upgrade]
 auto_prune = false
