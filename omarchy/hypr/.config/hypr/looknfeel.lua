@@ -6,6 +6,11 @@ hl.config({
     layout = "scrolling",
   },
 
+  cursor = {
+    -- amdgpu HW cursor drifts from real pointer at scale 2 → clicks miss.
+    no_hardware_cursors = 1,
+  },
+
   animations = {
     -- Disable all animations.
     enabled = false,
