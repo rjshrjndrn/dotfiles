@@ -1274,6 +1274,7 @@ describe("pin + prune + slide combinations", () => {
   const tools: Record<string, Function> = {};
   const commands: Record<string, Function> = {};
   const mockSendMessage = vi.fn();
+  const mockSendUserMessage = vi.fn();
   let mockAppendEntry: ReturnType<typeof vi.fn>;
   let mockAppendCompaction: ReturnType<typeof vi.fn>;
   let notifications: string[];
@@ -1330,7 +1331,7 @@ describe("pin + prune + slide combinations", () => {
         commands[name] = def.handler;
       }),
       sendMessage: mockSendMessage,
-      sendUserMessage: vi.fn(),
+      sendUserMessage: mockSendUserMessage,
     };
     registerExtension(mockPi);
   });
@@ -2221,6 +2222,59 @@ describe("pin + prune + slide combinations", () => {
       await prune(createCtx());
       const text = mockSendMessage.mock.calls[0][0].content as string;
       expect(text).toMatch(/acm_slide is REFUSED until/);
+    });
+  });
+
+  describe("auto-compaction → /acm-prune", () => {
+    // pi's threshold auto-compaction is replaced by /acm-prune. /compact
+    // (manual) and overflow recovery keep pi's stock compaction.
+    const hook = (reason: string, branchEntries = currentBranch) =>
+      handlers["session_before_compact"]({ reason, branchEntries, preparation: {}, willRetry: false }, createCtx());
+
+    beforeEach(() => {
+      const msgs: any[] = [];
+      for (let i = 0; i < 20; i++) msgs.push(mkMsg("user", `turn ${i}`), mkMsg("assistant", `response ${i}`));
+      currentBranch = mkBranch(msgs);
+      mockSendMessage.mockClear();
+      mockSendUserMessage.mockClear();
+    });
+
+    it("threshold: cancels pi compaction and starts /acm-prune", async () => {
+      const r = await hook("threshold");
+      expect(r).toEqual({ cancel: true });
+      expect(mockSendMessage).toHaveBeenCalledTimes(1);
+      expect(mockSendMessage.mock.calls[0][0].customType).toBe("acm-prune");
+      // may fire mid-run: must queue, not throw "Agent is already processing"
+      expect(mockSendUserMessage).toHaveBeenCalledWith("/acm-prune", { deliverAs: "steer" });
+      // gate armed: slide refused until map+pin
+      const s = await tools["acm_slide"]("tc-s", { keepMessages: 5 }, { aborted: false }, vi.fn(), createCtx());
+      expect(s.details.success).toBe(false);
+    });
+
+    it("threshold while prune in flight: cancels without re-prompting", async () => {
+      await hook("threshold");
+      mockSendMessage.mockClear();
+      expect(await hook("threshold")).toEqual({ cancel: true });
+      expect(mockSendMessage).not.toHaveBeenCalled();
+    });
+
+    it("threshold right after slide (stale usage): cancels without prompting", async () => {
+      await tools["acm_slide"]("tc-s", { keepMessages: 5 }, { aborted: false }, vi.fn(), createCtx());
+      expect(await hook("threshold")).toEqual({ cancel: true });
+      expect(mockSendMessage).not.toHaveBeenCalled();
+    });
+
+    it("threshold after slide + fresh assistant reply: prunes again", async () => {
+      await tools["acm_slide"]("tc-s", { keepMessages: 5 }, { aborted: false }, vi.fn(), createCtx());
+      const fresh = [...currentBranch, { type: "message", id: "fresh", message: mkMsg("assistant", "new"), timestamp: Date.now() + 1000 }];
+      expect(await hook("threshold", fresh)).toEqual({ cancel: true });
+      expect(mockSendMessage).toHaveBeenCalledTimes(1);
+    });
+
+    it("manual /compact and overflow fall through to pi compaction", async () => {
+      expect(await hook("manual")).toBeUndefined();
+      expect(await hook("overflow")).toBeUndefined();
+      expect(mockSendMessage).not.toHaveBeenCalled();
     });
   });
 
