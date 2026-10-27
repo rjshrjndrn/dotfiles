@@ -1273,6 +1273,7 @@ describe("pin + prune + slide combinations", () => {
   const handlers: Record<string, Function> = {};
   const tools: Record<string, Function> = {};
   const commands: Record<string, Function> = {};
+  const mockSendMessage = vi.fn();
   let mockAppendEntry: ReturnType<typeof vi.fn>;
   let mockAppendCompaction: ReturnType<typeof vi.fn>;
   let notifications: string[];
@@ -1328,7 +1329,7 @@ describe("pin + prune + slide combinations", () => {
       registerCommand: vi.fn((name: string, def: any) => {
         commands[name] = def.handler;
       }),
-      sendMessage: vi.fn(),
+      sendMessage: mockSendMessage,
       sendUserMessage: vi.fn(),
     };
     registerExtension(mockPi);
@@ -2155,6 +2156,73 @@ describe("pin + prune + slide combinations", () => {
   });
 
   // ── Edge cases ────────────────────────────────────────────────────
+
+  describe("/acm-prune gate", () => {
+    // Slide is irreversible for the LLM's context. When /acm-prune drives it,
+    // acm_map then acm_pin must run first or the slide is refused.
+    const slide = (ctx: any) => tools["acm_slide"]("tc-s", { keepMessages: 5 }, { aborted: false }, vi.fn(), ctx);
+    const map = (ctx: any) => tools["acm_map"]("tc-m", {}, { aborted: false }, vi.fn(), ctx);
+    const pin = (ctx: any, id = "e3") => tools["acm_pin"]("tc-p", { entryId: id, action: "pin" }, { aborted: false }, vi.fn(), ctx);
+    const prune = (ctx: any) => commands["acm-prune"]("", ctx);
+
+    beforeEach(() => {
+      const msgs: any[] = [];
+      for (let i = 0; i < 20; i++) msgs.push(mkMsg("user", `turn ${i}`), mkMsg("assistant", `response ${i}`));
+      currentBranch = mkBranch(msgs);
+    });
+
+    const refused = (r: any) => r.details?.success === false && /acm-prune/.test(r.content[0].text);
+
+    it("refuses slide when map not called", async () => {
+      const ctx = createCtx();
+      await prune(ctx);
+      expect(refused(await slide(ctx))).toBe(true);
+    });
+
+    it("refuses slide when mapped but nothing pinned", async () => {
+      const ctx = createCtx();
+      await prune(ctx);
+      await map(ctx);
+      expect(refused(await slide(ctx))).toBe(true);
+    });
+
+    it("pin before map does not satisfy gate", async () => {
+      const ctx = createCtx();
+      await prune(ctx);
+      await pin(ctx);
+      await map(ctx);
+      expect(refused(await slide(ctx))).toBe(true);
+    });
+
+    it("unresolved pin id does not satisfy gate", async () => {
+      const ctx = createCtx();
+      await prune(ctx);
+      await map(ctx);
+      await pin(ctx, "nope-not-an-id");
+      expect(refused(await slide(ctx))).toBe(true);
+    });
+
+    it("map → pin → slide proceeds, then gate closes", async () => {
+      const ctx = createCtx();
+      await prune(ctx);
+      await map(ctx);
+      await pin(ctx);
+      expect(refused(await slide(ctx))).toBe(false);
+      // gate closed: a later manual slide is not blocked
+      expect(refused(await slide(createCtx()))).toBe(false);
+    });
+
+    it("manual slide without /acm-prune is not gated", async () => {
+      expect(refused(await slide(createCtx()))).toBe(false);
+    });
+
+    it("prune prompt tells the model slide is refused until map+pin", async () => {
+      mockSendMessage.mockClear();
+      await prune(createCtx());
+      const text = mockSendMessage.mock.calls[0][0].content as string;
+      expect(text).toMatch(/acm_slide is REFUSED until/);
+    });
+  });
 
   describe("edge cases", () => {
     it("empty pinnedContentStore: no prepend in context", () => {
