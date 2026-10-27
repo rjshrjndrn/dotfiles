@@ -703,6 +703,7 @@ export default function (pi: ExtensionAPI) {
   pi.registerCommand("acm-prune", {
     description: "Prune stale pins, pin important, then slide away the rest",
     handler: async (_args, ctx) => {
+      acmState.pruneGate = { mapped: false, pinned: false };
       pi.sendUserMessage("/acm-prune");
       pi.sendMessage(
         {
@@ -722,6 +723,8 @@ export default function (pi: ExtensionAPI) {
             "   output, intermediate steps, and noise. Call acm_pin with those",
             "   entry IDs and action: pin.",
             "4. Call acm_slide to discard the rest.",
+            "   acm_slide is REFUSED until steps 1 and 3 are done (acm_map, then",
+            "   at least one successful acm_pin pin).",
             "5. Report in 1-3 lines: what was unpinned, pinned, and slide result.",
           ].join("\n"),
           display: false,
@@ -871,6 +874,13 @@ export default function (pi: ExtensionAPI) {
       const branch = ctx.sessionManager.getBranch() as any[];
       buildToolCallMapping(branch);
       const params = _params as { keepMessages?: number; keepMinutes?: number; customInstructions?: string };
+
+      const gate = acmState.pruneGate;
+      if (gate && !(gate.mapped && gate.pinned)) {
+        const missing = !gate.mapped ? "acm_map" : "acm_pin (action: pin, ≥1 valid id)";
+        return { content: [{ type: "text" as const, text: `[ACM] /acm-prune: slide refused. Call ${missing} first.` }], details: { success: false } };
+      }
+      acmState.pruneGate = null;
 
       const cutoff = findHybridCutoff(branch, {
         keepMessages: params.keepMessages,
@@ -1097,6 +1107,7 @@ export default function (pi: ExtensionAPI) {
     async execute(_toolCallId, _params, _signal, _onUpdate, _ctx) {
       // Ephemeral tier (config.ephemeralTools) clears this result at the next
       // turn boundary via a branch scan in the context handler — no self-mark.
+      if (acmState.pruneGate) acmState.pruneGate.mapped = true;
       const rows = buildEntryMap(lastVisibleMessages, lastVisibleEntryIds);
       if (rows.length === 0) {
         return { content: [{ type: "text" as const, text: "[ACM] No entries on branch." }], details: {} };
@@ -1156,6 +1167,9 @@ Batch:   { entryIds: ["abc1", "def2", "ghi3"], action: "pin" }`,
         persistPin(pi.appendEntry.bind(pi), resolvedId, action);
         results.push(`${action === "pin" ? "📌" : "🔓"} ${resolvedId}`);
       }
+
+      const gate = acmState.pruneGate;
+      if (gate?.mapped && action === "pin" && resolvedIds.length > 0) gate.pinned = true;
 
       const report = `[ACM] ${action === "pin" ? "Pinned" : "Unpinned"} ${resolvedIds.length}/${ids.length} (${pinnedSet.size} total)\n${results.join("\n")}`;
       ctx.ui.notify(report, "info");

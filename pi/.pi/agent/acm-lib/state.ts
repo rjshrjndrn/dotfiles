@@ -19,6 +19,8 @@ export const compactSet = new Set<string>();
 export const acmState = {
   totalTokensSaved: 0,
   lastAutoClearUserCount: 0,
+  // /acm-prune gate: null = not pruning; else slide refused until mapped && pinned
+  pruneGate: null as null | { mapped: boolean; pinned: boolean },
 };
 
 // Fault-driven pinning (Pichay 2025, "Missing Pages" §3.2):
@@ -55,6 +57,7 @@ export function _resetState() {
   compactSet.clear();
   acmState.totalTokensSaved = 0;
   acmState.lastAutoClearUserCount = 0;
+  acmState.pruneGate = null;
   evictedPaths.clear();
   faultPinTurns.clear();
   cachedToFile.clear();
