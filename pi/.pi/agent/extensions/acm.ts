@@ -269,6 +269,16 @@ export default function (pi: ExtensionAPI) {
   // ── Turn end: feed to project memory decision gate ─────────────────
 
   pi.on("turn_end" as any, async (event: any, _ctx: any) => {
+    // Soft auto-prune: followUp lets the running task finish first.
+    const threshold = acmConfig.autoPrunePercent ?? 0;
+    const pct = _ctx?.getContextUsage?.()?.percent;
+    if (threshold > 0 && pct != null) {
+      if (pct < threshold) acmState.autoPruneArmed = true;
+      else if (acmState.autoPruneArmed && !acmState.pruneGate) {
+        acmState.autoPruneArmed = false;
+        startPrune("followUp");
+      }
+    }
     acmLog(`turn_end: bridge ready=${projectBridge.isReady()}, tools=${(event.toolResults ?? []).length}`);
     if (!projectBridge.isReady()) return;
     try {
@@ -702,9 +712,9 @@ export default function (pi: ExtensionAPI) {
   // let the model choose, mirroring the manual flow.
   // Shared by /acm-prune and the auto-compaction hook. deliverAs: steer —
   // the hook can fire mid-run, where an unqueued user message throws.
-  const startPrune = () => {
-    acmState.pruneGate = { mapped: false, pinned: false };
-    pi.sendUserMessage("/acm-prune", { deliverAs: "steer" });
+  const startPrune = (mode: "steer" | "followUp" = "steer") => {
+    acmState.pruneGate = { mapped: false, pinned: false, mode };
+    if (mode === "steer") pi.sendUserMessage("/acm-prune", { deliverAs: "steer" });
     pi.sendMessage(
       {
         customType: "acm-prune",
@@ -726,10 +736,12 @@ export default function (pi: ExtensionAPI) {
           "   acm_slide is REFUSED until steps 1 and 3 are done (acm_map, then",
           "   at least one successful acm_pin pin).",
           "5. Report in 1-3 lines: what was unpinned, pinned, and slide result.",
+          "6. If you were in the middle of a task, resume it.",
         ].join("\n"),
         display: false,
       },
-      { deliverAs: "steer" },
+      // followUp: single custom message; triggerTurn starts a run if idle
+      mode === "steer" ? { deliverAs: "steer" } : { deliverAs: "followUp", triggerTurn: true },
     );
   };
 
@@ -1250,13 +1262,27 @@ Batch:   { entryIds: ["abc1", "def2", "ghi3"], action: "pin" }`,
     },
   });
 
+  // A prune prompt delivered after the gate closed (leftover followUp from a
+  // steer escalation) must still be gated.
+  // ponytail: leftover copy prunes twice; dequeue it if pi exposes queue removal
+  pi.on("message_start" as any, (event: any) => {
+    if (event.message?.customType === "acm-prune" && !acmState.pruneGate) {
+      acmState.pruneGate = { mapped: false, pinned: false, mode: "steer" };
+    }
+  });
+
   // ── Hook: auto-compaction → /acm-prune ─────────────────────────────
   // Threshold compaction summarises context away; run the gated prune instead.
   // Manual /compact and overflow recovery (provider already refused the
   // request, model can't run prune) keep pi's stock compaction.
   pi.on("session_before_compact" as any, (event: any) => {
     if (event.reason !== "threshold") return;
-    if (acmState.pruneGate) return { cancel: true }; // prune in flight
+    const gate = acmState.pruneGate;
+    if (gate) {
+      // followUp prune still queued behind the task: escalate to steer
+      if (gate.mode === "followUp" && !gate.mapped) startPrune("steer");
+      return { cancel: true };
+    }
     // pi's token estimate reuses the last assistant usage; until a reply lands
     // after the slide it still reflects pre-slide context.
     const ts = (e: any) => typeof e.timestamp === "number" ? e.timestamp : new Date(e.timestamp).getTime();

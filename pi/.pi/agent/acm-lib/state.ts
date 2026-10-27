@@ -20,7 +20,9 @@ export const acmState = {
   totalTokensSaved: 0,
   lastAutoClearUserCount: 0,
   // /acm-prune gate: null = not pruning; else slide refused until mapped && pinned
-  pruneGate: null as null | { mapped: boolean; pinned: boolean },
+  pruneGate: null as null | { mapped: boolean; pinned: boolean; mode: "steer" | "followUp" },
+  // autoPrunePercent re-arms only after a fresh reading below the threshold
+  autoPruneArmed: true,
   // ms of last slide; pi's token estimate stays stale until an assistant reply after it
   lastSlideAt: 0,
 };
@@ -60,6 +62,7 @@ export function _resetState() {
   acmState.totalTokensSaved = 0;
   acmState.lastAutoClearUserCount = 0;
   acmState.pruneGate = null;
+  acmState.autoPruneArmed = true;
   acmState.lastSlideAt = 0;
   evictedPaths.clear();
   faultPinTurns.clear();

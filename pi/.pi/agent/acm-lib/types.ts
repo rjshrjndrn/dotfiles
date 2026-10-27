@@ -46,4 +46,6 @@ export interface AcmConfig {
   cacheMinChars?: number;
   /** Include first N chars as preview in cached stubs. Default: 1000 */
   previewChars?: number;
+  /** Queue /acm-prune (followUp) once context usage reaches this %. 0/unset = off. */
+  autoPrunePercent?: number;
 }
