@@ -3,5 +3,6 @@
   "localTools": [],
   "ephemeralTools": ["acm_map"],
   "cacheMinChars": 2000,
-  "previewChars": 1000
+  "previewChars": 1000,
+  "autoPrunePercent": 60
 }
