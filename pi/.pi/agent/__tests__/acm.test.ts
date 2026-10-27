@@ -14,6 +14,7 @@ vi.mock("@sinclair/typebox", () => ({
     Array: vi.fn(() => ({})),
     Union: vi.fn(() => ({})),
     Literal: vi.fn(() => ({})),
+    Boolean: vi.fn(() => ({})),
   },
 }));
 
@@ -21,16 +22,12 @@ import registerExtension, {
   extractKeywords,
   extractToolCallPaths,
   FILE_PATH_PARAMS,
-  MAX_EVICTED_PATHS,
   getBranchMessages,
   getTextPreview,
   extractEntryContent,
   compactMessage,
   findHybridCutoff,
-  rehydrateStatePure,
   STOP_WORDS,
-  FAULT_PIN_TTL,
-  _resetState,
   localToolSet,
   discoverLocalTools,
   isExternalTool,
@@ -41,6 +38,12 @@ import registerExtension, {
   extractToolResultText,
   buildCachedStub,
   getCacheStats,
+} from "../extensions/acm.ts";
+import {
+  MAX_EVICTED_PATHS,
+  rehydrateStatePure,
+  FAULT_PIN_TTL,
+  _resetState,
   clearSet,
   pinnedSet,
   pinnedContentStore,
@@ -51,7 +54,7 @@ import registerExtension, {
   persistPin,
   buildRecallEntry,
   cachedToFile,
-} from "../extensions/acm.ts";
+} from "../acm-lib/state.ts";
 
 import { existsSync, readFileSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -556,6 +559,7 @@ describe("context handler — eviction strategy", () => {
       }),
       appendEntry: mockAppendEntry,
       registerTool: vi.fn(),
+      registerCommand: vi.fn(),
     };
     registerExtension(mockPi);
   });
@@ -1160,6 +1164,7 @@ describe("context handler — external tool caching", () => {
       }),
       appendEntry: mockAppendEntry,
       registerTool: vi.fn(),
+      registerCommand: vi.fn(),
     };
     registerExtension(mockPi);
   });
@@ -1267,6 +1272,7 @@ describe("context handler — external tool caching", () => {
 describe("pin + prune + slide combinations", () => {
   const handlers: Record<string, Function> = {};
   const tools: Record<string, Function> = {};
+  const commands: Record<string, Function> = {};
   let mockAppendEntry: ReturnType<typeof vi.fn>;
   let mockAppendCompaction: ReturnType<typeof vi.fn>;
   let notifications: string[];
@@ -1319,6 +1325,11 @@ describe("pin + prune + slide combinations", () => {
       registerTool: vi.fn((def: any) => {
         tools[def.name] = def.execute;
       }),
+      registerCommand: vi.fn((name: string, def: any) => {
+        commands[name] = def.handler;
+      }),
+      sendMessage: vi.fn(),
+      sendUserMessage: vi.fn(),
     };
     registerExtension(mockPi);
   });
