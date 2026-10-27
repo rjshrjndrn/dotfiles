@@ -2225,6 +2225,109 @@ describe("pin + prune + slide combinations", () => {
     });
   });
 
+  describe("auto-prune at acm.json autoPrunePercent", () => {
+    // Soft trigger: queue /acm-prune as followUp so the running task finishes
+    // first. pi's ~92% threshold hook remains the hard (steer) trigger.
+    const LOCAL = [{ name: "Read" }, { name: "Write" }, { name: "Edit" }, { name: "Bash" }, { name: "web_fetch" }, { name: "mcp" }];
+    const cfg = (autoPrunePercent?: number) =>
+      discoverLocalTools(LOCAL, { cacheTools: ["web_fetch"], ...(autoPrunePercent === undefined ? {} : { autoPrunePercent }) });
+    const turnEnd = (percent: number | null) =>
+      handlers["turn_end"](
+        { message: { role: "assistant", content: [] }, toolResults: [] },
+        { ...createCtx(), getContextUsage: () => ({ percent, tokens: percent == null ? null : percent * 2000, contextWindow: 200000 }) },
+      );
+    const pruneSends = () => mockSendMessage.mock.calls.filter((c: any[]) => c[0]?.customType === "acm-prune");
+    const hook = (reason: string) =>
+      handlers["session_before_compact"]({ reason, branchEntries: currentBranch, preparation: {}, willRetry: false }, createCtx());
+    const map = () => tools["acm_map"]("tc-m", {}, { aborted: false }, vi.fn(), createCtx());
+    const pin = () => tools["acm_pin"]("tc-p", { entryId: "e3", action: "pin" }, { aborted: false }, vi.fn(), createCtx());
+    const slide = () => tools["acm_slide"]("tc-s", { keepMessages: 5 }, { aborted: false }, vi.fn(), createCtx());
+
+    beforeEach(() => {
+      const msgs: any[] = [];
+      for (let i = 0; i < 20; i++) msgs.push(mkMsg("user", `turn ${i}`), mkMsg("assistant", `response ${i}`));
+      currentBranch = mkBranch(msgs);
+      mockSendMessage.mockClear();
+      mockSendUserMessage.mockClear();
+    });
+    afterEach(() => cfg());
+
+    it("off when autoPrunePercent unset", async () => {
+      cfg();
+      await turnEnd(90);
+      expect(pruneSends()).toHaveLength(0);
+    });
+
+    it("autoPrunePercent: 0 means off", async () => {
+      cfg(0);
+      await turnEnd(90);
+      expect(pruneSends()).toHaveLength(0);
+    });
+
+    it("below threshold or unknown usage: no prune", async () => {
+      cfg(60);
+      await turnEnd(59);
+      await turnEnd(null);
+      expect(pruneSends()).toHaveLength(0);
+    });
+
+    it("at threshold: queues prune as followUp, no user message", async () => {
+      cfg(60);
+      await turnEnd(60);
+      expect(pruneSends()).toHaveLength(1);
+      expect(pruneSends()[0][1]).toEqual({ deliverAs: "followUp", triggerTurn: true });
+      expect(mockSendUserMessage).not.toHaveBeenCalled();
+      // gate armed
+      expect((await slide()).details.success).toBe(false);
+    });
+
+    it("no re-prompt while queued, nor on stale usage after slide; re-arms below threshold", async () => {
+      cfg(60);
+      await turnEnd(65);
+      await turnEnd(70); // still queued
+      expect(pruneSends()).toHaveLength(1);
+      await map(); await pin(); await slide();
+      await turnEnd(70); // stale pre-slide usage
+      expect(pruneSends()).toHaveLength(1);
+      await turnEnd(30); // fresh reading: re-arm
+      await turnEnd(61);
+      expect(pruneSends()).toHaveLength(2);
+    });
+
+    it("hard threshold with followUp prune still queued: re-sends as steer", async () => {
+      cfg(60);
+      await turnEnd(65);
+      mockSendMessage.mockClear();
+      expect(await hook("threshold")).toEqual({ cancel: true });
+      expect(pruneSends()).toHaveLength(1);
+      expect(pruneSends()[0][1]).toEqual({ deliverAs: "steer" });
+    });
+
+    it("hard threshold once queued prune started (mapped): cancels quietly", async () => {
+      cfg(60);
+      await turnEnd(65);
+      await map();
+      mockSendMessage.mockClear();
+      expect(await hook("threshold")).toEqual({ cancel: true });
+      expect(pruneSends()).toHaveLength(0);
+    });
+
+    it("leftover queued prompt delivered after gate closed re-arms the gate", async () => {
+      cfg(60);
+      await turnEnd(65);
+      await hook("threshold"); // steer re-send; followUp copy stays in pi's queue
+      await map(); await pin(); await slide();
+      await handlers["message_start"]({ message: { role: "custom", customType: "acm-prune", content: "" } }, createCtx());
+      expect((await slide()).details.success).toBe(false);
+    });
+
+    it("prompt tells the model to resume an interrupted task", async () => {
+      cfg(60);
+      await turnEnd(65);
+      expect(pruneSends()[0][0].content).toMatch(/resume/i);
+    });
+  });
+
   describe("auto-compaction → /acm-prune", () => {
     // pi's threshold auto-compaction is replaced by /acm-prune. /compact
     // (manual) and overflow recovery keep pi's stock compaction.
