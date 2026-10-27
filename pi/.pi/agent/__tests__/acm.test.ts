@@ -2218,9 +2218,9 @@ describe("pin + prune + slide combinations", () => {
     });
 
     it("prune prompt tells the model slide is refused until map+pin", async () => {
-      mockSendMessage.mockClear();
+      mockSendUserMessage.mockClear();
       await prune(createCtx());
-      const text = mockSendMessage.mock.calls[0][0].content as string;
+      const text = mockSendUserMessage.mock.calls[0][0] as string;
       expect(text).toMatch(/acm_slide is REFUSED until/);
     });
   });
@@ -2236,7 +2236,9 @@ describe("pin + prune + slide combinations", () => {
         { message: { role: "assistant", content: [] }, toolResults: [] },
         { ...createCtx(), getContextUsage: () => ({ percent, tokens: percent == null ? null : percent * 2000, contextWindow: 200000 }) },
       );
-    const pruneSends = () => mockSendMessage.mock.calls.filter((c: any[]) => c[0]?.customType === "acm-prune");
+    // Prompt goes out as a user message: the slide filter keeps only
+    // type:"message" entries, so a custom message vanishes after a slide.
+    const pruneSends = () => mockSendUserMessage.mock.calls.filter((c: any[]) => /Compact this session now/.test(c[0]));
     const hook = (reason: string) =>
       handlers["session_before_compact"]({ reason, branchEntries: currentBranch, preparation: {}, willRetry: false }, createCtx());
     const map = () => tools["acm_map"]("tc-m", {}, { aborted: false }, vi.fn(), createCtx());
@@ -2271,12 +2273,12 @@ describe("pin + prune + slide combinations", () => {
       expect(pruneSends()).toHaveLength(0);
     });
 
-    it("at threshold: queues prune as followUp, no user message", async () => {
+    it("at threshold: queues prune as followUp user message, no custom message", async () => {
       cfg(60);
       await turnEnd(60);
       expect(pruneSends()).toHaveLength(1);
-      expect(pruneSends()[0][1]).toEqual({ deliverAs: "followUp", triggerTurn: true });
-      expect(mockSendUserMessage).not.toHaveBeenCalled();
+      expect(pruneSends()[0][1]).toEqual({ deliverAs: "followUp" });
+      expect(mockSendMessage).not.toHaveBeenCalled();
       // gate armed
       expect((await slide()).details.success).toBe(false);
     });
@@ -2297,7 +2299,7 @@ describe("pin + prune + slide combinations", () => {
     it("hard threshold with followUp prune still queued: re-sends as steer", async () => {
       cfg(60);
       await turnEnd(65);
-      mockSendMessage.mockClear();
+      mockSendUserMessage.mockClear();
       expect(await hook("threshold")).toEqual({ cancel: true });
       expect(pruneSends()).toHaveLength(1);
       expect(pruneSends()[0][1]).toEqual({ deliverAs: "steer" });
@@ -2307,7 +2309,7 @@ describe("pin + prune + slide combinations", () => {
       cfg(60);
       await turnEnd(65);
       await map();
-      mockSendMessage.mockClear();
+      mockSendUserMessage.mockClear();
       expect(await hook("threshold")).toEqual({ cancel: true });
       expect(pruneSends()).toHaveLength(0);
     });
@@ -2317,14 +2319,15 @@ describe("pin + prune + slide combinations", () => {
       await turnEnd(65);
       await hook("threshold"); // steer re-send; followUp copy stays in pi's queue
       await map(); await pin(); await slide();
-      await handlers["message_start"]({ message: { role: "custom", customType: "acm-prune", content: "" } }, createCtx());
+      const prompt = pruneSends()[0][0];
+      await handlers["message_start"]({ message: { role: "user", content: [{ type: "text", text: prompt }] } }, createCtx());
       expect((await slide()).details.success).toBe(false);
     });
 
     it("prompt tells the model to resume an interrupted task", async () => {
       cfg(60);
       await turnEnd(65);
-      expect(pruneSends()[0][0].content).toMatch(/resume/i);
+      expect(pruneSends()[0][0]).toMatch(/resume/i);
     });
   });
 
@@ -2345,10 +2348,10 @@ describe("pin + prune + slide combinations", () => {
     it("threshold: cancels pi compaction and starts /acm-prune", async () => {
       const r = await hook("threshold");
       expect(r).toEqual({ cancel: true });
-      expect(mockSendMessage).toHaveBeenCalledTimes(1);
-      expect(mockSendMessage.mock.calls[0][0].customType).toBe("acm-prune");
+      expect(mockSendMessage).not.toHaveBeenCalled();
+      expect(mockSendUserMessage).toHaveBeenCalledTimes(1);
       // may fire mid-run: must queue, not throw "Agent is already processing"
-      expect(mockSendUserMessage).toHaveBeenCalledWith("/acm-prune", { deliverAs: "steer" });
+      expect(mockSendUserMessage).toHaveBeenCalledWith(expect.stringMatching(/Compact this session now/), { deliverAs: "steer" });
       // gate armed: slide refused until map+pin
       const s = await tools["acm_slide"]("tc-s", { keepMessages: 5 }, { aborted: false }, vi.fn(), createCtx());
       expect(s.details.success).toBe(false);
@@ -2356,28 +2359,28 @@ describe("pin + prune + slide combinations", () => {
 
     it("threshold while prune in flight: cancels without re-prompting", async () => {
       await hook("threshold");
-      mockSendMessage.mockClear();
+      mockSendUserMessage.mockClear();
       expect(await hook("threshold")).toEqual({ cancel: true });
-      expect(mockSendMessage).not.toHaveBeenCalled();
+      expect(mockSendUserMessage).not.toHaveBeenCalled();
     });
 
     it("threshold right after slide (stale usage): cancels without prompting", async () => {
       await tools["acm_slide"]("tc-s", { keepMessages: 5 }, { aborted: false }, vi.fn(), createCtx());
       expect(await hook("threshold")).toEqual({ cancel: true });
-      expect(mockSendMessage).not.toHaveBeenCalled();
+      expect(mockSendUserMessage).not.toHaveBeenCalled();
     });
 
     it("threshold after slide + fresh assistant reply: prunes again", async () => {
       await tools["acm_slide"]("tc-s", { keepMessages: 5 }, { aborted: false }, vi.fn(), createCtx());
       const fresh = [...currentBranch, { type: "message", id: "fresh", message: mkMsg("assistant", "new"), timestamp: Date.now() + 1000 }];
       expect(await hook("threshold", fresh)).toEqual({ cancel: true });
-      expect(mockSendMessage).toHaveBeenCalledTimes(1);
+      expect(mockSendUserMessage).toHaveBeenCalledTimes(1);
     });
 
     it("manual /compact and overflow fall through to pi compaction", async () => {
       expect(await hook("manual")).toBeUndefined();
       expect(await hook("overflow")).toBeUndefined();
-      expect(mockSendMessage).not.toHaveBeenCalled();
+      expect(mockSendUserMessage).not.toHaveBeenCalled();
     });
   });
 

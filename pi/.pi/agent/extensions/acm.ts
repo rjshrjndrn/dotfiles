@@ -712,38 +712,33 @@ export default function (pi: ExtensionAPI) {
   // let the model choose, mirroring the manual flow.
   // Shared by /acm-prune and the auto-compaction hook. deliverAs: steer —
   // the hook can fire mid-run, where an unqueued user message throws.
+  // User message, not custom: the slide filter keeps only type:"message"
+  // entries, so a custom prompt vanished after a slide and the request
+  // ended on an assistant turn (400 "does not support assistant prefill").
   const startPrune = (mode: "steer" | "followUp" = "steer") => {
     acmState.pruneGate = { mapped: false, pinned: false, mode };
-    if (mode === "steer") pi.sendUserMessage("/acm-prune", { deliverAs: "steer" });
-    pi.sendMessage(
-      {
-        customType: "acm-prune",
-        content: [
-          "Compact this session now. Do NOT ask for confirmation.",
-          "Don't skip pinning because the data is written to file. This is your context",
-          "Steps, in order:",
-          "1. Call acm_map to see the current entries and their IDs.",
-          "2. Review the ALREADY-PINNED entries. Unpin any that are no longer",
-          "   useful: superseded decisions, stale intermediate results, or",
-          "   anything irrelevant to the current task. Call acm_pin with those",
-          "   entry IDs and action: unpin.",
-          "3. Identify the IMPORTANT entries not yet pinned: durable decisions,",
-          "   final results/summaries, config or design conclusions, and",
-          "   anything needed to continue the current task. Skip routine tool",
-          "   output, intermediate steps, and noise. Call acm_pin with those",
-          "   entry IDs and action: pin.",
-          "4. Call acm_slide to discard the rest.",
-          "   acm_slide is REFUSED until steps 1 and 3 are done (acm_map, then",
-          "   at least one successful acm_pin pin).",
-          "5. Report in 1-3 lines: what was unpinned, pinned, and slide result.",
-          "6. If you were in the middle of a task, resume it.",
-        ].join("\n"),
-        display: false,
-      },
-      // followUp: single custom message; triggerTurn starts a run if idle
-      mode === "steer" ? { deliverAs: "steer" } : { deliverAs: "followUp", triggerTurn: true },
-    );
+    pi.sendUserMessage(PRUNE_PROMPT, { deliverAs: mode });
   };
+  const PRUNE_PROMPT = [
+    "Compact this session now. Do NOT ask for confirmation.",
+    "Don't skip pinning because the data is written to file. This is your context",
+    "Steps, in order:",
+    "1. Call acm_map to see the current entries and their IDs.",
+    "2. Review the ALREADY-PINNED entries. Unpin any that are no longer",
+    "   useful: superseded decisions, stale intermediate results, or",
+    "   anything irrelevant to the current task. Call acm_pin with those",
+    "   entry IDs and action: unpin.",
+    "3. Identify the IMPORTANT entries not yet pinned: durable decisions,",
+    "   final results/summaries, config or design conclusions, and",
+    "   anything needed to continue the current task. Skip routine tool",
+    "   output, intermediate steps, and noise. Call acm_pin with those",
+    "   entry IDs and action: pin.",
+    "4. Call acm_slide to discard the rest.",
+    "   acm_slide is REFUSED until steps 1 and 3 are done (acm_map, then",
+    "   at least one successful acm_pin pin).",
+    "5. Report in 1-3 lines: what was unpinned, pinned, and slide result.",
+    "6. If you were in the middle of a task, resume it.",
+  ].join("\n");
 
   pi.registerCommand("acm-prune", {
     description: "Prune stale pins, pin important, then slide away the rest",
@@ -1266,7 +1261,9 @@ Batch:   { entryIds: ["abc1", "def2", "ghi3"], action: "pin" }`,
   // steer escalation) must still be gated.
   // ponytail: leftover copy prunes twice; dequeue it if pi exposes queue removal
   pi.on("message_start" as any, (event: any) => {
-    if (event.message?.customType === "acm-prune" && !acmState.pruneGate) {
+    const m = event.message;
+    const text = typeof m?.content === "string" ? m.content : (m?.content ?? []).map((c: any) => c?.text ?? "").join("");
+    if (m?.role === "user" && text === PRUNE_PROMPT && !acmState.pruneGate) {
       acmState.pruneGate = { mapped: false, pinned: false, mode: "steer" };
     }
   });
