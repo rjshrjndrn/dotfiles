@@ -21,6 +21,8 @@ export const acmState = {
   lastAutoClearUserCount: 0,
   // /acm-prune gate: null = not pruning; else slide refused until mapped && pinned
   pruneGate: null as null | { mapped: boolean; pinned: boolean },
+  // ms of last slide; pi's token estimate stays stale until an assistant reply after it
+  lastSlideAt: 0,
 };
 
 // Fault-driven pinning (Pichay 2025, "Missing Pages" §3.2):
@@ -58,6 +60,7 @@ export function _resetState() {
   acmState.totalTokensSaved = 0;
   acmState.lastAutoClearUserCount = 0;
   acmState.pruneGate = null;
+  acmState.lastSlideAt = 0;
   evictedPaths.clear();
   faultPinTurns.clear();
   cachedToFile.clear();

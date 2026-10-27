@@ -700,38 +700,42 @@ export default function (pi: ExtensionAPI) {
   // Steers the LLM to "prune pins, pin important, then slide". Which entries
   // matter is a judgment call, so we don't hardcode it — we reveal the map and
   // let the model choose, mirroring the manual flow.
+  // Shared by /acm-prune and the auto-compaction hook. deliverAs: steer —
+  // the hook can fire mid-run, where an unqueued user message throws.
+  const startPrune = () => {
+    acmState.pruneGate = { mapped: false, pinned: false };
+    pi.sendUserMessage("/acm-prune", { deliverAs: "steer" });
+    pi.sendMessage(
+      {
+        customType: "acm-prune",
+        content: [
+          "Compact this session now. Do NOT ask for confirmation.",
+          "Don't skip pinning because the data is written to file. This is your context",
+          "Steps, in order:",
+          "1. Call acm_map to see the current entries and their IDs.",
+          "2. Review the ALREADY-PINNED entries. Unpin any that are no longer",
+          "   useful: superseded decisions, stale intermediate results, or",
+          "   anything irrelevant to the current task. Call acm_pin with those",
+          "   entry IDs and action: unpin.",
+          "3. Identify the IMPORTANT entries not yet pinned: durable decisions,",
+          "   final results/summaries, config or design conclusions, and",
+          "   anything needed to continue the current task. Skip routine tool",
+          "   output, intermediate steps, and noise. Call acm_pin with those",
+          "   entry IDs and action: pin.",
+          "4. Call acm_slide to discard the rest.",
+          "   acm_slide is REFUSED until steps 1 and 3 are done (acm_map, then",
+          "   at least one successful acm_pin pin).",
+          "5. Report in 1-3 lines: what was unpinned, pinned, and slide result.",
+        ].join("\n"),
+        display: false,
+      },
+      { deliverAs: "steer" },
+    );
+  };
+
   pi.registerCommand("acm-prune", {
     description: "Prune stale pins, pin important, then slide away the rest",
-    handler: async (_args, ctx) => {
-      acmState.pruneGate = { mapped: false, pinned: false };
-      pi.sendUserMessage("/acm-prune");
-      pi.sendMessage(
-        {
-          customType: "acm-prune",
-          content: [
-            "Compact this session now. Do NOT ask for confirmation.",
-            "Don't skip pinning because the data is written to file. This is your context",
-            "Steps, in order:",
-            "1. Call acm_map to see the current entries and their IDs.",
-            "2. Review the ALREADY-PINNED entries. Unpin any that are no longer",
-            "   useful: superseded decisions, stale intermediate results, or",
-            "   anything irrelevant to the current task. Call acm_pin with those",
-            "   entry IDs and action: unpin.",
-            "3. Identify the IMPORTANT entries not yet pinned: durable decisions,",
-            "   final results/summaries, config or design conclusions, and",
-            "   anything needed to continue the current task. Skip routine tool",
-            "   output, intermediate steps, and noise. Call acm_pin with those",
-            "   entry IDs and action: pin.",
-            "4. Call acm_slide to discard the rest.",
-            "   acm_slide is REFUSED until steps 1 and 3 are done (acm_map, then",
-            "   at least one successful acm_pin pin).",
-            "5. Report in 1-3 lines: what was unpinned, pinned, and slide result.",
-          ].join("\n"),
-          display: false,
-        },
-        { deliverAs: "steer" },
-      );
-    },
+    handler: async () => startPrune(),
   });
 
   // ── Tool: acm_status ───────────────────────────────────────────────
@@ -952,6 +956,7 @@ export default function (pi: ExtensionAPI) {
       // Set active slide — context event will filter messages on every turn.
       // No session mutation: UI keeps full tree, only LLM context is filtered.
       setActiveSlide({ cutoffEntryId: firstKeptEntryId, summary });
+      acmState.lastSlideAt = Date.now();
 
       // Clean up ACM state for discarded entries + stale pins
       for (let i = 0; i < cutoff; i++) {
@@ -1245,8 +1250,22 @@ Batch:   { entryIds: ["abc1", "def2", "ghi3"], action: "pin" }`,
     },
   });
 
-  // No session_before_compact hook — /compact uses pi's stock LLM compaction.
-  // ACM slide is context-only: filters event.messages, doesn't touch session tree.
+  // ── Hook: auto-compaction → /acm-prune ─────────────────────────────
+  // Threshold compaction summarises context away; run the gated prune instead.
+  // Manual /compact and overflow recovery (provider already refused the
+  // request, model can't run prune) keep pi's stock compaction.
+  pi.on("session_before_compact" as any, (event: any) => {
+    if (event.reason !== "threshold") return;
+    if (acmState.pruneGate) return { cancel: true }; // prune in flight
+    // pi's token estimate reuses the last assistant usage; until a reply lands
+    // after the slide it still reflects pre-slide context.
+    const ts = (e: any) => typeof e.timestamp === "number" ? e.timestamp : new Date(e.timestamp).getTime();
+    const freshReply = (event.branchEntries ?? []).some((e: any) =>
+      e.type === "message" && e.message?.role === "assistant" && ts(e) > acmState.lastSlideAt);
+    if (acmState.lastSlideAt && !freshReply) return { cancel: true };
+    startPrune();
+    return { cancel: true };
+  });
 
   // ── Tool: acm_forget ──────────────────────────────────────────────
 
