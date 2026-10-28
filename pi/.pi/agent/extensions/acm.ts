@@ -269,14 +269,15 @@ export default function (pi: ExtensionAPI) {
   // ── Turn end: feed to project memory decision gate ─────────────────
 
   pi.on("turn_end" as any, async (event: any, _ctx: any) => {
-    // Soft auto-prune: followUp lets the running task finish first.
+    // Soft auto-prune: steer so it runs now; a queued followUp waits behind
+    // the task while context keeps growing. Prompt says resume afterwards.
     const threshold = acmConfig.autoPrunePercent ?? 0;
     const pct = _ctx?.getContextUsage?.()?.percent;
     if (threshold > 0 && pct != null) {
       if (pct < threshold) acmState.autoPruneArmed = true;
       else if (acmState.autoPruneArmed && !acmState.pruneGate) {
         acmState.autoPruneArmed = false;
-        startPrune("followUp");
+        startPrune("steer");
       }
     }
     acmLog(`turn_end: bridge ready=${projectBridge.isReady()}, tools=${(event.toolResults ?? []).length}`);

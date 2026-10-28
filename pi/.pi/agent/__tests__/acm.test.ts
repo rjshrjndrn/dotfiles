@@ -2226,8 +2226,8 @@ describe("pin + prune + slide combinations", () => {
   });
 
   describe("auto-prune at acm.json autoPrunePercent", () => {
-    // Soft trigger: queue /acm-prune as followUp so the running task finishes
-    // first. pi's ~92% threshold hook remains the hard (steer) trigger.
+    // Soft trigger: steer the prune into the running task, same as the hard
+    // trigger; the prompt tells the model to resume afterwards.
     const LOCAL = [{ name: "Read" }, { name: "Write" }, { name: "Edit" }, { name: "Bash" }, { name: "web_fetch" }, { name: "mcp" }];
     const cfg = (autoPrunePercent?: number) =>
       discoverLocalTools(LOCAL, { cacheTools: ["web_fetch"], ...(autoPrunePercent === undefined ? {} : { autoPrunePercent }) });
@@ -2273,11 +2273,11 @@ describe("pin + prune + slide combinations", () => {
       expect(pruneSends()).toHaveLength(0);
     });
 
-    it("at threshold: queues prune as followUp user message, no custom message", async () => {
+    it("at threshold: steers prune as user message, no custom message", async () => {
       cfg(60);
       await turnEnd(60);
       expect(pruneSends()).toHaveLength(1);
-      expect(pruneSends()[0][1]).toEqual({ deliverAs: "followUp" });
+      expect(pruneSends()[0][1]).toEqual({ deliverAs: "steer" });
       expect(mockSendMessage).not.toHaveBeenCalled();
       // gate armed
       expect((await slide()).details.success).toBe(false);
@@ -2296,13 +2296,12 @@ describe("pin + prune + slide combinations", () => {
       expect(pruneSends()).toHaveLength(2);
     });
 
-    it("hard threshold with followUp prune still queued: re-sends as steer", async () => {
+    it("hard threshold while auto prune in flight: cancels without re-prompting", async () => {
       cfg(60);
       await turnEnd(65);
       mockSendUserMessage.mockClear();
       expect(await hook("threshold")).toEqual({ cancel: true });
-      expect(pruneSends()).toHaveLength(1);
-      expect(pruneSends()[0][1]).toEqual({ deliverAs: "steer" });
+      expect(pruneSends()).toHaveLength(0);
     });
 
     it("hard threshold once queued prune started (mapped): cancels quietly", async () => {
