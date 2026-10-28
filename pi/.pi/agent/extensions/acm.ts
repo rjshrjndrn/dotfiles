@@ -717,6 +717,7 @@ export default function (pi: ExtensionAPI) {
   // entries, so a custom prompt vanished after a slide and the request
   // ended on an assistant turn (400 "does not support assistant prefill").
   const startPrune = () => {
+    if (acmState.pruneGate) return; // one prune pending at a time
     acmState.pruneGate = { mapped: false, pinned: false };
     pi.sendUserMessage(PRUNE_PROMPT, { deliverAs: "steer" });
   };
@@ -740,6 +741,15 @@ export default function (pi: ExtensionAPI) {
     "5. Report in 1-3 lines: what was unpinned, pinned, and slide result.",
     "6. If you were in the middle of a task, resume it.",
   ].join("\n");
+
+  // Run settled without a successful slide (provider error, Esc, model skipped
+  // it): an open gate would block every later prune and leave the trigger
+  // disarmed for good. Keep it while the prompt is still queued.
+  pi.on("agent_settled" as any, (_event: any, ctx: any) => {
+    if (!acmState.pruneGate || ctx?.hasPendingMessages?.()) return;
+    acmState.pruneGate = null;
+    acmState.autoPruneArmed = true;
+  });
 
   pi.registerCommand("acm-prune", {
     description: "Prune stale pins, pin important, then slide away the rest",

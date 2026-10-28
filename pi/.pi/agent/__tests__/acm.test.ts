@@ -2296,6 +2296,52 @@ describe("pin + prune + slide combinations", () => {
       expect(pruneSends()).toHaveLength(2);
     });
 
+    it("only one prune pending: /acm-prune while one is in flight sends nothing", async () => {
+      cfg(60);
+      await turnEnd(65);
+      await commands["acm-prune"]("", createCtx());
+      await commands["acm-prune"]("", createCtx());
+      expect(pruneSends()).toHaveLength(1);
+    });
+
+    // Prune run failed / aborted / model never slid: gate must not outlive the run.
+    const settled = (aborted: boolean, pending = false) =>
+      handlers["agent_settled"]({ type: "agent_settled", aborted }, { ...createCtx(), hasPendingMessages: () => pending });
+
+    it("run settles without a slide: clears gate, re-arms, next threshold retries", async () => {
+      cfg(60);
+      await turnEnd(65);
+      await settled(false);
+      await turnEnd(66);
+      expect(pruneSends()).toHaveLength(2);
+    });
+
+    it("aborted run (Esc) also clears gate and re-arms", async () => {
+      cfg(60);
+      await turnEnd(65);
+      await settled(true);
+      await turnEnd(66);
+      expect(pruneSends()).toHaveLength(2);
+    });
+
+    it("settled with prompt still queued: keeps gate, no duplicate", async () => {
+      cfg(60);
+      await turnEnd(65);
+      await settled(false, true);
+      await turnEnd(66);
+      await commands["acm-prune"]("", createCtx());
+      expect(pruneSends()).toHaveLength(1);
+    });
+
+    it("settled after a successful slide: no extra prune", async () => {
+      cfg(60);
+      await turnEnd(65);
+      await map(); await pin(); await slide();
+      await settled(false);
+      await turnEnd(70); // stale pre-slide usage
+      expect(pruneSends()).toHaveLength(1);
+    });
+
     it("hard threshold while auto prune in flight: cancels without re-prompting", async () => {
       cfg(60);
       await turnEnd(65);
