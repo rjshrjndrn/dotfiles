@@ -2313,16 +2313,6 @@ describe("pin + prune + slide combinations", () => {
       expect(pruneSends()).toHaveLength(0);
     });
 
-    it("leftover queued prompt delivered after gate closed re-arms the gate", async () => {
-      cfg(60);
-      await turnEnd(65);
-      await hook("threshold"); // steer re-send; followUp copy stays in pi's queue
-      await map(); await pin(); await slide();
-      const prompt = pruneSends()[0][0];
-      await handlers["message_start"]({ message: { role: "user", content: [{ type: "text", text: prompt }] } }, createCtx());
-      expect((await slide()).details.success).toBe(false);
-    });
-
     it("prompt tells the model to resume an interrupted task", async () => {
       cfg(60);
       await turnEnd(65);

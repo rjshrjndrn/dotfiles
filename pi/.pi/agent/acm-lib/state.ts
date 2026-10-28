@@ -20,7 +20,7 @@ export const acmState = {
   totalTokensSaved: 0,
   lastAutoClearUserCount: 0,
   // /acm-prune gate: null = not pruning; else slide refused until mapped && pinned
-  pruneGate: null as null | { mapped: boolean; pinned: boolean; mode: "steer" | "followUp" },
+  pruneGate: null as null | { mapped: boolean; pinned: boolean },
   // autoPrunePercent re-arms only after a fresh reading below the threshold
   autoPruneArmed: true,
   // ms of last slide; pi's token estimate stays stale until an assistant reply after it

@@ -277,7 +277,7 @@ export default function (pi: ExtensionAPI) {
       if (pct < threshold) acmState.autoPruneArmed = true;
       else if (acmState.autoPruneArmed && !acmState.pruneGate) {
         acmState.autoPruneArmed = false;
-        startPrune("steer");
+        startPrune();
       }
     }
     acmLog(`turn_end: bridge ready=${projectBridge.isReady()}, tools=${(event.toolResults ?? []).length}`);
@@ -716,9 +716,9 @@ export default function (pi: ExtensionAPI) {
   // User message, not custom: the slide filter keeps only type:"message"
   // entries, so a custom prompt vanished after a slide and the request
   // ended on an assistant turn (400 "does not support assistant prefill").
-  const startPrune = (mode: "steer" | "followUp" = "steer") => {
-    acmState.pruneGate = { mapped: false, pinned: false, mode };
-    pi.sendUserMessage(PRUNE_PROMPT, { deliverAs: mode });
+  const startPrune = () => {
+    acmState.pruneGate = { mapped: false, pinned: false };
+    pi.sendUserMessage(PRUNE_PROMPT, { deliverAs: "steer" });
   };
   const PRUNE_PROMPT = [
     "Compact this session now. Do NOT ask for confirmation.",
@@ -1258,29 +1258,13 @@ Batch:   { entryIds: ["abc1", "def2", "ghi3"], action: "pin" }`,
     },
   });
 
-  // A prune prompt delivered after the gate closed (leftover followUp from a
-  // steer escalation) must still be gated.
-  // ponytail: leftover copy prunes twice; dequeue it if pi exposes queue removal
-  pi.on("message_start" as any, (event: any) => {
-    const m = event.message;
-    const text = typeof m?.content === "string" ? m.content : (m?.content ?? []).map((c: any) => c?.text ?? "").join("");
-    if (m?.role === "user" && text === PRUNE_PROMPT && !acmState.pruneGate) {
-      acmState.pruneGate = { mapped: false, pinned: false, mode: "steer" };
-    }
-  });
-
   // ── Hook: auto-compaction → /acm-prune ─────────────────────────────
   // Threshold compaction summarises context away; run the gated prune instead.
   // Manual /compact and overflow recovery (provider already refused the
   // request, model can't run prune) keep pi's stock compaction.
   pi.on("session_before_compact" as any, (event: any) => {
     if (event.reason !== "threshold") return;
-    const gate = acmState.pruneGate;
-    if (gate) {
-      // followUp prune still queued behind the task: escalate to steer
-      if (gate.mode === "followUp" && !gate.mapped) startPrune("steer");
-      return { cancel: true };
-    }
+    if (acmState.pruneGate) return { cancel: true };
     // pi's token estimate reuses the last assistant usage; until a reply lands
     // after the slide it still reflects pre-slide context.
     const ts = (e: any) => typeof e.timestamp === "number" ? e.timestamp : new Date(e.timestamp).getTime();
