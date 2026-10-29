@@ -1926,85 +1926,59 @@ describe("pin + prune + slide combinations", () => {
   // ── acm_recall tool ────────────────────────────────────────────────
 
   describe("acm_recall", () => {
-    it("returns entry by entryId", async () => {
-      recallIndex.set("tc-db", buildRecallEntry("tc-db", "Read", "database schema with users table and roles", 500, []));
-      // Link toolCallId to entryId via the recall metadata
-      const recall = recallIndex.get("tc-db")!;
-      recall.entryId = "e-db";
+    // acm_recall searches the project's session .jsonl files (dir captured on session_start).
+    let dir: string;
+    const line = (id: string, role: string, text: string, toolName?: string) => JSON.stringify({
+      type: "message", id, timestamp: new Date().toISOString(),
+      message: { role, ...(toolName ? { toolName } : {}), content: [{ type: "text", text }] },
+    });
+    const startIn = (d: string) => handlers["session_start"]({}, {
+      sessionManager: { getEntries: () => [], getSessionDir: () => d },
+      ui: { notify: vi.fn(), setStatus: vi.fn() },
+    });
+    const recall = (query?: string) =>
+      tools["acm_recall"]("tc-r", query === undefined ? {} : { query }, { aborted: false }, vi.fn(), createCtx());
 
-      const result = await tools["acm_recall"]("tc-r", { entryId: "e-db" }, { aborted: false }, vi.fn(), createCtx());
-      expect(result.content[0].text).toContain("Found");
-      expect(result.content[0].text).toContain("Read");
-      expect(result.details.source).toBe("entryId");
+    beforeEach(() => {
+      dir = join(tmpdir(), `acm-recall-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, "s1.jsonl"), [
+        JSON.stringify({ type: "session", version: 3, id: "s1", timestamp: new Date().toISOString(), cwd: "/tmp" }),
+        line("u1", "user", "please check the authentication middleware"),
+        line("t1", "toolResult", "ERROR: connection timeout to redis cluster at 10.0.0.5", "Bash"),
+      ].join("\n") + "\n");
+      startIn(dir);
+    });
+    afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+    it("requires a query", async () => {
+      const result = await recall();
+      expect(result.content[0].text).toContain("Provide a query");
     });
 
-    it("returns not found for unknown entryId", async () => {
-      const result = await tools["acm_recall"]("tc-r", { entryId: "e-nonexistent" }, { aborted: false }, vi.fn(), createCtx());
-      expect(result.content[0].text).toContain("not in recall index");
+    it("finds a keyword with file + line pointer", async () => {
+      const result = await recall("authentication");
+      expect(result.content[0].text).toContain("authentication middleware");
+      expect(result.content[0].text).toContain(`sed -n '2p' ${join(dir, "s1.jsonl")}`);
+      expect(result.details.source).toBe("session-search");
+    });
+
+    it("finds tool results, including ones slid out of context", async () => {
+      const result = await recall("redis");
+      expect(result.content[0].text).toContain("toolResult/Bash");
+      expect(result.details.shown).toBeGreaterThan(0);
+    });
+
+    it("reports no results for an unrelated query", async () => {
+      const result = await recall("kubernetes");
+      expect(result.content[0].text).toContain("No results");
       expect(result.details.found).toBe(false);
     });
 
-    it("searches by keyword query", async () => {
-      recallIndex.set("tc-auth", buildRecallEntry("tc-auth", "Read", "authentication middleware JWT token validation", 800, []));
-      recallIndex.set("tc-db", buildRecallEntry("tc-db", "Bash", "database migration script postgres", 400, []));
-
-      const result = await tools["acm_recall"]("tc-r", { query: "authentication" }, { aborted: false }, vi.fn(), createCtx());
-      expect(result.content[0].text).toContain("authentication") ;
-      expect(result.details.source).toBe("keyword");
-    });
-
-    it("keyword search returns no matches for unrelated query", async () => {
-      recallIndex.set("tc-x", buildRecallEntry("tc-x", "Read", "react component rendering", 300, []));
-
-      const result = await tools["acm_recall"]("tc-r", { query: "kubernetes deployment" }, { aborted: false }, vi.fn(), createCtx());
-      expect(result.details.found).toBe(false);
-    });
-
-    it("lists all entries when no params given", async () => {
-      recallIndex.set("tc-1", buildRecallEntry("tc-1", "Read", "file one content", 100, []));
-      recallIndex.set("tc-2", buildRecallEntry("tc-2", "Bash", "command output two", 200, []));
-      recallIndex.set("tc-3", buildRecallEntry("tc-3", "Read", "file three content", 300, []));
-
-      const result = await tools["acm_recall"]("tc-r", {}, { aborted: false }, vi.fn(), createCtx());
-      expect(result.content[0].text).toContain("3 entries");
-      expect(result.details.total).toBe(3);
-    });
-
-    it("returns empty index message when nothing recalled", async () => {
-      const result = await tools["acm_recall"]("tc-r", {}, { aborted: false }, vi.fn(), createCtx());
-      expect(result.content[0].text).toContain("empty");
-    });
-
-    it("shows cached file path when available", async () => {
-      recallIndex.set("tc-cached", buildRecallEntry("tc-cached", "web_fetch", "webpage content about API docs", 5000, []));
-      cachedToFile.set("tc-cached", "/tmp/acm-cache/web_fetch-tc-cached.txt");
-
-      const result = await tools["acm_recall"]("tc-r", { entryId: recallIndex.get("tc-cached")!.entryId }, { aborted: false }, vi.fn(), createCtx());
-      expect(result.content[0].text).toContain("/tmp/acm-cache/web_fetch-tc-cached.txt");
-    });
-
-    it("slid-away tool results are recallable", async () => {
-      const now = Date.now();
-      const hour = 60 * 60 * 1000;
-
-      const messages = [
-        mkMsg("user", "check logs"),
-        mkMsg("toolResult", "ERROR: connection timeout to redis cluster at 10.0.0.5", { toolCallId: "tc-logs", toolName: "Bash" }),
-        ...Array.from({ length: 20 }, (_, i) => mkMsg("user", `turn ${i}`)),
-      ];
-      currentBranch = messages.map((m, i) => ({
-        type: "message",
-        id: `e${i}`,
-        message: m,
-        timestamp: i < 2 ? now - hour : now - 1000 + i,
-      }));
-
-      // Slide past the tool result
-      await tools["acm_slide"]("tc-slide", { keepMessages: 5 }, { aborted: false }, vi.fn(), createCtx());
-
-      // Now recall should find it
-      const result = await tools["acm_recall"]("tc-r", { query: "redis" }, { aborted: false }, vi.fn(), createCtx());
-      expect(result.details.matches).toBeGreaterThan(0);
+    it("reports when the session dir has no session files", async () => {
+      rmSync(join(dir, "s1.jsonl"));
+      const result = await recall("redis");
+      expect(result.content[0].text).toContain("No session files");
     });
   });
 
