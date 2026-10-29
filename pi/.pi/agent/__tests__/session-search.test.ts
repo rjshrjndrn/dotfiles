@@ -275,21 +275,3 @@ describe("searchSessions", () => {
     }
   });
 });
-
-// ─── 5. Real session file (integration) ───
-
-describe("real session search", () => {
-  const REAL_SESSION =
-    "/Users/skynet/.pi/agent/sessions/--Users-skynet-Documents-projects-personal-harkx-worktree-vector--/2026-06-27T02-15-59-057Z_019f06dc-c351-7072-9674-332ec37fed0f.jsonl";
-
-  it("ranks user SSH command #1 from 382 rg matches", async () => {
-    const results = await searchSessions("ssh", REAL_SESSION, { maxResults: 5 });
-    expect(results.hits[0].role).toBe("user");
-    expect(results.hits[0].content).toContain("azureuser@10.55.1.4");
-  });
-
-  it("completes in under 1 second", async () => {
-    const results = await searchSessions("ssh", REAL_SESSION);
-    expect(results.timings.total).toBeLessThan(1000);
-  });
-});
