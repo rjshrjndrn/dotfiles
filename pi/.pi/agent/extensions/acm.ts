@@ -654,7 +654,7 @@ export default function (pi: ExtensionAPI) {
       const acmText = [
         `<acm-context>`,
         `${clearSet.size} tool results cleared, ${compactSet.size} messages compacted, ${pinnedSet.size} pinned, ${cachedCount} cached to disk.`,
-        hasSlid ? `Earlier context was slid away. For prior conversation, decisions, or file content: use acm_recall(query: "keywords") or acm_recall(entryId: "id").` : ``,
+        hasSlid ? `Earlier context was slid away. For prior conversation, decisions, or file content: use acm_recall(query: "keywords").` : ``,
         `Thinking blocks stripped from old messages (last ${recentTurns} turns preserved).`,
         cachedCount > 0
           ? `CACHED RESULTS: ${cachedCount} tool results were intercepted and saved to disk instead of entering context. When you see a [cached: /path/...] stub, you MUST read the file (bash head/rg/grep) to get the actual content. Do NOT skip or guess.`

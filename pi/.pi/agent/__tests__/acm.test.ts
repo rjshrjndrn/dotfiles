@@ -1985,6 +1985,18 @@ describe("pin + prune + slide combinations", () => {
   // ── Slide context hint ─────────────────────────────────────────────
 
   describe("slide context hint", () => {
+    it("slide hint only advertises acm_recall params that exist", async () => {
+      const now = Date.now();
+      currentBranch = Array.from({ length: 22 }, (_, i) => ({
+        type: "message", id: `e${i}`, message: mkMsg("user", `turn ${i}`),
+        timestamp: i < 2 ? now - 3600_000 : now - 1000 + i,
+      }));
+      await tools["acm_slide"]("tc-slide", { keepMessages: 5 }, { aborted: false }, vi.fn(), createCtx());
+      const hint = sentTexts().find((t) => t.includes("<acm-context>"))!;
+      expect(hint).toContain("slid away");
+      expect(hint).not.toContain("entryId");
+    });
+
     it("acm-context mentions slide when pinnedContentStore has entries", () => {
       pinnedContentStore.set("e-old", {
         entryId: "e-old",
