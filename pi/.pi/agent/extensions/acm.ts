@@ -678,7 +678,7 @@ export default function (pi: ExtensionAPI) {
     // Done AFTER acm-context injection so pinned messages don't absorb it.
     // prependPinned returns the entry IDs it prepended (message order);
     // keep entryIds[] aligned by unshifting them too.
-    const pinnedIds = prependPinned(messages, pinnedContentStore, pinnedSet, branch);
+    const pinnedIds = prependPinned(messages, pinnedContentStore, pinnedSet, new Set(entryIds.filter((id): id is string => !!id)));
     if (pinnedIds.length > 0) entryIds.unshift(...pinnedIds);
 
     const usage = ctx.getContextUsage();

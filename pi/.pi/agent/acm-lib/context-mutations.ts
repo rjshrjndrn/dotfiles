@@ -36,7 +36,7 @@ export function prependPinned(
   messages: any[],
   pinnedContentStore: Map<string, { content: string; role?: string }>,
   pinnedSet: Set<string>,
-  branch: any[],
+  inContext: Set<string>,
 ): string[] {
   const pinnedMessages: any[] = [];
   const entryIds: string[] = [];
@@ -44,9 +44,8 @@ export function prependPinned(
   for (const [entryId, entry] of pinnedContentStore) {
     // Skip if pin was removed
     if (!pinnedSet.has(entryId)) continue;
-    // Skip if entry still exists in current branch (not yet slid)
-    const alreadyInBranch = branch.some((e: any) => e.id === entryId);
-    if (alreadyInBranch) continue;
+    // Skip if the entry is still in the outgoing messages (not slid away)
+    if (inContext.has(entryId)) continue;
 
     // Re-inject as "user" role — original tool_use context is gone after slide,
     // so a toolResult without toolCallId would fail API validation.

@@ -63,7 +63,7 @@ describe("prependPinned", () => {
       ["xyz99999", { content: "important earlier note", role: "user" }],
     ]);
     const pinnedSet = new Set<string>(["xyz99999"]);
-    const branch: any[] = []; // entry slid away, not in branch
+    const branch = new Set<string>(); // entry slid away, not in context
 
     prependPinned(messages, store, pinnedSet, branch);
 
@@ -78,7 +78,7 @@ describe("prependPinned", () => {
       ["bbb00002", { content: "note B", role: "user" }],
     ]);
     const pinnedSet = new Set<string>(["aaa00001", "bbb00002"]);
-    const branch: any[] = [];
+    const branch = new Set<string>();
 
     const ids = prependPinned(messages, store, pinnedSet, branch);
 
@@ -94,7 +94,7 @@ describe("prependPinned", () => {
       ["xyz99999", { content: "note", role: "user" }],
     ]);
     const pinnedSet = new Set<string>(); // unpinned
-    const branch: any[] = [];
+    const branch = new Set<string>();
 
     const ids = prependPinned(messages, store, pinnedSet, branch);
 
@@ -102,13 +102,13 @@ describe("prependPinned", () => {
     expect(ids).toEqual([]);
   });
 
-  it("skips pins whose entry still exists in branch (not yet slid)", () => {
+  it("skips pins whose entry is still in context (not yet slid)", () => {
     const messages: any[] = [];
     const store = new Map<string, any>([
       ["xyz99999", { content: "note", role: "user" }],
     ]);
     const pinnedSet = new Set<string>(["xyz99999"]);
-    const branch: any[] = [{ id: "xyz99999", type: "message", message: {} }];
+    const branch = new Set<string>(["xyz99999"]);
 
     const ids = prependPinned(messages, store, pinnedSet, branch);
 
@@ -122,7 +122,7 @@ describe("prependPinned", () => {
       ["abcdef1234567", { content: "note", role: "user" }],
     ]);
     const pinnedSet = new Set<string>(["abcdef1234567"]);
-    const branch: any[] = [];
+    const branch = new Set<string>();
 
     prependPinned(messages, store, pinnedSet, branch);
 

@@ -1671,6 +1671,29 @@ describe("pin + prune + slide combinations", () => {
       expect(pinnedMsg).toBeDefined();
     });
 
+    it("pin slid out of context is re-injected (branch still holds it)", async () => {
+      const now = Date.now();
+      const hour = 60 * 60 * 1000;
+      const messages = [
+        mkMsg("user", "read schema"),
+        mkMsg("toolResult", "pinned schema users(id, email)", { toolCallId: "tc-p", toolName: "Read" }),
+        ...Array.from({ length: 20 }, (_, i) => mkMsg("user", `turn ${i}`)),
+      ];
+      currentBranch = messages.map((m, i) => ({
+        type: "message", id: `e${i}`, message: m,
+        timestamp: i < 2 ? now - hour : now - 1000 + i,
+      }));
+      pinnedSet.add("e1");
+
+      await tools["acm_slide"]("tc-slide", { keepMessages: 5 }, { aborted: false }, vi.fn(), createCtx());
+
+      // Slide never mutates the session: the branch still contains e1.
+      const result = handlers["context"]({ messages: [...messages] }, createCtx());
+      const texts = result.messages.map((m: any) => m.content?.[0]?.text ?? m.content);
+      expect(texts.some((t: any) => typeof t === "string" && t.includes("turn 0"))).toBe(false); // slid
+      expect(texts.filter((t: any) => typeof t === "string" && t.includes("pinned schema"))).toHaveLength(1);
+    });
+
     it("pinned content not duplicated if entry still in branch", () => {
       pinnedSet.add("e0");
       pinnedContentStore.set("e0", {
