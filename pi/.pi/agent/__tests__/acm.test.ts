@@ -1299,6 +1299,14 @@ describe("pin + prune + slide combinations", () => {
     }));
   }
 
+  // Texts of the messages the LLM would receive for the current branch.
+  function sentTexts(): string[] {
+    const msgs = currentBranch.filter((e: any) => e.type === "message").map((e: any) => e.message);
+    const result = handlers["context"]({ messages: msgs }, createCtx());
+    return result.messages.map((m: any) =>
+      typeof m.content === "string" ? m.content : (m.content ?? []).map((c: any) => c.text ?? "").join("\n"));
+  }
+
   function createCtx(branch?: any[]) {
     const b = branch || currentBranch;
     return {
@@ -1458,36 +1466,12 @@ describe("pin + prune + slide combinations", () => {
       const ctx = createCtx();
       const result = await tools["acm_slide"]("tc-slide", { keepMessages: 5 }, { aborted: false }, vi.fn(), ctx);
       expect(result.content[0].text).toContain("Slide complete");
-      expect(mockAppendCompaction).toHaveBeenCalled();
-    });
+      expect(mockAppendCompaction).not.toHaveBeenCalled(); // session file untouched
 
-    it("slide indexes slid-away messages in recall", async () => {
-      const now = Date.now();
-      const hour = 60 * 60 * 1000;
-      const messages: any[] = [];
-      for (let i = 0; i < 20; i++) {
-        messages.push(mkMsg("user", `turn ${i}`));
-        messages.push(mkMsg("assistant", `response ${i}`));
-      }
-      // Add a tool result that will be slid away
-      const allMsgs = [
-        mkMsg("user", "read old file"),
-        mkMsg("assistant", "reading"),
-        mkMsg("toolResult", "old file content about database schema", { toolCallId: "tc-old", toolName: "Read" }),
-        ...messages,
-      ];
-      currentBranch = allMsgs.map((m, i) => ({
-        type: "message",
-        id: `e${i}`,
-        message: m,
-        timestamp: now - hour + (i * 1000),
-      }));
-
-      await tools["acm_slide"]("tc-slide", { keepMessages: 5 }, { aborted: false }, vi.fn(), createCtx());
-
-      // tc-old should now be in recall index
-      expect(recallIndex.has("tc-old")).toBe(true);
-      expect(recallIndex.get("tc-old")!.toolName).toBe("Read");
+      const texts = sentTexts();
+      expect(texts.some((t) => t.includes("<summary>") && t.includes("slid away"))).toBe(true);
+      expect(texts.some((t) => t.endsWith("turn 0"))).toBe(false);
+      expect(texts.some((t) => t.endsWith("response 19"))).toBe(true);
     });
 
     it("slide returns error for too-short session", async () => {
@@ -1518,7 +1502,9 @@ describe("pin + prune + slide combinations", () => {
       // keepMinutes=5 keeps ~2-3 entries, keepMessages=20 keeps 20
       // Intersection (Math.max) → uses tighter cutoff (time)
       await tools["acm_slide"]("tc-slide", { keepMinutes: 5, keepMessages: 20 }, { aborted: false }, vi.fn(), createCtx());
-      expect(mockAppendCompaction).toHaveBeenCalled();
+      const texts = sentTexts();
+      expect(texts.some((t) => t.endsWith("turn 10"))).toBe(false); // keepMessages alone would keep it
+      expect(texts.some((t) => t.endsWith("turn 29"))).toBe(true);
     });
 
   });
@@ -1722,56 +1708,6 @@ describe("pin + prune + slide combinations", () => {
   // ── Prune + Slide ─────────────────────────────────────────────────
 
   describe("prune + slide", () => {
-    it("cleared entries before slide cutoff get indexed in recall", async () => {
-      const now = Date.now();
-      const hour = 60 * 60 * 1000;
-
-      // Pre-clear a tool result
-      clearSet.add("tc-cleared");
-      recallIndex.set("tc-cleared", buildRecallEntry("tc-cleared", "Read", "already cleared content", 500, []));
-
-      const messages = [
-        mkMsg("user", "old turn"),
-        mkMsg("toolResult", "already cleared", { toolCallId: "tc-cleared", toolName: "Read" }),
-        ...Array.from({ length: 20 }, (_, i) => mkMsg("user", `turn ${i}`)),
-      ];
-      currentBranch = messages.map((m, i) => ({
-        type: "message",
-        id: `e${i}`,
-        message: m,
-        timestamp: i < 2 ? now - hour : now - 1000 + i,
-      }));
-
-      await tools["acm_slide"]("tc-slide", { keepMessages: 5 }, { aborted: false }, vi.fn(), createCtx());
-
-      // Pre-existing recall entry should still be there
-      expect(recallIndex.has("tc-cleared")).toBe(true);
-    });
-
-    it("slide indexes never-cleared tool results in recall", async () => {
-      const now = Date.now();
-      const hour = 60 * 60 * 1000;
-
-      // Tool result that was never cleared (recent enough to survive auto-clear)
-      const messages = [
-        mkMsg("user", "read something"),
-        mkMsg("assistant", "reading"),
-        mkMsg("toolResult", "content about microservice architecture", { toolCallId: "tc-uncl", toolName: "Bash" }),
-        ...Array.from({ length: 20 }, (_, i) => mkMsg("user", `turn ${i}`)),
-      ];
-      currentBranch = messages.map((m, i) => ({
-        type: "message",
-        id: `e${i}`,
-        message: m,
-        timestamp: i < 3 ? now - hour : now - 1000 + i,
-      }));
-
-      await tools["acm_slide"]("tc-slide", { keepMessages: 5 }, { aborted: false }, vi.fn(), createCtx());
-
-      // Should now be in recall despite never being auto-cleared
-      expect(recallIndex.has("tc-uncl")).toBe(true);
-    });
-
     it("slide cleans up clearSet for discarded entries", async () => {
       const now = Date.now();
       const hour = 60 * 60 * 1000;
@@ -1829,26 +1765,14 @@ describe("pin + prune + slide combinations", () => {
       expect(pinnedContentStore.has("e2")).toBe(true);
       expect(pinnedContentStore.get("e2")!.content).toContain("pinned file B critical schema");
 
-      // Cleared entry (tc-a) should still be in recall
-      expect(recallIndex.has("tc-a")).toBe(true);
-
       // clearSet should be cleaned up for slid entries
       expect(clearSet.has("tc-a")).toBe(false);
 
-      // Now verify pinned content reappears in next context event
-      const postSlideMessages = [
-        mkMsg("user", "what schema are we using?"),
-        mkMsg("assistant", "checking"),
-      ];
-      const postBranch = mkBranch(postSlideMessages, 0);
-
-      const result = handlers["context"]({ messages: postSlideMessages }, createCtx(postBranch));
-
-      // Pinned content should be prepended
-      const hasPinned = result.messages.some((m: any) =>
-        m.content?.[0]?.text?.includes("pinned file B critical schema")
-      );
-      expect(hasPinned).toBe(true);
+      // Next request: branch still holds e2, but it is slid → re-injected once
+      const texts = sentTexts();
+      expect(texts.filter((t) => t.includes("pinned file B critical schema"))).toHaveLength(1);
+      expect(texts.some((t) => t.includes("cleared file A"))).toBe(false);
+      expect(texts.some((t) => t.endsWith("turn 0"))).toBe(false); // slid
     });
 
     it("full lifecycle: create → pin → prune others → slide → verify all states", async () => {
@@ -1890,19 +1814,10 @@ describe("pin + prune + slide combinations", () => {
       expect(pinnedContentStore.has("e4")).toBe(true);
       expect(pinnedContentStore.get("e4")!.content).toContain("database schema");
 
-      // Cleared entries in recall
-      const hasRecall = recallIndex.has("tc-pkg") || recallIndex.has("tc-tsc") || recallIndex.has("tc-schema");
-      expect(hasRecall).toBe(true);
-
-      // Phase 6: Post-slide context has pinned content
-      const postMessages = [mkMsg("user", "continue"), mkMsg("assistant", "ok")];
-      const postBranch = mkBranch(postMessages, 0);
-      const result = handlers["context"]({ messages: postMessages }, createCtx(postBranch));
-
-      const schemaInContext = result.messages.some((m: any) =>
-        m.content?.[0]?.text?.includes("database schema")
-      );
-      expect(schemaInContext).toBe(true);
+      // Phase 6: post-slide context has the pinned schema once, not the others
+      const texts = sentTexts();
+      expect(texts.filter((t) => t.includes("database schema"))).toHaveLength(1);
+      expect(texts.some((t) => t.includes("package.json"))).toBe(false);
     });
 
     it("unpin after slide removes from store on persist", () => {
@@ -2498,31 +2413,5 @@ describe("pin + prune + slide combinations", () => {
       expect(pinnedContentStore.has("e2")).toBe(true);
     });
 
-    it("recall index not duplicated on repeated slide", async () => {
-      const now = Date.now();
-      const hour = 60 * 60 * 1000;
-
-      const messages = [
-        mkMsg("user", "read"),
-        mkMsg("toolResult", "content", { toolCallId: "tc-x", toolName: "Read" }),
-        ...Array.from({ length: 20 }, (_, i) => mkMsg("user", `turn ${i}`)),
-      ];
-      currentBranch = messages.map((m, i) => ({
-        type: "message",
-        id: `e${i}`,
-        message: m,
-        timestamp: i < 2 ? now - hour : now - 1000 + i,
-      }));
-
-      // First slide
-      await tools["acm_slide"]("tc-s1", { keepMessages: 5 }, { aborted: false }, vi.fn(), createCtx());
-      const firstRecall = recallIndex.get("tc-x");
-      expect(firstRecall).toBeDefined();
-
-      // Second slide on remaining branch shouldn't duplicate
-      const recallSizeBefore = recallIndex.size;
-      // recallIndex already has tc-x, second slide won't add it again
-      expect(recallIndex.has("tc-x")).toBe(true);
-    });
   });
 });
