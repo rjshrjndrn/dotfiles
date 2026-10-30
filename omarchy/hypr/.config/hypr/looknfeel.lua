@@ -28,5 +28,5 @@ hl.config({
   },
 })
 
--- Pin Slack to workspace 3.
-o.window("^(com.slack.Slack)$", { workspace = "3" })
+-- Pin Slack to workspace 2.
+o.window("^(com.slack.Slack)$", { workspace = "2" })
