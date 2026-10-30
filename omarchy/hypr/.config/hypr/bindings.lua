@@ -44,6 +44,8 @@ rebind("SUPER + F", "Workspace 4", hl.dsp.focus({ workspace = 4 }))
 -- Auto-assign apps to workspaces.
 o.window("kitty", { workspace = "1" })
 o.window("slack", { workspace = "2" })
+-- Workspace 2 stacks like GNOME/KDE: Slack popups (huddle) float instead of reflowing tiles.
+o.window({ workspace = "2" }, { float = true })
 o.window("zen", { workspace = "4" })
 o.window("org.telegram.desktop", { float = true, size = { 380, 519 } })
 o.window("signal", { float = true, size = { 562, 654 } })
