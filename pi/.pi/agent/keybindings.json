@@ -13,5 +13,11 @@
   "tui.altScreen.bottom": [
     "ctrl+end",
     "ctrl+shift+e"
+  ],
+  "tui.altScreen.lineUp": [
+    "ctrl+shift+k"
+  ],
+  "tui.altScreen.lineDown": [
+    "ctrl+shift+j"
   ]
 }
