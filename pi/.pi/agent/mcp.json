@@ -85,6 +85,19 @@
         "mcp"
       ],
       "exposure": "deferred"
+    },
+    "slack": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "slack-mcp-server@latest",
+        "--transport",
+        "stdio"
+      ],
+      "env": {
+        "SLACK_MCP_XOXP_TOKEN": "${SLACK_MCP_XOXP_TOKEN}"
+      },
+      "exposure": "deferred"
     }
   }
 }
