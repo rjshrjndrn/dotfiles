@@ -9,5 +9,9 @@
   ],
   "app.model.select": [
     "ctrl+shift+l"
+  ],
+  "tui.altScreen.bottom": [
+    "ctrl+end",
+    "ctrl+shift+e"
   ]
 }
