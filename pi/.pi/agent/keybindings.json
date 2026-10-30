@@ -19,5 +19,11 @@
   ],
   "tui.altScreen.lineDown": [
     "ctrl+shift+j"
+  ],
+  "tui.altScreen.halfPageUp": [
+    "ctrl+shift+u"
+  ],
+  "tui.altScreen.halfPageDown": [
+    "ctrl+shift+d"
   ]
 }
