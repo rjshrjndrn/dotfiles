@@ -27,3 +27,6 @@ hl.config({
     focus_fit_method = 0,
   },
 })
+
+-- Pin Slack to workspace 3.
+o.window("^(com.slack.Slack)$", { workspace = "3" })
