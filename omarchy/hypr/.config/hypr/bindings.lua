@@ -49,6 +49,7 @@ o.window({ workspace = "2" }, { float = true })
 o.window("zen", { workspace = "4" })
 o.window("org.telegram.desktop", { float = true, size = { 380, 519 } })
 o.window("signal", { float = true, size = { 562, 654 } })
+o.window("megasync", { float = true })
 
 -- Omarchy menu on CTRL+SHIFT+SPACE (drop the default SUPER+ALT+SPACE).
 hl.unbind("SUPER + ALT + SPACE")
