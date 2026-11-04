@@ -49,7 +49,8 @@ o.window({ workspace = "2" }, { float = true })
 o.window("zen", { workspace = "4" })
 o.window("org.telegram.desktop", { float = true, size = { 380, 519 } })
 o.window("signal", { float = true, size = { 562, 654 } })
-o.window("megasync", { float = true })
+-- MEGA reuses its dialog window, so without a size it keeps the old tiled size.
+o.window("megasync", { float = true, size = { 400, 600 }, move = { "(monitor_w-412)", 36 } })
 
 -- Omarchy menu on CTRL+SHIFT+SPACE (drop the default SUPER+ALT+SPACE).
 hl.unbind("SUPER + ALT + SPACE")
