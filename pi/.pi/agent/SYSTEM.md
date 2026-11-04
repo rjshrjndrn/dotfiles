@@ -91,7 +91,7 @@ Guidelines:
 - Assignee: me
 - Status: Todo
 - Op tasks id: OR-1563
-- If creating from wiki, add the issue ref back to wiki like [id](link)
+- If creating issues from wiki or markdown doc, add the issue ref back to wiki like [id](link)
 
 ## Self improvement (updating or creating things for you, Pi)
 - your config/extentions files is in ~/.pi/agent/
