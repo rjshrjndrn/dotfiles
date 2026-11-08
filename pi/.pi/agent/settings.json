@@ -1,9 +1,8 @@
 {
-  "lastChangelogVersion": "1.2.0",
+  "lastChangelogVersion": "1.5.0",
   "defaultProvider": "anthropic",
-  "defaultModel": "claude-sonnet-4-8",
+  "defaultModel": "claude-sonnet-5-5",
   "packages": [
-    "npm:pi-boundary",
     "npm:@rjshrjndrn/pi-fetch",
     "npm:pi-caveman",
     "git:github.com/DietrichGebert/ponytail"
@@ -24,9 +23,15 @@
     "anthropicExtraUsage": false
   },
   "enabledModels": [
+    "anthropic/claude-opus-5-5",
     "anthropic/claude-opus-4-8",
     "anthropic/claude-sonnet-4-6",
     "anthropic/claude-opus-4-6",
-    "anthropic/claude-haiku-4-5"
+    "anthropic/claude-haiku-4-5",
+    "opencode/deepseek-v4.1-flash-free",
+    "opencode/glm-5.3-flash-free",
+    "opencode/minimax-m3.1-flash-free",
+    "opencode/beam-free",
+    "opencode/nemotron-3-ultra-free"
   ]
 }

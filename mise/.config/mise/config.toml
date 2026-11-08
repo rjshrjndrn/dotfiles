@@ -26,7 +26,7 @@ experimental = false
 use_versions_host = false  # mise-versions.jdx.dev caches stale nightly digests (e.g. lightpanda)
 
 # 24h supply-chain cooldown (default). Excludes = get latest immediately + silence "ignored" WARN.
-minimum_release_age_excludes = ["npm:@earendil-works/pi-coding-agent", "pipx:headroom-ai"]
+minimum_release_age_excludes = ["npm:@earendil-works/pi-coding-agent", "pipx:headroom-ai", "opencode"]
 
 # Add latency to mac terminal
 disable_backends = ["vfox"]
@@ -72,7 +72,8 @@ bun = "latest"
 ###############
 "npm:@earendil-works/pi-coding-agent" = "latest"
 "npm:@fission-ai/openspec" = "latest"
-# "npm:omniroute" = "latest"
+# @pierre/theme 1.1.0 lost provenance via upstream switch to manual publish (commit d40c654); tarball verified vs source
+"npm:omniroute" = { version = "latest", trust_policy_excludes = ["@pierre/theme@1.1.0"] }
 
 # Transparent LLM context compression proxy
 "pipx:headroom-ai" = { version = "latest", extras = "all" }
@@ -169,6 +170,7 @@ croc = "latest"
 ###############
 # aqua registry still expects duckdb_cli-*.zip; 2.0.0 ships *.tar.gz
 "github:duckdb/duckdb" = "latest"
+opencode = "2"
 
 ###############
 # Misc

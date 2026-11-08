@@ -1,7 +1,13 @@
 {
-  "cacheTools": ["web_fetch", "bash", "read"],
+  "cacheTools": [
+    "web_fetch",
+    "bash",
+    "read"
+  ],
   "localTools": [],
-  "ephemeralTools": ["acm_map"],
+  "ephemeralTools": [
+    "acm_map"
+  ],
   "cacheMinChars": 2000,
   "previewChars": 1000,
   "autoPrunePercent": 60
