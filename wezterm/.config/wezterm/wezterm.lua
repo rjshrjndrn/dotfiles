@@ -179,6 +179,26 @@ for i = 1, 9 do
 	table.insert(config.keys, { key = tostring(i), mods = "LEADER", action = act.ActivateTab(i - 1) })
 end
 
+-- C-h/j/k/l like vim-tmux-navigator: move between panes, but leave the key to vim.
+-- Mux panes report no foreground process, so the title is the only vim signal.
+local function is_vim(pane)
+	local t = pane:get_title():lower()
+	return t:find("^n?vim$") or t:find("^n?vim ") or t:find("%- n?vim$")
+end
+for key, dir in pairs({ h = "Left", j = "Down", k = "Up", l = "Right" }) do
+	table.insert(config.keys, {
+		key = key,
+		mods = "CTRL",
+		action = wezterm.action_callback(function(window, pane)
+			if is_vim(pane) then
+				window:perform_action(act.SendKey({ key = key, mods = "CTRL" }), pane)
+			else
+				window:perform_action(act.ActivatePaneDirection(dir), pane)
+			end
+		end),
+	})
+end
+
 config.key_tables = { resize = { { key = "Escape", action = "PopKeyTable" } } }
 for key, dir in pairs({ H = "Left", J = "Down", K = "Up", L = "Right" }) do
 	table.insert(config.key_tables.resize, { key = key, action = act.AdjustPaneSize({ dir, 5 }) })

@@ -36,6 +36,9 @@ expect z LEADER "TogglePaneZoomState"
 expect x LEADER "CloseCurrentPane{ confirm = true }"
 expect_shifted ! "EmitEvent 'user-defined-"
 
+# C-h/j/k/l: vim-tmux-navigator style (callback: move pane, or pass key to vim)
+for k in h j k l; do expect "$k" CTRL "EmitEvent 'user-defined-"; done
+
 # resize: like tmux `bind -r`, first press resizes, repeats within 500ms keep resizing
 expect H LEADER "Multiple{ { AdjustPaneSize = { 'Left', 5 } }, { ActivateKeyTable = { name =  'resize'"
 expect J LEADER "Multiple{ { AdjustPaneSize = { 'Down', 5 } }, { ActivateKeyTable = { name =  'resize'"
