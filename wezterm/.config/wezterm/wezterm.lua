@@ -2,9 +2,14 @@ local wezterm = require("wezterm")
 local mux = wezterm.mux
 local act = wezterm.action
 
-wezterm.on("gui-startup", function()
-	local _, pane, window = mux.spawn_window({})
-	window:gui_window():maximize()
+-- gui-startup does not fire on `connect`; gui-attached does.
+wezterm.on("gui-attached", function()
+	local workspace = mux.get_active_workspace()
+	for _, window in ipairs(mux.all_windows()) do
+		if window:get_workspace() == workspace then
+			window:gui_window():maximize()
+		end
+	end
 end)
 
 local config = {
@@ -25,6 +30,9 @@ local config = {
 	-- Don't use keyboard interruption
 	use_ime = false,
 	font_size = 16,
+	-- tmux-like persistence: panes live in wezterm-mux-server and survive GUI crashes.
+	unix_domains = { { name = "unix" } },
+	default_gui_startup_args = { "connect", "unix" },
 }
 
 -- wezterm ls-fonts --list-system | grep -i jet

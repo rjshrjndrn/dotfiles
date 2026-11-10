@@ -10,3 +10,6 @@ secrets-set: ## Upsert secrets from stdin to doppler: cat file | make secrets-se
 	@sed 's/^export //' | grep -v '^DOPPLER_' \
 		| doppler secrets upload /dev/stdin -p lap -c shell --silent \
 		&& echo "done" || { echo "failed" >&2; exit 1; }
+
+wezterm-test: ## Run wezterm config tests (isolated HOME, real mux untouched)
+	@for t in wezterm/tests/test_*.sh; do $$t 2>/dev/null || exit 1; done
