@@ -27,6 +27,14 @@ export function injectAcmContext(messages: any[], acmText: string): void {
   }
 }
 
+/** Pins stored before thinking-as-prose hold JSON thinking lines; unwrap them to prose. */
+function unwrapThinking(content: string): string {
+  return content.split("\n").map((line) => {
+    if (!line.startsWith('{"type":"thinking"')) return line;
+    try { return JSON.parse(line).thinking ?? line; } catch { return line; }
+  }).join("\n");
+}
+
 /**
  * Prepend pinned content (survives slides) as synthetic user messages.
  * Returns the entry IDs of the prepended messages, in message order,
@@ -51,7 +59,7 @@ export function prependPinned(
     // so a toolResult without toolCallId would fail API validation.
     pinnedMessages.push({
       role: "user",
-      content: [{ type: "text", text: `[pinned:${entryId.slice(0, 8)}] ${entry.content}` }],
+      content: [{ type: "text", text: `[pinned:${entryId.slice(0, 8)}] ${unwrapThinking(entry.content)}` }],
     });
     entryIds.push(entryId);
   }

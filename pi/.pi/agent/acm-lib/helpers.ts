@@ -38,7 +38,8 @@ export function extractEntryContent(entry: any): string {
   const c = entry?.message?.content;
   if (typeof c === "string") return c;
   if (Array.isArray(c)) {
-    return c.map((b: any) => b.type === "text" ? b.text : b.type === "image" ? "[image]" : JSON.stringify(b)).join("\n");
+    // thinking as prose: JSON-shaped thinking in a user-role pin trips reasoning_extraction refusals
+    return c.map((b: any) => b.type === "text" ? b.text : b.type === "thinking" ? b.thinking : b.type === "image" ? "[image]" : JSON.stringify(b)).join("\n");
   }
   return JSON.stringify(entry);
 }
