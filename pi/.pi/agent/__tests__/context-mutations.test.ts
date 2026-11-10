@@ -128,4 +128,22 @@ describe("prependPinned", () => {
 
     expect(messages[0].content[0].text).toContain("[pinned:abcdef12]");
   });
+
+  // Pins stored before the extractEntryContent fix hold JSON thinking lines.
+  it("unwraps legacy JSON thinking lines in stored pins to prose", () => {
+    const messages: any[] = [{ role: "user", content: "current" }];
+    const legacy = [
+      JSON.stringify({ type: "thinking", thinking: "check port 6443\nthen 10250", thinkingSignature: "sig" }),
+      "ports free",
+      JSON.stringify({ type: "toolCall", id: "t1", name: "bash", arguments: { command: "ss -ltn" } }),
+    ].join("\n");
+    const store = new Map<string, any>([["abcdef12xyz", { content: legacy }]]);
+
+    prependPinned(messages, store, new Set(["abcdef12xyz"]), new Set());
+
+    const text = messages[0].content[0].text;
+    expect(text).not.toContain('"type":"thinking"');
+    expect(text).not.toContain("sig");
+    expect(text).toBe(`[pinned:abcdef12] check port 6443\nthen 10250\nports free\n${JSON.stringify({ type: "toolCall", id: "t1", name: "bash", arguments: { command: "ss -ltn" } })}`);
+  });
 });

@@ -197,6 +197,19 @@ describe("extractEntryContent", () => {
     expect(extractEntryContent(entry)).toBe("[image]");
   });
 
+  // Pins re-enter as user text; JSON-shaped thinking there trips Anthropic's
+  // reasoning_extraction classifier. Keep the reasoning, drop the wrapper.
+  it("renders thinking blocks as prose, never as JSON", () => {
+    const entry = { message: { content: [
+      { type: "thinking", thinking: "check port 6443 first", thinkingSignature: "sig" },
+      { type: "text", text: "ports free" },
+    ] } };
+    const out = extractEntryContent(entry);
+    expect(out).not.toContain('"type":"thinking"');
+    expect(out).not.toContain("sig");
+    expect(out).toBe("check port 6443 first\nports free");
+  });
+
   it("falls back to JSON for unknown structure", () => {
     const entry = { foo: "bar" };
     expect(extractEntryContent(entry)).toBe(JSON.stringify(entry));
