@@ -266,6 +266,23 @@ export default function (pi: ExtensionAPI) {
     });
   });
 
+  // ── Refusal category: pi drops Anthropic stop_details.category ─────
+  // Recover it from the raw stream so refusals are classifiable in TUI + session log.
+
+  let refusalCategory: string | undefined;
+  pi.on("message_start" as any, () => { refusalCategory = undefined; });
+  pi.on("provider_stream_event" as any, (event: any) => {
+    const d = event.data;
+    if (d?.type === "message_delta" && d.delta?.stop_reason === "refusal") refusalCategory = d.delta.stop_details?.category;
+  });
+  pi.on("message_end" as any, (event: any) => {
+    const m = event.message;
+    const category = refusalCategory;
+    refusalCategory = undefined;
+    if (m?.role !== "assistant" || m.rawStopReason !== "refusal" || !category) return;
+    return { message: { ...m, errorMessage: `${m.errorMessage ?? "The model refused to complete the request"} [refusal category: ${category}]` } };
+  });
+
   // ── Turn end: feed to project memory decision gate ─────────────────
 
   pi.on("turn_end" as any, async (event: any, _ctx: any) => {
