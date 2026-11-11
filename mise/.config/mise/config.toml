@@ -31,6 +31,10 @@ minimum_release_age_excludes = ["npm:@earendil-works/pi-coding-agent", "pipx:hea
 # Add latency to mac terminal
 disable_backends = ["vfox"]
 
+# Omarchy's aqua pi (Bun-compiled) can't resolve require("pkg/") in
+# extension deps (tr46 -> punycode/). Use the npm/Node build instead.
+disable_tools = ["pi"]
+
 # Temporary workaround for attestation issue
 [settings.aqua]
 github_attestations = false
@@ -42,7 +46,6 @@ github_attestations = false
 # package_manager = "bun"
 
 [settings.upgrade]
-auto_prune = false
 
 [tools]
 ###############
@@ -108,7 +111,7 @@ argocd = "latest"
 ###############
 lima = "latest"
 podman = {version = "latest", rename_exe = "podman"}
-depot = { version = "latest", exe = "depot" }
+depot = "latest"
 
 ###############
 # Security
@@ -140,7 +143,6 @@ ansible-core = "latest"
 ###############
 lazygit = "latest"
 delta = "latest"
-github-cli = "latest"
 
 ###############
 # Terminal / Shell
@@ -175,3 +177,4 @@ opencode = "2"
 ###############
 # Misc
 ###############
+"github:tailscale/tailcat" = "latest"
