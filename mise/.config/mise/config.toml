@@ -76,7 +76,7 @@ bun = "latest"
 "npm:@earendil-works/pi-coding-agent" = "latest"
 "npm:@fission-ai/openspec" = "latest"
 # @pierre/theme 1.1.0 lost provenance via upstream switch to manual publish (commit d40c654); tarball verified vs source
-"npm:omniroute" = { version = "latest", trust_policy_excludes = ["@pierre/theme@1.1.0"] }
+"npm:omniroute" = { version = "latest", trust_policy_excludes = ["@pierre/theme@1.1.0", "omniroute@3.8.53"] }
 
 # Transparent LLM context compression proxy
 "pipx:headroom-ai" = { version = "latest", extras = "all" }
