@@ -247,13 +247,20 @@ function gwa() {
 }
 
 function gwr() {
-  worktree=$1
-  shift
-  args=$*
-  git worktree remove "$worktree" $args || true
-  branch=$(basename "$worktree")
-  echo $branch
-  git branch -D "$branch"
+  local input=$1; shift
+  local abs=${input:A} wt="" br="" p="" ref="" line
+  # Resolve path + branch from git, matching input as branch name or worktree path
+  while IFS= read -r line; do
+    case $line in
+      "worktree "*) p=${line#worktree } ref="" ;;
+      "branch "*) ref=${line#branch refs/heads/} ;;
+      "")
+        if [[ $ref == "$input" || $p == "$abs" ]]; then wt=$p br=$ref; break; fi ;;
+    esac
+  done < <(git worktree list --porcelain; echo)
+  [[ -z $wt ]] && { echo "gwr: no worktree for '$input'" >&2; return 1; }
+  git worktree remove "$wt" "$@" || return 1
+  [[ -n $br ]] && git branch -D "$br"
 }
 
 #######################################
