@@ -218,9 +218,10 @@
          :rules  [ :apps
             [:##n   "open '/Applications/Neovide.app'"]
             [:##s   "open '/Applications/Slack.app'"]
-            [:##j   "open '/Applications/kitty.app'"]
-            [:##k   "open '/Applications/Zen.app'"]
-            [:##l   "open '/Applications/Slack.app'"]
+            [:##h   :left_arrow]           ; f -> hjkl  arrows (same as a-mode)
+            [:##j   :down_arrow]
+            [:##k   :up_arrow]
+            [:##l   :right_arrow]
             [:##o   :delete_or_backspace]  ; f -> o   Backspace
             [:##p   :delete_forward]       ; f -> p   Delete
           ]}
