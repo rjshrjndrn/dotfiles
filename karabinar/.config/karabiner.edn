@@ -17,7 +17,7 @@
              :e-mode {:key :e}    ; Movement left and right (letter, word, line)
              :r-mode {:key :r}    ; Deletion left and right (letter, word, line)
              ;
-             :g-mode {:key :g}    ; Mouse scroll, desktop left-right, zoom in-out, screenshot (not implemented)
+             :g-mode {:key :g}    ; Open applications
              ;
              ; :v-mode {:key :v}    ; Number pad with + - BS ENTER as well
              :c-mode {:key :c}    ; Slashes and lines  ^ | \ _ @
@@ -204,20 +204,19 @@
                 ]
         }
 
-        #_{:des "g-mode for mouse scroll, desktop left-right, zoom in-out, screenshot"
+        {:des "Open applications"
          :rules [:g-mode
-                ]
-        }
+            [:##n   "open '/Applications/Neovide.app'"]
+            [:##s   "open '/Applications/Slack.app'"]
+          ]}
 
         {:des "Forward slash is an easier right-shift (if combined)"
          :rules  [
             [:slash        :left_shift     nil         {:alone :slash}]
           ]}
 
-        {:des "Open applications"
+        {:des "f-mode: hjkl arrows, backspace/delete"
          :rules  [ :apps
-            [:##n   "open '/Applications/Neovide.app'"]
-            [:##s   "open '/Applications/Slack.app'"]
             [:##h   :left_arrow]           ; f -> hjkl  arrows (same as a-mode)
             [:##j   :down_arrow]
             [:##k   :up_arrow]
