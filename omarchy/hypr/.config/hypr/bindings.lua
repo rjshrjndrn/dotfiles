@@ -40,6 +40,7 @@ rebind("SUPER + A", "Workspace 1", hl.dsp.focus({ workspace = 1 }))
 rebind("SUPER + S", "Workspace 2", hl.dsp.focus({ workspace = 2 }))
 rebind("SUPER + D", "Workspace 3", hl.dsp.focus({ workspace = 3 }))
 rebind("SUPER + F", "Workspace 4", hl.dsp.focus({ workspace = 4 }))
+rebind("SUPER + G", "Workspace 6", hl.dsp.focus({ workspace = 6 }))
 
 -- Auto-assign apps to workspaces.
 o.window("kitty", { workspace = "1" })
@@ -83,3 +84,10 @@ rebind("SUPER + SHIFT + CTRL + G", "Google Messages", 'omarchy-launch-or-focus-w
 rebind("SUPER + SHIFT + P", "Google Photos", 'omarchy-launch-or-focus-webapp "Google Photos" "https://photos.google.com/"')
 rebind("SUPER + SHIFT + X", "X", 'omarchy-launch-webapp "https://x.com/"')
 rebind("SUPER + SHIFT + ALT + X", "X Post", 'omarchy-launch-webapp "https://x.com/compose/post"')
+
+-- Dictation keys from before Alt + Space and Right Alt became the defaults.
+-- Remove these lines to give the keys back to applications.
+if o.dictation_installed and o.dictation_installed() then
+  o.bind("SUPER + CTRL + X", "Toggle dictation", "omarchy-dictation toggle")
+  o.bind_hold("F9", "Start dictation (push-to-talk)", "omarchy-dictation start", "Stop dictation (push-to-talk)", "omarchy-dictation stop")
+end
