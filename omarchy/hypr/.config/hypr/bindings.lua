@@ -91,3 +91,7 @@ if o.dictation_installed and o.dictation_installed() then
   o.bind("SUPER + CTRL + X", "Toggle dictation", "omarchy-dictation toggle")
   o.bind_hold("F9", "Start dictation (push-to-talk)", "omarchy-dictation start", "Stop dictation (push-to-talk)", "omarchy-dictation stop")
 end
+
+-- Hex voice dictation (hold). Hyprland ignores the key Hex requests via the
+-- portal, so bind it here. Plain id survives Hex hotkey changes.
+rebind("SUPER + E", "Hex dictation", hl.dsp.global("anomaly.hex:dictation"))
