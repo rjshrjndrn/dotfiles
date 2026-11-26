@@ -181,3 +181,4 @@ opencode = "2"
 "github:libracoder/kiri" = "latest"
 "npm:cf" = { version = "latest", minimum_release_age = "0s", lazy = true, lazy_bins = ["cf"] }
 "npm:@dlrm/dolly" = "latest"
+github-cli = "latest"
