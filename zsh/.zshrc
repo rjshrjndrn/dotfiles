@@ -24,7 +24,6 @@ ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=240'
 plugins=(
     git
     history-substring-search
-    z
     zsh-autosuggestions
     )
 source $ZSH/oh-my-zsh.sh
@@ -54,3 +53,6 @@ source ~/.completions.sh
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 alias brave-nightly="$HOME/.local/bin/brave-nightly"
+
+# zoxide: keep last so its cd hook is not overridden
+eval "$(zoxide init zsh)"
