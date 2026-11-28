@@ -56,3 +56,5 @@ alias brave-nightly="$HOME/.local/bin/brave-nightly"
 
 # zoxide: keep last so its cd hook is not overridden
 eval "$(zoxide init zsh)"
+# z with no args opens the fzf picker (old zsh-z wrapper behaviour)
+z() { (( $# )) && __zoxide_z "$@" || __zoxide_zi; }
